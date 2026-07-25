@@ -3733,7 +3733,7 @@
       '<h3 style="margin:0"><i class="fa-solid fa-plus"></i> New project</h3>' +
       '<div class="field">' +
       '<div class="field-inline"><label for="projIdInput">Project name</label>' +
-      '<input class="input proj-id-input" name="id" id="projIdInput" required pattern="[a-z0-9][-a-z0-9]{1,15}" maxlength="16" placeholder="ice2027" autocomplete="off" aria-describedby="projIdWarn">' +
+      '<input class="input proj-id-input" name="id" id="projIdInput" required maxlength="16" placeholder="ice2027" autocomplete="off" aria-describedby="projIdWarn">' +
       '<span class="input-suffix">.designthinking.lk</span></div>' +
       '<span id="projIdWarn" class="field-warn" hidden><i class="fa-solid fa-triangle-exclamation"></i> That name is already taken</span></div>' +
       '<div class="field field-inline"><label for="projTagline">Tagline <span class="hint">optional</span></label>' +
@@ -3742,6 +3742,13 @@
       '<div class="form-actions"><button class="btn btn-gradient" type="submit" disabled><span class="label">Create project</span><span class="spin"></span></button>' +
       '<button class="btn btn-ghost" type="button" data-action="cancel-new-project">Cancel</button></div></form>';
   }
+
+  // Slug rules, validated in JS (NOT via the HTML pattern attribute — browsers
+  // now compile that with the regex `v` flag, which rejects a literal hyphen in
+  // a character class unless escaped; a normal RegExp has no such issue).
+  // 2–16 chars, lowercase letters/digits/hyphens, must start alphanumeric.
+  var PROJECT_ID_RE = /^[a-z0-9][a-z0-9-]{1,15}$/;
+  function validProjectId(v) { return PROJECT_ID_RE.test(String(v || '').trim().toLowerCase()); }
 
   // True if a project id is already registered — checked against the list the
   // admin panel already fetched (adminProjects), so no round-trip is needed.
@@ -5090,13 +5097,17 @@
 
     if (form.id === 'projectForm') {
       var fdp = new FormData(form);
-      var newSlug = String(fdp.get('id') || '').toLowerCase();
-      // Guard: never create over an existing project (the backend also rejects
-      // this, but catch it client-side for an instant, clear warning).
+      var newSlug = String(fdp.get('id') || '').trim().toLowerCase();
+      // Guard: the Create button is already gated on these, but re-check on
+      // submit — reject an invalid slug or one that's already registered.
+      if (!validProjectId(newSlug)) {
+        var st0 = $('#projectFormStatus'); if (st0) st0.textContent = 'Name must be 2–16 chars: lowercase letters, digits, hyphens.';
+        return;
+      }
       if (projectIdTaken(newSlug)) {
         var warnEl = $('#projIdWarn'); if (warnEl) warnEl.hidden = false;
         var inpEl = $('#projIdInput'); if (inpEl) inpEl.classList.add('input-invalid');
-        var st = $('#projectFormStatus'); if (st) st.textContent = 'A project with that subdomain already exists.';
+        var st = $('#projectFormStatus'); if (st) st.textContent = 'A project with that name already exists.';
         return;
       }
       busy(btn, true);
@@ -5166,8 +5177,9 @@
     var warn = $('#projIdWarn');
     if (warn) warn.hidden = !taken;
     t.classList.toggle('input-invalid', taken);
+    // Enabled only when the name is a valid slug (2–16 chars) AND not taken.
     var btn = t.form && t.form.querySelector('button[type="submit"]');
-    if (btn) btn.disabled = !(t.checkValidity() && !taken);
+    if (btn) btn.disabled = !(validProjectId(t.value) && !taken);
   });
 
   (function boot() {
