@@ -511,7 +511,10 @@ a.card { color: inherit; display: block; }
 .proj-creating-overlay .title { font-weight: 600; }
 .proj-creating-overlay .hint { color: var(--text-muted); max-width: 360px; font-size: 13px; }
 /* Inline "already taken" warning under the New Project subdomain field. */
-.field-warn { display: flex; align-items: center; gap: 6px; margin-top: 5px; color: #b3261e; font-size: 12px; }
+/* :not([hidden]) so the `hidden` attribute actually hides it — a bare
+   `display:flex` would override the UA [hidden]{display:none} rule. */
+.field-warn { align-items: center; gap: 6px; margin-top: 5px; color: #b3261e; font-size: 12px; }
+.field-warn:not([hidden]) { display: flex; }
 .input.input-invalid { border-color: #e5b3b3; box-shadow: 0 0 0 3px rgba(179, 38, 30, 0.08); }
 .link-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .link-list li { display: flex; gap: 10px; align-items: baseline; }
@@ -526,6 +529,9 @@ a.card { color: inherit; display: block; }
 .field-inline { display: flex; align-items: center; gap: 12px; }
 .field-inline > label { margin-bottom: 0; white-space: nowrap; flex: none; }
 .field-inline > .input { flex: 1; min-width: 0; }
+/* Shortened subdomain input with a static ".designthinking.lk" suffix beside it. */
+.field-inline > .proj-id-input { flex: 0 1 200px; min-width: 120px; }
+.input-suffix { flex: none; color: var(--text-muted); font-size: 13px; white-space: nowrap; }
 .input, textarea.input, select.input {
   width: 100%; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
   padding: 10px 14px; font-size: 15px; font-family: inherit; color: var(--text);
