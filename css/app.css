@@ -1672,8 +1672,10 @@ body.hive-full .project-switcher select { pointer-events: auto; }
   background: var(--bg-subtle); border-radius: 999px; padding: 4px;
 }
 .admin-tabs .comm-tab { flex: none; padding: 7px 20px; }
-/* highlight the current admin view with an accent text colour */
-.admin-tabs .comm-tab.active { color: var(--color-accent); }
+/* highlight the current admin view with an accent-filled pill (same ink
+   convention as .btn-primary: white on purple, dark teal on dark-mode cyan) */
+.admin-tabs .comm-tab.active { background: var(--color-accent); color: #fff; }
+:root[data-theme="dark"] .admin-tabs .comm-tab.active { color: #08272B; }
 .admin-tabview { flex: 1; min-height: 0; overflow-y: auto; padding-top: 8px; }
 
 /* admin Resources tab — compact link directory, fits one screen */
