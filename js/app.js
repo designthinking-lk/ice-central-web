@@ -4180,8 +4180,8 @@
     var users = (d.users || []);
     var tabs = [{ id: 'people', label: 'People (' + users.length + ')' }];
     tabs.push({ id: 'teams', label: 'Teams' });
-    tabs.push({ id: 'wallet', label: 'Wallet push' });
-    if (d.registryUrl) tabs.push({ id: 'projects', label: 'Projects' });
+    tabs.push({ id: 'wallet', label: 'Wallet' });
+    if (d.registryUrl) tabs.push({ id: 'projects', label: 'Platform' });
     tabs.push({ id: 'event', label: 'Event' });
     tabs.push({ id: 'resources', label: 'Resources' });
     if (!tabs.some(function (t) { return t.id === adminTab; })) adminTab = 'people';
