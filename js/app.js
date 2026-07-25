@@ -3730,11 +3730,13 @@
     // subdomain and admin access are all set up automatically on create.
     return '<form class="form new-project-card" id="projectForm">' +
       '<h3 style="margin:0"><i class="fa-solid fa-plus"></i> New project</h3>' +
-      '<div class="field"><label>Project subdomain <span class="hint">lowercase letters, digits, hyphens</span></label>' +
-      '<input class="input" name="id" id="projIdInput" required pattern="[a-z0-9][-a-z0-9]{1,29}" maxlength="30" placeholder="ice2027" autocomplete="off" aria-describedby="projIdWarn">' +
+      '<div class="field">' +
+      '<div class="field-inline"><label for="projIdInput">Project subdomain</label>' +
+      '<input class="input" name="id" id="projIdInput" required pattern="[a-z0-9][-a-z0-9]{1,29}" maxlength="30" placeholder="ice2027" autocomplete="off" aria-describedby="projIdWarn"></div>' +
       '<span id="projIdWarn" class="field-warn" hidden><i class="fa-solid fa-triangle-exclamation"></i> That subdomain is already taken</span>' +
-      '<span class="hint" style="color:var(--text-muted);font-size:12px">Lives at <b>&lt;name&gt;.designthinking.lk</b></span></div>' +
-      '<div class="field"><label>Tagline <span class="hint">optional</span></label><input class="input" name="tagline" maxlength="200" value="' + esc(C.EVENT_TAGLINE) + '"></div>' +
+      '<span class="hint" style="color:var(--text-muted);font-size:12px;display:block;margin-top:6px;margin-left:0">Lives at <b>&lt;name&gt;.designthinking.lk</b></span></div>' +
+      '<div class="field field-inline"><label for="projTagline">Tagline <span class="hint">optional</span></label>' +
+      '<input class="input" name="tagline" id="projTagline" maxlength="200" value="' + esc(C.EVENT_TAGLINE) + '"></div>' +
       '<div class="form-status" id="projectFormStatus"></div>' +
       '<div class="form-actions"><button class="btn btn-gradient" type="submit"><span class="label">Create project</span><span class="spin"></span></button>' +
       '<button class="btn btn-ghost" type="button" data-action="cancel-new-project">Cancel</button></div></form>';

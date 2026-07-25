@@ -522,6 +522,10 @@ a.card { color: inherit; display: block; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .field label { display: block; font-weight: 600; font-size: 13.5px; margin-bottom: 6px; color: var(--text); }
 .field .hint { font-weight: 400; color: var(--text-faint); font-size: 12.5px; margin-left: 6px; }
+/* Label and input on one line (used by the New Project form). */
+.field-inline { display: flex; align-items: center; gap: 12px; }
+.field-inline > label { margin-bottom: 0; white-space: nowrap; flex: none; }
+.field-inline > .input { flex: 1; min-width: 0; }
 .input, textarea.input, select.input {
   width: 100%; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
   padding: 10px 14px; font-size: 15px; font-family: inherit; color: var(--text);
