@@ -655,7 +655,10 @@
   function renderChatPane() {
     var body = $('#chatpaneBody');
     if (!body) return;
-    $all('.comm-tab').forEach(function (t) {
+    // Scoped to the chat pane's own tab strip — the admin tab bar reuses the
+    // .comm-tab class, and a bare '.comm-tab' sweep here kept stripping the
+    // admin bar's active highlight on every chrome re-render.
+    $all('.comm-tabs .comm-tab').forEach(function (t) {
       t.classList.toggle('active', t.getAttribute('data-tab') === commTab);
     });
     var foot = $('#commFoot');
