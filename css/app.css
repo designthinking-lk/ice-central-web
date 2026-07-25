@@ -510,6 +510,9 @@ a.card { color: inherit; display: block; }
 .proj-creating-overlay i { font-size: 26px; color: var(--color-accent); }
 .proj-creating-overlay .title { font-weight: 600; }
 .proj-creating-overlay .hint { color: var(--text-muted); max-width: 360px; font-size: 13px; }
+/* Inline "already taken" warning under the New Project subdomain field. */
+.field-warn { display: flex; align-items: center; gap: 6px; margin-top: 5px; color: #b3261e; font-size: 12px; }
+.input.input-invalid { border-color: #e5b3b3; box-shadow: 0 0 0 3px rgba(179, 38, 30, 0.08); }
 .link-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .link-list li { display: flex; gap: 10px; align-items: baseline; }
 .link-list i { color: var(--text-faint); font-size: 13px; }

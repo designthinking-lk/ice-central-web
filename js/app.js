@@ -3731,12 +3731,25 @@
     return '<form class="form new-project-card" id="projectForm">' +
       '<h3 style="margin:0"><i class="fa-solid fa-plus"></i> New project</h3>' +
       '<div class="field"><label>Project subdomain <span class="hint">lowercase letters, digits, hyphens</span></label>' +
-      '<input class="input" name="id" required pattern="[a-z0-9][-a-z0-9]{1,29}" maxlength="30" placeholder="ice2027" autocomplete="off">' +
+      '<input class="input" name="id" id="projIdInput" required pattern="[a-z0-9][-a-z0-9]{1,29}" maxlength="30" placeholder="ice2027" autocomplete="off" aria-describedby="projIdWarn">' +
+      '<span id="projIdWarn" class="field-warn" hidden><i class="fa-solid fa-triangle-exclamation"></i> That subdomain is already taken</span>' +
       '<span class="hint" style="color:var(--text-muted);font-size:12px">Lives at <b>&lt;name&gt;.designthinking.lk</b></span></div>' +
       '<div class="field"><label>Tagline <span class="hint">optional</span></label><input class="input" name="tagline" maxlength="200" value="' + esc(C.EVENT_TAGLINE) + '"></div>' +
       '<div class="form-status" id="projectFormStatus"></div>' +
       '<div class="form-actions"><button class="btn btn-gradient" type="submit"><span class="label">Create project</span><span class="spin"></span></button>' +
       '<button class="btn btn-ghost" type="button" data-action="cancel-new-project">Cancel</button></div></form>';
+  }
+
+  // True if a project id is already registered — checked against the list the
+  // admin panel already fetched (adminProjects), so no round-trip is needed.
+  function projectIdTaken(v) {
+    v = String(v || '').trim().toLowerCase();
+    if (!v) return false;
+    var list = adminProjects || [];
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i].id).toLowerCase() === v) return true;
+    }
+    return false;
   }
 
   // ---- background project creation (survives refresh / navigation) ----
@@ -5073,9 +5086,17 @@
     }
 
     if (form.id === 'projectForm') {
-      busy(btn, true);
       var fdp = new FormData(form);
       var newSlug = String(fdp.get('id') || '').toLowerCase();
+      // Guard: never create over an existing project (the backend also rejects
+      // this, but catch it client-side for an instant, clear warning).
+      if (projectIdTaken(newSlug)) {
+        var warnEl = $('#projIdWarn'); if (warnEl) warnEl.hidden = false;
+        var inpEl = $('#projIdInput'); if (inpEl) inpEl.classList.add('input-invalid');
+        var st = $('#projectFormStatus'); if (st) st.textContent = 'A project with that subdomain already exists.';
+        return;
+      }
+      busy(btn, true);
       // Switch the panel into the blocking "creating…" state and start polling
       // BEFORE the request resolves, so an accidental refresh mid-create lands
       // back in the same waiting state (the server finishes regardless).
@@ -5130,6 +5151,17 @@
 
   window.addEventListener('hashchange', route);
   window.addEventListener('resize', fitWordmark);
+
+  // Live "subdomain already taken" check on the New Project field — delegated so
+  // it survives re-renders. Uses the already-fetched project list, no round-trip.
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (!t || t.id !== 'projIdInput') return;
+    var taken = projectIdTaken(t.value);
+    var warn = $('#projIdWarn');
+    if (warn) warn.hidden = !taken;
+    t.classList.toggle('input-invalid', taken);
+  });
 
   (function boot() {
     // ?project=<slug> deep-links into a specific project (e.g. a next-year
