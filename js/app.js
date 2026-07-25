@@ -394,6 +394,14 @@
 
   function switchProject(id) {
     if (!id || id === A.getProject()) return;
+    // Production: each project is its own subdomain (= its own browser origin),
+    // so switching is a FULL redirect — no in-place swap can leak one project's
+    // cache/session into another. Landing on a fresh origin starts clean.
+    if (A.projectFromHost()) {
+      location.href = 'https://' + id + '.designthinking.lk/';
+      return;
+    }
+    // Localhost/dev: no subdomains — keep the in-place swap for the editor.
     A.setProject(id);
     teamDetailCache = {};
     state.data = A.readCache(); // instant if this project was loaded before
@@ -3674,31 +3682,43 @@
       inner = '<div class="table-wrap"><table class="admin">' +
         '<thead><tr><th>Project</th><th>Status</th><th>Registration</th><th>Accounts</th><th>Storage</th><th></th></tr></thead><tbody>' +
         adminProjects.map(function (p) {
+          var isProv = (p.status === 'provisioning');
           return '<tr><td><b>' + esc(p.name) + '</b> <span style="color:var(--text-muted);font-size:13px">' + esc(p.id) + '</span></td>' +
-            '<td><select class="input" style="padding:5px 10px;font-size:13px" data-action="proj-status" data-proj="' + esc(p.id) + '">' +
-            ['active', 'test', 'archived'].map(function (s) { return '<option' + ((p.status || 'active') === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
-            '</select></td>' +
-            '<td><label style="cursor:pointer;white-space:nowrap"><input type="checkbox" data-action="proj-reg" data-proj="' + esc(p.id) + '"' + (p.registrationOpen === 'true' ? ' checked' : '') + '> open</label></td>' +
-            '<td><label style="cursor:pointer;white-space:nowrap" title="Mint @designthinking.lk accounts on registration"><input type="checkbox" data-action="proj-prov" data-proj="' + esc(p.id) + '"' + (p.provisionAccounts === 'true' ? ' checked' : '') + '> mint</label></td>' +
+            '<td>' + (isProv
+              ? '<span class="role-tag">setting up…</span>'
+              : '<select class="input" style="padding:5px 10px;font-size:13px" data-action="proj-status" data-proj="' + esc(p.id) + '">' +
+                ['active', 'test', 'archived'].map(function (s) { return '<option' + ((p.status || 'active') === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+                '</select>') + '</td>' +
+            '<td><label style="cursor:pointer;white-space:nowrap"><input type="checkbox" data-action="proj-reg" data-proj="' + esc(p.id) + '"' + (p.registrationOpen === 'true' ? ' checked' : '') + (isProv ? ' disabled' : '') + '> open</label></td>' +
+            '<td><label style="cursor:pointer;white-space:nowrap" title="Mint @designthinking.lk accounts on registration"><input type="checkbox" data-action="proj-prov" data-proj="' + esc(p.id) + '"' + (p.provisionAccounts === 'true' ? ' checked' : '') + (isProv ? ' disabled' : '') + '> mint</label></td>' +
             '<td class="proj-store">' +
             (p.dbId
               ? '<a href="https://docs.google.com/spreadsheets/d/' + esc(p.dbId) + '/edit" target="_blank" rel="noopener" title="Database — Google Sheet"><i class="fa-solid fa-table-cells-large sheet-ic"></i></a>'
-              : '<span class="store-off" title="Sheet is created on first use"><i class="fa-solid fa-table-cells-large"></i></span>') +
+              : '<span class="store-off" title="Sheet is created during setup"><i class="fa-solid fa-table-cells-large"></i></span>') +
             (p.uploadsFolderId
               ? '<a href="https://drive.google.com/drive/folders/' + esc(p.uploadsFolderId) + '" target="_blank" rel="noopener" title="Uploads — Google Drive"><i class="fa-brands fa-google-drive drive-ic"></i></a>'
-              : '<span class="store-off" title="Folder is created on first use"><i class="fa-brands fa-google-drive"></i></span>') +
+              : '<span class="store-off" title="Folder is created during setup"><i class="fa-brands fa-google-drive"></i></span>') +
             '</td>' +
-            '<td>' + (p.id === current
-              ? '<span class="role-tag admin">current</span>'
-              : '<button class="btn btn-ghost btn-sm" data-action="switch-project-btn" data-proj="' + esc(p.id) + '">Switch</button>') + '</td></tr>';
+            '<td>' + (isProv
+              ? '<span style="color:var(--text-muted);white-space:nowrap"><i class="fa-solid fa-spinner fa-spin"></i> Setting up…</span>'
+              : p.id === current
+                ? '<span class="role-tag admin">current</span>'
+                : '<button class="btn btn-ghost btn-sm" data-action="switch-project-btn" data-proj="' + esc(p.id) + '"><i class="fa-solid fa-arrow-up-right-from-square"></i>Open</button>') + '</td></tr>';
         }).join('') + '</tbody></table></div>';
     }
-    return '<div class="panel" style="margin-bottom:22px"><h3><i class="fa-solid fa-layer-group"></i>Projects</h3>' + inner +
-      '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">' +
-      '<button class="btn btn-outline btn-sm" data-action="new-project"><i class="fa-solid fa-plus"></i>New project</button>' +
+    var creating = creatingProject();
+    if (creating) startProjectPolling(); // re-enter the waiting state after a refresh
+    return '<div class="panel" style="margin-bottom:22px;position:relative">' +
+      // Registry-sheet button lives at the very top of the card, right-aligned with the heading.
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">' +
+      '<h3 style="margin:0"><i class="fa-solid fa-layer-group"></i>Projects</h3>' +
       '<a class="btn btn-ghost btn-sm" href="' + esc(d.registryUrl) + '" target="_blank" rel="noopener">Registry sheet <i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
-      '</div>' +
+      '</div>' + inner +
+      // The "New project" button is hidden while the create card is open.
+      (showNewProject ? '' :
+        '<div style="margin-top:14px"><button class="btn btn-outline btn-sm" data-action="new-project"><i class="fa-solid fa-plus"></i>New project</button></div>') +
       (showNewProject ? newProjectCard() : '') +
+      (creating ? projectCreatingOverlay(creating) : '') +
       '</div>';
   }
 
@@ -3706,20 +3726,67 @@
   var showNewProject = false;
 
   function newProjectCard() {
+    // The subdomain IS the project name — one field. Sheet DB, Drive folder,
+    // subdomain and admin access are all set up automatically on create.
     return '<form class="form new-project-card" id="projectForm">' +
       '<h3 style="margin:0"><i class="fa-solid fa-plus"></i> New project</h3>' +
-      '<div class="form-row">' +
-      '<div class="field"><label>Project id <span class="hint">lowercase letters, digits, hyphens</span></label>' +
-      '<input class="input" name="id" required pattern="[a-z0-9][a-z0-9-]{1,29}" maxlength="30" placeholder="ice2027"></div>' +
-      '<div class="field"><label>Name</label><input class="input" name="name" required maxlength="60" placeholder="ICE2027"></div>' +
-      '</div>' +
+      '<div class="field"><label>Project subdomain <span class="hint">lowercase letters, digits, hyphens</span></label>' +
+      '<input class="input" name="id" required pattern="[a-z0-9][a-z0-9-]{1,29}" maxlength="30" placeholder="ice2027" autocomplete="off">' +
+      '<span class="hint" style="color:var(--text-muted);font-size:12px">Lives at <b>&lt;name&gt;.designthinking.lk</b></span></div>' +
       '<div class="field"><label>Tagline <span class="hint">optional</span></label><input class="input" name="tagline" maxlength="200" value="' + esc(C.EVENT_TAGLINE) + '"></div>' +
-      '<div class="field"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" name="isTest"> Test project — only admins see it in the switcher</label></div>' +
-      '<div class="field"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" name="provision"> Mint @designthinking.lk accounts on registration</label></div>' +
-      '<p class="hint" style="margin:0;color:var(--text-muted);font-size:13px">The project’s Google Sheet and Drive folder are created automatically on first use.</p>' +
       '<div class="form-status" id="projectFormStatus"></div>' +
       '<div class="form-actions"><button class="btn btn-gradient" type="submit"><span class="label">Create project</span><span class="spin"></span></button>' +
       '<button class="btn btn-ghost" type="button" data-action="cancel-new-project">Cancel</button></div></form>';
+  }
+
+  // ---- background project creation (survives refresh / navigation) ----
+  // The single admin_create_project request finishes SERVER-SIDE even if the
+  // client disconnects, so a marker in sessionStorage lets us block the panel
+  // and poll for completion, re-entering that state after an accidental refresh.
+  var CREATING_KEY = 'ice.creatingProject';
+  var projectPollTimer = null;
+
+  function creatingProject() {
+    try { return sessionStorage.getItem(CREATING_KEY) || null; } catch (e) { return null; }
+  }
+  function setCreatingProject(slug) {
+    try { slug ? sessionStorage.setItem(CREATING_KEY, slug) : sessionStorage.removeItem(CREATING_KEY); } catch (e) { /* private mode */ }
+  }
+
+  function projectCreatingOverlay(slug) {
+    return '<div class="proj-creating-overlay">' +
+      '<i class="fa-solid fa-spinner fa-spin"></i>' +
+      '<div class="title">Creating ' + esc(slug) + '…</div>' +
+      '<div class="hint">Setting up the database, storage, subdomain and access. This can take a minute — you can safely wait; refreshing or clicking away won’t interrupt it.</div>' +
+      '</div>';
+  }
+
+  function stopProjectPolling() {
+    if (projectPollTimer) { clearInterval(projectPollTimer); projectPollTimer = null; }
+  }
+
+  // Poll the registry until the in-flight project is fully provisioned. Covers
+  // the case where the original create request's response was lost (disconnect
+  // / refresh) — the row still turns active server-side.
+  function startProjectPolling() {
+    if (projectPollTimer) return;
+    projectPollTimer = setInterval(function () {
+      var slug = creatingProject();
+      if (!slug) { stopProjectPolling(); return; }
+      A.api('admin_list_projects').then(function (r) {
+        var list = r.projects || [];
+        var row = null;
+        for (var i = 0; i < list.length; i++) { if (list[i].id === slug) { row = list[i]; break; } }
+        if (row && row.status !== 'provisioning' && row.dbId) {
+          setCreatingProject(null);
+          stopProjectPolling();
+          adminProjects = list;
+          if (location.hash === '#/admin') route();
+          refresh(); // pull the new project into the switcher
+          toast('Project “' + slug + '” is ready');
+        }
+      }).catch(function () { /* transient — keep polling */ });
+    }, 4000);
   }
 
   // ---- admin sections (one per tab) ----
@@ -5008,21 +5075,38 @@
     if (form.id === 'projectForm') {
       busy(btn, true);
       var fdp = new FormData(form);
+      var newSlug = String(fdp.get('id') || '').toLowerCase();
+      // Switch the panel into the blocking "creating…" state and start polling
+      // BEFORE the request resolves, so an accidental refresh mid-create lands
+      // back in the same waiting state (the server finishes regardless).
+      setCreatingProject(newSlug);
+      showNewProject = false;
+      adminProjects = null;
+      route();
+      startProjectPolling();
       try {
         await A.api('admin_create_project', {
-          id: fdp.get('id'),
-          name: fdp.get('name'),
+          id: newSlug,
           tagline: fdp.get('tagline'),
-          status: fdp.get('isTest') ? 'test' : 'active',
-          provisionAccounts: !!fdp.get('provision'),
         });
-        showNewProject = false;
+        // Response arrived (client stayed connected) — done.
+        setCreatingProject(null);
+        stopProjectPolling();
         adminProjects = null;
-        toast('Project created');
-        refresh(); // pulls the updated projects list into the switcher
+        route();
+        refresh(); // pulls the new project into the switcher
+        toast('Project “' + newSlug + '” is ready');
       } catch (err) {
-        $('#projectFormStatus').textContent = err.message;
-        busy(btn, false);
+        // The create failed (or the row is stuck provisioning) — surface it and
+        // let the admin retry; a retry RESUMES rather than duplicating work.
+        setCreatingProject(null);
+        stopProjectPolling();
+        adminProjects = null;
+        showNewProject = true;
+        route();
+        var msg = $('#projectFormStatus');
+        if (msg) msg.textContent = err.message;
+        toast(err.message, true);
       }
     }
 
@@ -5055,6 +5139,7 @@
       if (qp) A.setProject(qp.toLowerCase());
     } catch (e) { /* old browser */ }
     applyTheme(localStorage.getItem('ice.theme') === 'dark'); // sync the toggle icon
+    if (creatingProject()) startProjectPolling(); // resume a create that was in flight before a refresh
     var justSignedIn = A.absorbLoginToken();
     state.data = A.readCache();
     renderChrome();

@@ -37,7 +37,20 @@
   function getToken() { return localStorage.getItem(TOKEN_KEY) || null; }
   function setToken(t) { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); }
 
-  function getProject() { return localStorage.getItem(PROJECT_KEY) || C.DEFAULT_PROJECT; }
+  // Each project lives on its own subdomain ({slug}.designthinking.lk), so on
+  // production the HOSTNAME is the single source of truth for the active project
+  // — one subdomain can only ever act as one project, which is what hard-isolates
+  // every cache/session bucket per origin. Returns null off-production (localhost,
+  // github.io, apex, www) where the localStorage/?project switcher still applies.
+  function projectFromHost() {
+    var m = /^([a-z0-9-]+)\.designthinking\.lk$/i.exec(location.hostname);
+    if (m && m[1].toLowerCase() !== 'www') return m[1].toLowerCase();
+    return null;
+  }
+
+  function getProject() {
+    return projectFromHost() || localStorage.getItem(PROJECT_KEY) || C.DEFAULT_PROJECT;
+  }
   function setProject(id) {
     id ? localStorage.setItem(PROJECT_KEY, id) : localStorage.removeItem(PROJECT_KEY);
   }
@@ -130,6 +143,7 @@
     setToken: setToken,
     getProject: getProject,
     setProject: setProject,
+    projectFromHost: projectFromHost,
     signIn: signIn,
     signOut: signOut,
     absorbLoginToken: absorbLoginToken,

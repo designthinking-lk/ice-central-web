@@ -499,6 +499,17 @@ a.card { color: inherit; display: block; }
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; }
 .panel h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
 .panel h3 i { color: var(--color-accent); font-size: 14px; }
+/* Blocking overlay shown over the Projects panel while a new project is being
+   provisioned in the background — see projectCreatingOverlay() in app.js. */
+.proj-creating-overlay {
+  position: absolute; inset: 0; z-index: 5; border-radius: var(--radius-lg);
+  background: var(--surface); opacity: 0.97;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; text-align: center; padding: 24px;
+}
+.proj-creating-overlay i { font-size: 26px; color: var(--color-accent); }
+.proj-creating-overlay .title { font-weight: 600; }
+.proj-creating-overlay .hint { color: var(--text-muted); max-width: 360px; font-size: 13px; }
 .link-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .link-list li { display: flex; gap: 10px; align-items: baseline; }
 .link-list i { color: var(--text-faint); font-size: 13px; }

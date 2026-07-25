@@ -1,0 +1,13 @@
+# ICE central-web subdomain proxy — serves the SPA on any proxied
+# {slug}.designthinking.lk. Deploy once:  cd infra && wrangler deploy
+# (the ICE .zshrc hook auto-sources the designthinking.lk-scoped token.)
+#
+# The route only takes effect for PROXIED (orange-cloud) DNS records, so the
+# existing DNS-only subdomains (ice2026, ice2025, ice, www) are unaffected.
+name = "ice-central-web-proxy"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+routes = [
+  { pattern = "*.designthinking.lk/*", zone_name = "designthinking.lk" }
+]
