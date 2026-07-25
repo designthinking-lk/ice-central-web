@@ -5166,12 +5166,12 @@
   window.addEventListener('hashchange', route);
   window.addEventListener('resize', fitWordmark);
 
-  // Live "name already taken" check on the New Project field — delegated so it
-  // survives re-renders. Uses the already-fetched project list, no round-trip.
-  // Also gates the Create button: enabled only when the name is valid (non-empty,
-  // matches the slug pattern) AND not already registered.
-  document.addEventListener('input', function (e) {
-    var t = e.target;
+  // Live "name already taken" check + Create-button gating on the New Project
+  // field. Delegated (survives re-renders) and bound to input/keyup/change so a
+  // typed, pasted, autofilled or browser-restored value all sync the button —
+  // never leaving it stuck disabled with a valid value in the box. Uses the
+  // already-fetched project list, no round-trip.
+  function syncProjectForm(t) {
     if (!t || t.id !== 'projIdInput') return;
     var taken = projectIdTaken(t.value);
     var warn = $('#projIdWarn');
@@ -5180,6 +5180,9 @@
     // Enabled only when the name is a valid slug (2–16 chars) AND not taken.
     var btn = t.form && t.form.querySelector('button[type="submit"]');
     if (btn) btn.disabled = !(validProjectId(t.value) && !taken);
+  }
+  ['input', 'keyup', 'change'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) { syncProjectForm(e.target); });
   });
 
   (function boot() {
