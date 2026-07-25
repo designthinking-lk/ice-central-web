@@ -4839,7 +4839,7 @@
       case 'open-skills': openSkills(); break;
       case 'close-skills': closeSkills(); break;
       case 'add-typed-skill': { var si3 = $('#skillInput'); if (si3) { addTag(si3.value); si3.value = ''; si3.focus(); } break; }
-      case 'new-project': console.log('[ICE newproject] New project clicked'); showNewProject = true; route(); break;
+      case 'new-project': showNewProject = true; route(); break;
       case 'cancel-new-project': showNewProject = false; route(); break;
       case 'switch-project-btn': switchProject(t.getAttribute('data-proj')); break;
       case 'admin-tab':
@@ -5025,11 +5025,14 @@
 
   document.addEventListener('submit', async function (e) {
     var form = e.target;
-    console.log('[ICE submit] form submitted, id=%o', form.id);
+    // NOTE: use getAttribute('id'), NOT form.id — a form control with
+    // name="id" (the New Project subdomain input) shadows the form's native
+    // .id property, so form.id would return that <input>, not "projectForm".
+    var formId = form.getAttribute('id');
     e.preventDefault();
     var btn = form.querySelector('button[type="submit"]');
 
-    if (form.id === 'profileForm') {
+    if (formId === 'profileForm') {
       var status = $('#profileStatus');
       status.className = 'form-status';
       status.textContent = '';
@@ -5068,7 +5071,7 @@
       }
     }
 
-    if (form.id === 'teamForm') {
+    if (formId === 'teamForm') {
       busy(btn, true);
       var fd = new FormData(form);
       var teamId = form.getAttribute('data-id');
@@ -5091,45 +5094,39 @@
       }
     }
 
-    if (form.id === 'annForm') {
+    if (formId === 'annForm') {
       // Submit = Send (publish). Save-draft goes through the save-ann action.
       submitAnn(form, true, btn);
     }
 
-    if (form.id === 'projectForm') {
+    if (formId === 'projectForm') {
       var fdp = new FormData(form);
       var newSlug = String(fdp.get('id') || '').trim().toLowerCase();
-      console.log('[ICE create] enter slug=%o valid=%o taken=%o', newSlug, validProjectId(newSlug), projectIdTaken(newSlug));
       // Guard: the Create button is already gated on these, but re-check on
       // submit — reject an invalid slug or one that's already registered.
       if (!validProjectId(newSlug)) {
-        console.log('[ICE create] abort: invalid slug');
         var st0 = $('#projectFormStatus'); if (st0) st0.textContent = 'Name must be 2–16 chars: lowercase letters, digits, hyphens.';
         return;
       }
       if (projectIdTaken(newSlug)) {
-        console.log('[ICE create] abort: taken');
         var warnEl = $('#projIdWarn'); if (warnEl) warnEl.hidden = false;
         var inpEl = $('#projIdInput'); if (inpEl) inpEl.classList.add('input-invalid');
         var st = $('#projectFormStatus'); if (st) st.textContent = 'A project with that name already exists.';
         return;
       }
-      // Whole flow wrapped so ANY throw (busy/route/api) is caught + logged
-      // rather than becoming a swallowed unhandled rejection.
+      // Whole flow wrapped so any throw (busy/route/api) surfaces as an error
+      // toast + status rather than a swallowed unhandled rejection.
       try {
         busy(btn, true);
-        console.log('[ICE create] busy set → opening overlay');
         setCreatingProject(newSlug);
         showNewProject = false;
         adminProjects = null;
         route();
         startProjectPolling();
-        console.log('[ICE create] overlay shown → calling admin_create_project…');
         await A.api('admin_create_project', {
           id: newSlug,
           tagline: fdp.get('tagline'),
         });
-        console.log('[ICE create] api OK → done');
         setCreatingProject(null);
         stopProjectPolling();
         adminProjects = null;
@@ -5149,7 +5146,7 @@
       }
     }
 
-    if (form.id === 'linkForm') {
+    if (formId === 'linkForm') {
       busy(btn, true);
       var fd3 = new FormData(form);
       var teamId3 = form.getAttribute('data-team');
@@ -5184,8 +5181,6 @@
     t.classList.toggle('input-invalid', taken);
     // Enabled only when the name is a valid slug (2–16 chars) AND not taken.
     var btn = t.form && t.form.querySelector('button[type="submit"]');
-    console.log('[ICE newproject] value=%o valid=%o taken=%o adminProjectsLoaded=%o btnFound=%o -> disabled=%o',
-      t.value, valid, taken, !!adminProjects, !!btn, !(valid && !taken));
     if (btn) btn.disabled = !(valid && !taken);
   }
   ['input', 'keyup', 'change'].forEach(function (ev) {
