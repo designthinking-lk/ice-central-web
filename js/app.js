@@ -3733,7 +3733,7 @@
       '<h3 style="margin:0"><i class="fa-solid fa-plus"></i> New project</h3>' +
       '<div class="field">' +
       '<div class="field-inline"><label for="projIdInput">Project name</label>' +
-      '<input class="input proj-id-input" name="id" id="projIdInput" required pattern="[a-z0-9][-a-z0-9]{1,29}" maxlength="30" placeholder="ice2027" autocomplete="off" aria-describedby="projIdWarn">' +
+      '<input class="input proj-id-input" name="id" id="projIdInput" required pattern="[a-z0-9][-a-z0-9]{1,15}" maxlength="16" placeholder="ice2027" autocomplete="off" aria-describedby="projIdWarn">' +
       '<span class="input-suffix">.designthinking.lk</span></div>' +
       '<span id="projIdWarn" class="field-warn" hidden><i class="fa-solid fa-triangle-exclamation"></i> That name is already taken</span></div>' +
       '<div class="field field-inline"><label for="projTagline">Tagline <span class="hint">optional</span></label>' +
