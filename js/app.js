@@ -4839,7 +4839,7 @@
       case 'open-skills': openSkills(); break;
       case 'close-skills': closeSkills(); break;
       case 'add-typed-skill': { var si3 = $('#skillInput'); if (si3) { addTag(si3.value); si3.value = ''; si3.focus(); } break; }
-      case 'new-project': showNewProject = true; route(); break;
+      case 'new-project': console.log('[ICE newproject] New project clicked'); showNewProject = true; route(); break;
       case 'cancel-new-project': showNewProject = false; route(); break;
       case 'switch-project-btn': switchProject(t.getAttribute('data-proj')); break;
       case 'admin-tab':
@@ -5025,6 +5025,7 @@
 
   document.addEventListener('submit', async function (e) {
     var form = e.target;
+    console.log('[ICE submit] form submitted, id=%o', form.id);
     e.preventDefault();
     var btn = form.querySelector('button[type="submit"]');
 
@@ -5174,12 +5175,15 @@
   function syncProjectForm(t) {
     if (!t || t.id !== 'projIdInput') return;
     var taken = projectIdTaken(t.value);
+    var valid = validProjectId(t.value);
     var warn = $('#projIdWarn');
     if (warn) warn.hidden = !taken;
     t.classList.toggle('input-invalid', taken);
     // Enabled only when the name is a valid slug (2–16 chars) AND not taken.
     var btn = t.form && t.form.querySelector('button[type="submit"]');
-    if (btn) btn.disabled = !(validProjectId(t.value) && !taken);
+    console.log('[ICE newproject] value=%o valid=%o taken=%o adminProjectsLoaded=%o btnFound=%o -> disabled=%o',
+      t.value, valid, taken, !!adminProjects, !!btn, !(valid && !taken));
+    if (btn) btn.disabled = !(valid && !taken);
   }
   ['input', 'keyup', 'change'].forEach(function (ev) {
     document.addEventListener(ev, function (e) { syncProjectForm(e.target); });
