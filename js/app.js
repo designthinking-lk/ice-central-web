@@ -3884,6 +3884,55 @@
       '<a class="btn btn-ghost btn-sm" href="#/announcements">Manage on the news page</a></div>';
   }
 
+  // ---- Resources tab: directory of everything the deployment is built on ----
+  // Static infra links are hardcoded (they identify the deployment itself);
+  // storage links come from bootstrap so they follow the active project.
+  function adminResourcesSection(d) {
+    var C = window.ICE_CONFIG || {};
+    function link(icon, label, href) {
+      if (!href) return '';
+      return '<a class="res-link" href="' + esc(href) + '" target="_blank" rel="noopener">' +
+        '<i class="' + icon + '"></i><span>' + esc(label) + '</span>' +
+        '<i class="fa-solid fa-arrow-up-right-from-square ext"></i></a>';
+    }
+    function group(icon, title, links) {
+      var inner = links.join('');
+      if (!inner) return '';
+      return '<div class="res-group"><h4><i class="' + icon + '"></i>' + esc(title) + '</h4>' + inner + '</div>';
+    }
+    return '<div class="res-grid">' +
+      group('fa-solid fa-globe', 'Site & DNS', [
+        link('fa-solid fa-globe', 'Live site', 'https://ice2026.designthinking.lk'),
+        link('fa-brands fa-cloudflare', 'Cloudflare DNS', 'https://dash.cloudflare.com'),
+      ]) +
+      group('fa-brands fa-github', 'GitHub', [
+        link('fa-brands fa-github', 'Frontend repo', 'https://github.com/designthinking-lk/ice-designthinking-lk'),
+        link('fa-brands fa-github', 'Backend repo', 'https://github.com/ice2k26/ice2026-backend'),
+      ]) +
+      group('fa-solid fa-scroll', 'Apps Script', [
+        link('fa-solid fa-scroll', 'Auth script', 'https://script.google.com/d/1zRA0sI_eoVd9FMHyogA_lcwvHA9WqjrT5PoS1tYNZ8c_Ar5cmn-_H1jb/edit'),
+        link('fa-solid fa-scroll', 'API script', 'https://script.google.com/d/1pc6ZD0z-8P8bv-3NOH4dXXnb8TDEiu0i34q_xRZmJXFqrPwwV0NL7MDn/edit'),
+        link('fa-solid fa-bolt', 'Auth endpoint', C.AUTH_URL),
+        link('fa-solid fa-bolt', 'API endpoint', C.API_URL),
+      ]) +
+      group('fa-solid fa-cloud', 'Google Cloud', [
+        link('fa-solid fa-cloud', 'design-thinking-502504', 'https://console.cloud.google.com/home/dashboard?project=design-thinking-502504'),
+        link('fa-regular fa-comments', 'Chat API config', 'https://console.cloud.google.com/apis/api/chat.googleapis.com/hangouts-chat?project=design-thinking-502504'),
+        link('fa-solid fa-users-gear', 'Workspace admin', 'https://admin.google.com'),
+      ]) +
+      group('fa-solid fa-database', 'Data', [
+        link('fa-solid fa-table', 'Projects registry', d.registryUrl),
+        link('fa-solid fa-table', 'Project database', d.dbUrl),
+        link('fa-brands fa-google-drive', 'Uploads folder', d.uploadsUrl),
+      ]) +
+      group('fa-solid fa-palette', 'Frontend assets', [
+        link('fa-solid fa-font', 'Adobe Fonts kit', 'https://use.typekit.net/zws2qzx.css'),
+        link('fa-brands fa-font-awesome', 'Font Awesome 6.7.2', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css'),
+        link('fa-solid fa-palette', 'AHLab brand kit', 'https://cdn.ahlab.org/'),
+      ]) +
+      '</div>';
+  }
+
   // ---- Teams tab: assign every registered person into Team A–F ----
   // Capacity per team: 5 participants + 2 mentors (the backend enforces the
   // same caps, so a stale board can never oversubscribe a team).
@@ -4107,8 +4156,7 @@
   }
 
   // Which admin tab is showing; the last-used tab is remembered per project so
-  // returning to Admin reopens the view you left. (Storage links live inside
-  // each project row — no separate Resources tab.)
+  // returning to Admin reopens the view you left.
   function adminTabKey() { return 'ice.admintab.' + A.getProject(); }
   var adminTab = 'people';
   try { var savedTab = localStorage.getItem(adminTabKey()); if (savedTab) adminTab = savedTab; } catch (e) { /* private mode */ }
@@ -4130,6 +4178,7 @@
     tabs.push({ id: 'wallet', label: 'Wallet push' });
     if (d.registryUrl) tabs.push({ id: 'projects', label: 'Projects' });
     tabs.push({ id: 'event', label: 'Event' });
+    tabs.push({ id: 'resources', label: 'Resources' });
     if (!tabs.some(function (t) { return t.id === adminTab; })) adminTab = 'people';
     var bar = '<div class="admin-tabs">' + tabs.map(function (t) {
       return '<button class="comm-tab' + (t.id === adminTab ? ' active' : '') + '" type="button" data-action="admin-tab" data-tab="' + t.id + '">' + t.label + '</button>';
@@ -4139,6 +4188,7 @@
       adminTab === 'wallet' ? adminWalletSection(d) :
       adminTab === 'projects' ? projectsPanel(d) :
       adminTab === 'event' ? adminEventSection(d) :
+      adminTab === 'resources' ? adminResourcesSection(d) :
       adminPeopleSection(d);
     // tabs sit at the footer, on the same line as the sidebar's Admin item
     return '<div class="admin-wrap"><div class="admin-tabview">' + body + '</div>' + bar + '</div>';

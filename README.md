@@ -1,4 +1,4 @@
-# ICE — Web
+# ICE — Central Web (`ice-central-web`)
 
 Static frontend for the ICE workshop platform, served via GitHub Pages.
 Custom domain: `ice2026.designthinking.lk` today; moving to
@@ -13,7 +13,7 @@ central registry sheet via `bootstrap`.
 - No framework, no build step: `index.html` + vanilla JS hash-router.
 - Design tokens from the [AHLab brand kit](https://cdn.ahlab.org/) (`css/theme.css`).
 - Icons: Font Awesome Free. Fonts: Neue Haas Grotesk (Adobe Fonts) with system fallbacks.
-- Backend: Google Apps Script (see the `ice2026-backend` repo). Endpoints configured in `js/config.js`.
+- Backend: Google Apps Script (see the `ice-central-api` repo). Endpoints configured in `js/config.js`.
 
 ## Local development
 

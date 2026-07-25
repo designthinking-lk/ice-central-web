@@ -1676,6 +1676,20 @@ body.hive-full .project-switcher select { pointer-events: auto; }
 .admin-tabs .comm-tab.active { color: var(--color-accent); }
 .admin-tabview { flex: 1; min-height: 0; overflow-y: auto; padding-top: 8px; }
 
+/* admin Resources tab — compact link directory, fits one screen */
+.res-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.res-group { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+.res-group h4 {
+  font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-muted); display: flex; align-items: center; gap: 7px; margin: 0 0 8px;
+}
+.res-group h4 i { color: var(--color-accent); font-size: 12px; }
+.res-link { display: flex; align-items: center; gap: 9px; padding: 5px 0; font-size: 13.5px; color: var(--text); }
+.res-link > i:first-child { width: 16px; text-align: center; color: var(--text-faint); font-size: 13px; }
+.res-link .ext { margin-left: auto; font-size: 10px; color: var(--text-faint); opacity: 0; transition: opacity .12s; }
+.res-link:hover { color: var(--color-accent); text-decoration: none; }
+.res-link:hover .ext { opacity: 1; }
+
 /* admin Teams tab — assignment board (unassigned pool + Team A–F cards) */
 /* The board fills the admin tab area down to the footer tabs (no page scroll,
    no floating whitespace below the cards). */
