@@ -3889,10 +3889,15 @@
   // storage links come from bootstrap so they follow the active project.
   function adminResourcesSection(d) {
     var C = window.ICE_CONFIG || {};
-    function link(icon, label, href) {
+    var slug = proj().id || A.getProject();
+    // isProj marks links scoped to the active project (a slug chip flags them —
+    // they change when a new project like ice2027 takes over); unflagged links
+    // are platform-wide.
+    function link(icon, label, href, isProj) {
       if (!href) return '';
       return '<a class="res-link" href="' + esc(href) + '" target="_blank" rel="noopener">' +
         '<i class="' + icon + '"></i><span>' + esc(label) + '</span>' +
+        (isProj ? '<span class="res-chip" title="Project-specific — follows the active project">' + esc(slug) + '</span>' : '') +
         '<i class="fa-solid fa-arrow-up-right-from-square ext"></i></a>';
     }
     function group(icon, title, links) {
@@ -3902,7 +3907,7 @@
     }
     return '<div class="res-grid">' +
       group('fa-solid fa-globe', 'Site & DNS', [
-        link('fa-solid fa-globe', 'Live site', 'https://ice2026.designthinking.lk'),
+        link('fa-solid fa-globe', 'Live site', /^https?:/i.test(siteUrl()) ? siteUrl() : 'https://' + siteUrl(), true),
         link('fa-brands fa-cloudflare', 'Cloudflare DNS', 'https://dash.cloudflare.com'),
       ]) +
       group('fa-brands fa-github', 'GitHub', [
@@ -3922,8 +3927,8 @@
       ]) +
       group('fa-solid fa-database', 'Data', [
         link('fa-solid fa-table', 'Projects registry', d.registryUrl),
-        link('fa-solid fa-table', 'Project database', d.dbUrl),
-        link('fa-brands fa-google-drive', 'Uploads folder', d.uploadsUrl),
+        link('fa-solid fa-table', 'Project database', d.dbUrl, true),
+        link('fa-brands fa-google-drive', 'Uploads folder', d.uploadsUrl, true),
       ]) +
       group('fa-solid fa-palette', 'Frontend assets', [
         link('fa-solid fa-font', 'Adobe Fonts kit', 'https://use.typekit.net/zws2qzx.css'),

@@ -1687,6 +1687,17 @@ body.hive-full .project-switcher select { pointer-events: auto; }
 .res-link { display: flex; align-items: center; gap: 9px; padding: 5px 0; font-size: 13.5px; color: var(--text); }
 .res-link > i:first-child { width: 16px; text-align: center; color: var(--text-faint); font-size: 13px; }
 .res-link .ext { margin-left: auto; font-size: 10px; color: var(--text-faint); opacity: 0; transition: opacity .12s; }
+/* slug chip on project-scoped links (db sheet, uploads, live site) — the rest
+   of the directory is platform-wide */
+.res-chip {
+  margin-left: auto; flex: none;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.03em;
+  color: var(--color-accent); background: rgba(97, 0, 255, 0.08);
+  border: 1px solid rgba(97, 0, 255, 0.22);
+  border-radius: 999px; padding: 1px 8px;
+}
+:root[data-theme="dark"] .res-chip { background: rgba(0, 215, 238, 0.10); border-color: rgba(0, 215, 238, 0.25); }
+.res-chip ~ .ext { margin-left: 8px; }
 .res-link:hover { color: var(--color-accent); text-decoration: none; }
 .res-link:hover .ext { opacity: 1; }
 
