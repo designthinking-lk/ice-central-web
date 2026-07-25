@@ -5099,33 +5099,37 @@
     if (form.id === 'projectForm') {
       var fdp = new FormData(form);
       var newSlug = String(fdp.get('id') || '').trim().toLowerCase();
+      console.log('[ICE create] enter slug=%o valid=%o taken=%o', newSlug, validProjectId(newSlug), projectIdTaken(newSlug));
       // Guard: the Create button is already gated on these, but re-check on
       // submit — reject an invalid slug or one that's already registered.
       if (!validProjectId(newSlug)) {
+        console.log('[ICE create] abort: invalid slug');
         var st0 = $('#projectFormStatus'); if (st0) st0.textContent = 'Name must be 2–16 chars: lowercase letters, digits, hyphens.';
         return;
       }
       if (projectIdTaken(newSlug)) {
+        console.log('[ICE create] abort: taken');
         var warnEl = $('#projIdWarn'); if (warnEl) warnEl.hidden = false;
         var inpEl = $('#projIdInput'); if (inpEl) inpEl.classList.add('input-invalid');
         var st = $('#projectFormStatus'); if (st) st.textContent = 'A project with that name already exists.';
         return;
       }
-      busy(btn, true);
-      // Switch the panel into the blocking "creating…" state and start polling
-      // BEFORE the request resolves, so an accidental refresh mid-create lands
-      // back in the same waiting state (the server finishes regardless).
-      setCreatingProject(newSlug);
-      showNewProject = false;
-      adminProjects = null;
-      route();
-      startProjectPolling();
+      // Whole flow wrapped so ANY throw (busy/route/api) is caught + logged
+      // rather than becoming a swallowed unhandled rejection.
       try {
+        busy(btn, true);
+        console.log('[ICE create] busy set → opening overlay');
+        setCreatingProject(newSlug);
+        showNewProject = false;
+        adminProjects = null;
+        route();
+        startProjectPolling();
+        console.log('[ICE create] overlay shown → calling admin_create_project…');
         await A.api('admin_create_project', {
           id: newSlug,
           tagline: fdp.get('tagline'),
         });
-        // Response arrived (client stayed connected) — done.
+        console.log('[ICE create] api OK → done');
         setCreatingProject(null);
         stopProjectPolling();
         adminProjects = null;
@@ -5133,16 +5137,15 @@
         refresh(); // pulls the new project into the switcher
         toast('Project “' + newSlug + '” is ready');
       } catch (err) {
-        // The create failed (or the row is stuck provisioning) — surface it and
-        // let the admin retry; a retry RESUMES rather than duplicating work.
+        console.error('[ICE create] FAILED:', err, err && err.stack);
         setCreatingProject(null);
         stopProjectPolling();
         adminProjects = null;
         showNewProject = true;
         route();
         var msg = $('#projectFormStatus');
-        if (msg) msg.textContent = err.message;
-        toast(err.message, true);
+        if (msg) msg.textContent = (err && err.message) || 'Create failed';
+        toast((err && err.message) || 'Create failed', true);
       }
     }
 
