@@ -3731,7 +3731,7 @@
     return '<form class="form new-project-card" id="projectForm">' +
       '<h3 style="margin:0"><i class="fa-solid fa-plus"></i> New project</h3>' +
       '<div class="field"><label>Project subdomain <span class="hint">lowercase letters, digits, hyphens</span></label>' +
-      '<input class="input" name="id" required pattern="[a-z0-9][a-z0-9-]{1,29}" maxlength="30" placeholder="ice2027" autocomplete="off">' +
+      '<input class="input" name="id" required pattern="[a-z0-9][-a-z0-9]{1,29}" maxlength="30" placeholder="ice2027" autocomplete="off">' +
       '<span class="hint" style="color:var(--text-muted);font-size:12px">Lives at <b>&lt;name&gt;.designthinking.lk</b></span></div>' +
       '<div class="field"><label>Tagline <span class="hint">optional</span></label><input class="input" name="tagline" maxlength="200" value="' + esc(C.EVENT_TAGLINE) + '"></div>' +
       '<div class="form-status" id="projectFormStatus"></div>' +
