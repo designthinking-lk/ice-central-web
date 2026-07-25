@@ -3906,8 +3906,8 @@
         link('fa-brands fa-cloudflare', 'Cloudflare DNS', 'https://dash.cloudflare.com'),
       ]) +
       group('fa-brands fa-github', 'GitHub', [
-        link('fa-brands fa-github', 'Frontend repo', 'https://github.com/designthinking-lk/ice-designthinking-lk'),
-        link('fa-brands fa-github', 'Backend repo', 'https://github.com/ice2k26/ice2026-backend'),
+        link('fa-brands fa-github', 'Frontend repo', 'https://github.com/designthinking-lk/ice-central-web'),
+        link('fa-brands fa-github', 'Backend repo', 'https://github.com/ice2k26/ice-central-api'),
       ]) +
       group('fa-solid fa-scroll', 'Apps Script', [
         link('fa-solid fa-scroll', 'Auth script', 'https://script.google.com/d/1zRA0sI_eoVd9FMHyogA_lcwvHA9WqjrT5PoS1tYNZ8c_Ar5cmn-_H1jb/edit'),
