@@ -25,7 +25,9 @@ button { font-family: inherit; }
 /* scrollbar-gutter: stable reserves the scrollbar's space even when no
    scrollbar is shown, so content never shifts left when a view grows tall
    enough to scroll (e.g. the #/me wallet QR) */
-.view { flex: 1; min-width: 0; overflow-y: auto; scrollbar-gutter: stable; padding: 24px 32px; position: relative; }
+/* left padding clears the fixed sidebar (176px) while the view box itself spans
+   full width, so absolutely-positioned backgrounds (inset:0) fill under it too */
+.view { flex: 1; min-width: 0; overflow-y: auto; scrollbar-gutter: stable; padding: 24px 32px 24px calc(176px + 32px); position: relative; }
 
 /* -------------------------------------------------------------------- topbar */
 .topbar {
@@ -95,14 +97,17 @@ button { font-family: inherit; }
 
 /* ----------------------------------------------------------------- sidebar */
 .sidebar {
-  width: 176px; flex: none;
+  /* Floated as a fixed overlay (out of flex flow) so .main spans the full
+     viewport width — the view's background effects (skills aurora, project-card
+     shadows) then paint the whole width and bleed UNDER this transparent
+     sidebar instead of being clipped at a separate column's edge. z-index must
+     clear the frosted app-bar band (z 4) so the animated brand stays on top. */
+  position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
+  width: 176px;
   display: flex; flex-direction: column; gap: 22px;
   padding: 18px 16px 20px;
-  /* transparent: the sidebar is positioned, so it paints above the main column —
-     a fill would clip the shadow a card casts toward this side. The .side-oct
-     octagon (below) supplies the only visible surface behind the nav. */
   background: transparent;
-  position: relative; overflow: hidden; /* clips the octagon's off-screen half */
+  overflow: hidden; /* clips the octagon's off-screen half */
 }
 
 /* Half of a large hive octagon, vertically centred, its other half bleeding
