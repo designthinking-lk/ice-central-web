@@ -21,6 +21,13 @@ button { font-family: inherit; }
 
 /* ------------------------------------------------------------------- shell */
 .shell { display: flex; height: 100vh; }
+/* subtle build stamp — bottom-left corner, seen by everyone in every view;
+   bumped on each deploy so a live push is verifiable at a glance */
+.build-tag {
+  position: fixed; left: 10px; bottom: 7px; z-index: 45; pointer-events: none;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums; color: var(--text-muted); opacity: 0.45;
+}
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 /* scrollbar-gutter: stable reserves the scrollbar's space even when no
    scrollbar is shown, so content never shifts left when a view grows tall
