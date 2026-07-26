@@ -4008,7 +4008,7 @@
         // message spans the remaining columns and may wrap to two lines.
         return '<tr class="confirm-row"><td style="display:flex;align-items:center;gap:10px">' + avatar(u, 'avatar-sm') +
           '<a href="#/profile/' + esc(u.id) + '">' + esc(u.name) + '</a></td>' +
-          '<td colspan="5"><div class="row-confirm">' +
+          '<td colspan="5" class="confirm-cell"><div class="row-confirm">' +
           '<span class="row-confirm-text"><i class="fa-solid fa-triangle-exclamation"></i><span>Remove from this project? Profile, skills, teams, messages &amp; photo here are deleted — their @designthinking.lk account and any other projects are kept.</span></span>' +
           '<span class="row-confirm-actions">' +
           '<button class="btn btn-danger btn-sm" data-action="del-user-confirm" data-id="' + esc(u.id) + '"><span class="label">Delete</span><span class="spin"></span></button>' +
