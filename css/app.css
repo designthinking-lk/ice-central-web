@@ -537,6 +537,19 @@ a.card { color: inherit; display: block; }
 .proj-creating-overlay i { font-size: 26px; color: var(--color-accent); }
 .proj-creating-overlay .title { font-weight: 600; }
 .proj-creating-overlay .hint { color: var(--text-muted); max-width: 360px; font-size: 13px; }
+/* Projects panel header: Projects / New project sub-tabs (pill buttons) + registry link. */
+.proj-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.proj-tabs { display: flex; gap: 6px; }
+.proj-tab {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 15px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-muted);
+  font-weight: 700; font-size: 15px; cursor: pointer; transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.proj-tab i { font-size: 12px; }
+.proj-tab:hover { color: var(--text); border-color: var(--border-strong); }
+.proj-tab.active { background: var(--gradient-brand); color: #fff; border-color: transparent; }
+.proj-tab.active i { color: #fff; }
 /* Inline "already taken" warning under the New Project subdomain field. */
 /* :not([hidden]) so the `hidden` attribute actually hides it — a bare
    `display:flex` would override the UA [hidden]{display:none} rule. */

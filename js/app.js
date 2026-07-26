@@ -3746,17 +3746,18 @@
     }
     var creating = creatingProject();
     if (creating) startProjectPolling(); // re-enter the waiting state after a refresh
+    // Two sub-tabs in the header — "Projects" (the list) and "New project" (the
+    // form) — plus the registry-sheet link on the right. The form is always one
+    // click away; creating a project drops back to the Projects tab.
     return '<div class="panel" style="margin-bottom:22px;position:relative">' +
-      // Registry-sheet button lives at the very top of the card, right-aligned with the heading.
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">' +
-      '<h3 style="margin:0"><i class="fa-solid fa-layer-group"></i>Projects</h3>' +
+      '<div class="proj-panel-head">' +
+      '<div class="proj-tabs">' +
+      '<button class="proj-tab' + (!showNewProject ? ' active' : '') + '" type="button" data-action="proj-tab-list"><i class="fa-solid fa-layer-group"></i>Projects</button>' +
+      '<button class="proj-tab' + (showNewProject ? ' active' : '') + '" type="button" data-action="proj-tab-new"><i class="fa-solid fa-plus"></i>New project</button>' +
+      '</div>' +
       '<a class="btn btn-ghost btn-sm" href="' + esc(d.registryUrl) + '" target="_blank" rel="noopener">Registry sheet <i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
-      '</div>' + inner +
-      // The "New project" button appears only once projects have loaded, and is
-      // hidden while the create card is open.
-      (showNewProject || !adminProjects ? '' :
-        '<div style="margin-top:14px"><button class="btn btn-outline btn-sm" data-action="new-project"><i class="fa-solid fa-plus"></i>New project</button></div>') +
-      (showNewProject ? newProjectCard() : '') +
+      '</div>' +
+      (showNewProject ? newProjectCard() : inner) +
       (creating ? projectCreatingOverlay(creating) : '') +
       '</div>';
   }
@@ -3768,7 +3769,6 @@
     // The subdomain IS the project name — one field. Sheet DB, Drive folder,
     // subdomain and admin access are all set up automatically on create.
     return '<form class="form new-project-card" id="projectForm">' +
-      '<h3 style="margin:0"><i class="fa-solid fa-plus"></i> New project</h3>' +
       '<div class="field">' +
       '<div class="field-inline"><label for="projIdInput">Project name</label>' +
       '<input class="input proj-id-input" name="id" id="projIdInput" required maxlength="16" placeholder="ice2027" autocomplete="off" aria-describedby="projIdWarn">' +
@@ -4890,7 +4890,8 @@
         switchProject(bp); // full redirect to the project's subdomain (production)
         break;
       }
-      case 'new-project': showNewProject = true; route(); break;
+      case 'proj-tab-list': showNewProject = false; route(); break;
+      case 'proj-tab-new': showNewProject = true; route(); break;
       case 'cancel-new-project': showNewProject = false; route(); break;
       case 'switch-project-btn': switchProject(t.getAttribute('data-proj')); break;
       case 'admin-tab':
