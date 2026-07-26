@@ -116,8 +116,9 @@ button { font-family: inherit; }
   position: absolute; top: 50%; left: -140px; transform: translateY(-50%);
   width: 280px; height: 280px; z-index: 0; pointer-events: none;
   clip-path: url(#octr);
-  /* transparent so the sidebar never blocks UI effects painting behind it */
-  background: transparent;
+  /* the grey half-hexagon surface behind the nav; the rest of the (floated,
+     transparent) sidebar still lets the view's effects bleed around it */
+  background: var(--bg-subtle);
 }
 /* real content paints above the octagon */
 .nav { position: relative; z-index: 1; }
