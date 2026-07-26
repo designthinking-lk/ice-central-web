@@ -3387,7 +3387,7 @@
   function viewSkills() {
     var d = state.data;
     if (!d) return skeletons();
-    return '<div class="skills3d-wrap"><canvas id="skillsCanvas"></canvas>' +
+    return '<div class="skills3d-wrap"><div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div><canvas id="skillsCanvas"></canvas>' +
       '<aside class="skills-side" id="skillsSide">' +
       '<div class="ss-empty"><i class="fa-solid fa-wand-magic-sparkles"></i>' +
       'Tap a skill to explore it — what it is, who brings it, and what gets built with it.</div>' +

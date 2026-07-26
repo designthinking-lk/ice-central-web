@@ -552,16 +552,14 @@ a.card { color: inherit; display: block; }
 .proj-tab-list i { color: var(--color-accent); font-size: 14px; }
 .proj-tab-list:hover { color: var(--text); }
 .proj-tab-list.active { color: var(--text); }
-/* "New project" — subtle outline, never filled */
-.proj-tab-new {
-  padding: 5px 13px; border: 1px solid var(--border-strong); border-radius: 999px;
-  font-size: 13.5px; font-weight: 600; color: var(--text-muted);
-}
-.proj-tab-new i { font-size: 11px; }
-.proj-tab-new:hover { color: var(--text); border-color: var(--color-accent); }
-.proj-tab-new.active { color: var(--color-accent); border-color: var(--color-accent); }
-/* the Projects list has no boxed border in this panel — no line under the tabs */
+/* "New project" — text only, colour highlight (no outline/fill) */
+.proj-tab-new { font-size: 16px; font-weight: 700; color: var(--text-muted); }
+.proj-tab-new i { font-size: 13px; }
+.proj-tab-new:hover { color: var(--text); }
+.proj-tab-new.active { color: var(--color-accent); }
+/* the Projects list has no boxed border and no header line under the tabs */
 .table-wrap.proj-list { border: none; border-radius: 0; }
+.table-wrap.proj-list table.admin th { background: none; border-bottom: none; }
 /* Inline "already taken" warning under the New Project subdomain field. */
 /* :not([hidden]) so the `hidden` attribute actually hides it — a bare
    `display:flex` would override the UA [hidden]{display:none} rule. */
@@ -1947,10 +1945,50 @@ body.hive-full .nav a { pointer-events: auto; }
 
 /* --------------------------------------------------- skills constellation */
 .skills3d-wrap { position: absolute; inset: 0; overflow: hidden; }
-.skills3d-wrap canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+/* the 3D canvas clears transparent, so it floats above the aurora backdrop */
+.skills3d-wrap canvas { position: relative; z-index: 1; display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+
+/* Aurora backdrop — pure-CSS drifting gradient blobs behind the skills canvas.
+   Purely decorative: pointer-events:none and z-index:0 keep it clear of the UI.
+   Colours come from theme-aware vars (light + dark). */
+.aurora { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.aurora span {
+  position: absolute; border-radius: 50%; filter: blur(70px);
+  opacity: 0.55; will-change: transform;
+}
+.aurora span:nth-child(1) {
+  width: 46vw; height: 46vw; left: -6vw; top: -12vh;
+  background: radial-gradient(circle at 30% 30%, var(--aurora-1), transparent 70%);
+  animation: aurora-1 19s ease-in-out infinite alternate;
+}
+.aurora span:nth-child(2) {
+  width: 42vw; height: 42vw; right: -8vw; top: 6vh;
+  background: radial-gradient(circle at 60% 40%, var(--aurora-2), transparent 70%);
+  animation: aurora-2 23s ease-in-out infinite alternate;
+}
+.aurora span:nth-child(3) {
+  width: 52vw; height: 52vw; left: 22vw; bottom: -24vh;
+  background: radial-gradient(circle at 50% 50%, var(--aurora-3), transparent 70%);
+  animation: aurora-3 27s ease-in-out infinite alternate;
+}
+@keyframes aurora-1 { from { transform: translate(0, 0) scale(1); } to { transform: translate(13vw, 9vh) scale(1.25); } }
+@keyframes aurora-2 { from { transform: translate(0, 0) scale(1.1); } to { transform: translate(-11vw, 13vh) scale(0.9); } }
+@keyframes aurora-3 { from { transform: translate(0, 0) scale(1); } to { transform: translate(9vw, -11vh) scale(1.2); } }
+@media (prefers-reduced-motion: reduce) { .aurora span { animation: none; } }
+/* aurora palette — light (default) and dark themes */
+:root {
+  --aurora-1: rgba(97, 0, 255, 0.28);
+  --aurora-2: rgba(0, 170, 255, 0.22);
+  --aurora-3: rgba(255, 80, 180, 0.20);
+}
+:root[data-theme="dark"] {
+  --aurora-1: rgba(140, 70, 255, 0.42);
+  --aurora-2: rgba(0, 200, 255, 0.30);
+  --aurora-3: rgba(255, 60, 170, 0.30);
+}
 /* right-third detail panel: blurb + people + projects for the picked skill */
 .skills-side {
-  position: absolute; top: 16px; right: 20px; bottom: 16px;
+  position: absolute; top: 16px; right: 20px; bottom: 16px; z-index: 2;
   width: min(320px, 28%); overflow-y: auto; padding: 6px 4px;
 }
 .skills-side .ss-empty {
