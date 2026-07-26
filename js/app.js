@@ -3717,7 +3717,7 @@
       }).catch(function (err) { toast(err.message, true); });
     } else {
       var current = A.getProject();
-      inner = '<div class="table-wrap"><table class="admin">' +
+      inner = '<div class="table-wrap proj-list"><table class="admin">' +
         '<thead><tr><th>Project</th><th>Status</th><th>Registration</th><th>Accounts</th><th>Storage</th><th></th></tr></thead><tbody>' +
         adminProjects.map(function (p) {
           var isProv = (p.status === 'provisioning');
@@ -3752,8 +3752,8 @@
     return '<div class="panel" style="margin-bottom:22px;position:relative">' +
       '<div class="proj-panel-head">' +
       '<div class="proj-tabs">' +
-      '<button class="proj-tab' + (!showNewProject ? ' active' : '') + '" type="button" data-action="proj-tab-list"><i class="fa-solid fa-layer-group"></i>Projects</button>' +
-      '<button class="proj-tab' + (showNewProject ? ' active' : '') + '" type="button" data-action="proj-tab-new"><i class="fa-solid fa-plus"></i>New project</button>' +
+      '<button class="proj-tab proj-tab-list' + (!showNewProject ? ' active' : '') + '" type="button" data-action="proj-tab-list"><i class="fa-solid fa-layer-group"></i>Projects</button>' +
+      '<button class="proj-tab proj-tab-new' + (showNewProject ? ' active' : '') + '" type="button" data-action="proj-tab-new"><i class="fa-solid fa-plus"></i>New project</button>' +
       '</div>' +
       '<a class="btn btn-ghost btn-sm" href="' + esc(d.registryUrl) + '" target="_blank" rel="noopener">Registry sheet <i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
       '</div>' +
@@ -3775,7 +3775,7 @@
       '<span class="input-suffix">.designthinking.lk</span></div>' +
       '<span id="projIdWarn" class="field-warn" hidden><i class="fa-solid fa-triangle-exclamation"></i> That name is already taken</span></div>' +
       '<div class="field field-inline"><label for="projTagline">Tagline <span class="hint">optional</span></label>' +
-      '<input class="input" name="tagline" id="projTagline" maxlength="200" value="' + esc(C.EVENT_TAGLINE) + '"></div>' +
+      '<input class="input" name="tagline" id="projTagline" maxlength="200" value="Innovation Creativity Entrepreneurship"></div>' +
       '<div class="form-status" id="projectFormStatus"></div>' +
       '<div class="form-actions"><button class="btn btn-gradient" type="submit" disabled><span class="label">Create project</span><span class="spin"></span></button>' +
       '<button class="btn btn-ghost" type="button" data-action="cancel-new-project">Cancel</button></div></form>';

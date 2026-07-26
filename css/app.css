@@ -537,19 +537,31 @@ a.card { color: inherit; display: block; }
 .proj-creating-overlay i { font-size: 26px; color: var(--color-accent); }
 .proj-creating-overlay .title { font-weight: 600; }
 .proj-creating-overlay .hint { color: var(--text-muted); max-width: 360px; font-size: 13px; }
-/* Projects panel header: Projects / New project sub-tabs (pill buttons) + registry link. */
-.proj-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-.proj-tabs { display: flex; gap: 6px; }
+/* Projects panel header: Projects / New project sub-tabs + registry link,
+   all on one baseline; no divider line under it. */
+.proj-panel-head { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.proj-tabs { display: flex; align-items: center; gap: 14px; margin-right: auto; }
+/* shared reset — text buttons, no default chrome */
 .proj-tab {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 6px 15px; border-radius: 999px; border: 1px solid var(--border);
-  background: var(--surface); color: var(--text-muted);
-  font-weight: 700; font-size: 15px; cursor: pointer; transition: color 0.12s, border-color 0.12s, background 0.12s;
+  display: inline-flex; align-items: center; gap: 8px; line-height: 1;
+  border: none; background: none; padding: 0; margin: 0; cursor: pointer;
+  font-family: inherit; transition: color 0.12s, border-color 0.12s;
 }
-.proj-tab i { font-size: 12px; }
-.proj-tab:hover { color: var(--text); border-color: var(--border-strong); }
-.proj-tab.active { background: var(--gradient-brand); color: #fff; border-color: transparent; }
-.proj-tab.active i { color: #fff; }
+/* "Projects" — plain heading text (the old panel-heading look), no background */
+.proj-tab-list { font-size: 16px; font-weight: 700; color: var(--text-muted); }
+.proj-tab-list i { color: var(--color-accent); font-size: 14px; }
+.proj-tab-list:hover { color: var(--text); }
+.proj-tab-list.active { color: var(--text); }
+/* "New project" — subtle outline, never filled */
+.proj-tab-new {
+  padding: 5px 13px; border: 1px solid var(--border-strong); border-radius: 999px;
+  font-size: 13.5px; font-weight: 600; color: var(--text-muted);
+}
+.proj-tab-new i { font-size: 11px; }
+.proj-tab-new:hover { color: var(--text); border-color: var(--color-accent); }
+.proj-tab-new.active { color: var(--color-accent); border-color: var(--color-accent); }
+/* the Projects list has no boxed border in this panel — no line under the tabs */
+.table-wrap.proj-list { border: none; border-radius: 0; }
 /* Inline "already taken" warning under the New Project subdomain field. */
 /* :not([hidden]) so the `hidden` attribute actually hides it — a bare
    `display:flex` would override the UA [hidden]{display:none} rule. */
