@@ -4866,11 +4866,11 @@
         break;
       }
       case 'invite-revoke': {
-        var invEmail = t.getAttribute('data-email');
-        if (await confirmModal('Revoke invitation?', invEmail + ' will no longer be able to register.', 'Revoke')) {
-          try { await A.api('admin_revoke_invite', { inviteId: id }); toast('Invitation revoked'); refresh(); }
-          catch (err) { toast(err.message, true); }
-        }
+        // No popup — revoking a pending invite is low-stakes and reversible
+        // (just re-invite). One click, disabled while it runs.
+        t.disabled = true;
+        try { await A.api('admin_revoke_invite', { inviteId: id }); toast('Invitation revoked'); refresh(); }
+        catch (err) { toast(err.message, true); t.disabled = false; }
         break;
       }
       case 'role-menu': if (roleBusy) break; roleMenuFor = roleMenuFor === id ? null : id; route(); break;
