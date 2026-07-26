@@ -447,6 +447,7 @@
     state.q = ''; state.roleFilter = 'all'; state.skillFilter = null; state.teamFilter = null;
     adminProjects = null;
     userProjects = null;
+    deletingUserId = null;
     inviteCard = null;
     renderChrome();
     route();
@@ -3711,6 +3712,9 @@
   // Cross-project membership map (email -> [projectId]) for the People table's
   // Projects column, lazily fetched. null = not loaded yet.
   var userProjects = null;
+  // Id of the person whose delete is being confirmed inline (in-row strip).
+  // Only one at a time — while set, every other row's delete button is hidden.
+  var deletingUserId = null;
 
   function projectsPanel(d) {
     if (!d.registryUrl) return ''; // only global admins manage projects
@@ -3998,6 +4002,15 @@
       return head + '<div class="empty"><i class="fa-solid fa-users"></i>Nobody has registered yet.</div>';
     }
     var rows = users.map(function (u) {
+      // Inline delete confirm: the row's cells are replaced by a confirm strip.
+      if (deletingUserId === u.id) {
+        return '<tr class="confirm-row"><td colspan="6"><div class="row-confirm">' +
+          '<span class="row-confirm-text"><i class="fa-solid fa-triangle-exclamation"></i>Delete <b>' + esc(u.name) + '</b> from this project? Profile, teams, messages &amp; photo removed here — account &amp; other projects kept.</span>' +
+          '<span class="row-confirm-actions">' +
+          '<button class="btn btn-danger btn-sm" data-action="del-user-confirm" data-id="' + esc(u.id) + '"><span class="label">Delete</span><span class="spin"></span></button>' +
+          '<button class="btn btn-ghost btn-sm" data-action="del-user-cancel">Cancel</button>' +
+          '</span></div></td></tr>';
+      }
       return '<tr><td style="display:flex;align-items:center;gap:10px">' + avatar(u, 'avatar-sm') +
         '<a href="#/profile/' + esc(u.id) + '">' + esc(u.name) + '</a></td>' +
         '<td>' + esc(u.email || '') +
@@ -4006,7 +4019,8 @@
         '<td>' + projChips(u) + '</td>' +
         '<td>' + roleChipsHtml(u) + '</td>' +
         '<td><span class="ob-tag registered"><i class="fa-solid fa-circle-check"></i>Registered</span></td>' +
-        '<td><button class="btn btn-ghost btn-sm" data-action="del-user" data-id="' + esc(u.id) + '" data-name="' + esc(u.name) + '"><i class="fa-regular fa-trash-can"></i></button></td></tr>';
+        // While a delete is being confirmed, hide every other row's delete button.
+        '<td>' + (deletingUserId ? '' : '<button class="btn btn-ghost btn-sm" data-action="del-user" data-id="' + esc(u.id) + '" data-name="' + esc(u.name) + '"><i class="fa-regular fa-trash-can"></i></button>') + '</td></tr>';
     }).join('');
     var invRows = pending.map(function (i) {
       var roleTag = i.role === 'mentor' ? 'mentor' : 'participant';
@@ -4017,7 +4031,7 @@
         '<td><div class="role-cell"><span class="role-tag ' + roleTag + '">' + roleTag + '</span></div></td>' +
         '<td><span class="ob-tag invited"><i class="fa-regular fa-clock"></i>Invited</span>' +
         '<button class="btn btn-ghost btn-sm" data-action="invite-resend" data-id="' + esc(i.id) + '" data-email="' + esc(i.email) + '" title="Resend the invitation email"><span class="label"><i class="fa-regular fa-paper-plane"></i> Resend</span><span class="spin"></span></button></td>' +
-        '<td><button class="btn btn-ghost btn-sm" data-action="invite-revoke" data-id="' + esc(i.id) + '" data-email="' + esc(i.email) + '" title="Revoke invitation"><i class="fa-regular fa-trash-can"></i></button></td></tr>';
+        '<td>' + (deletingUserId ? '' : '<button class="btn btn-ghost btn-sm" data-action="invite-revoke" data-id="' + esc(i.id) + '" data-email="' + esc(i.email) + '" title="Revoke invitation"><i class="fa-regular fa-trash-can"></i></button>') + '</td></tr>';
     }).join('');
     return head + '<div class="table-wrap"><table class="admin people"><thead><tr><th>Name</th><th>Email</th><th>Projects</th><th>Roles</th><th>Onboarding</th><th></th></tr></thead>' +
       '<tbody>' + rows + invRows + '</tbody></table></div>';
@@ -4750,12 +4764,15 @@
           catch (err) { toast(err.message, true); }
         }
         break;
-      case 'del-user': {
-        var name = t.getAttribute('data-name');
-        if (await confirmModal('Remove ' + name + ' from this project?', 'Deletes their profile, skills, team membership, messages, posts and uploaded photo — in THIS project only. Their @designthinking.lk account and any other projects they’re in are kept, so a re-invite reuses the same account.')) {
-          try { await A.api('admin_delete_user', { userId: id }); userProjects = null; toast('User removed'); refresh(); }
-          catch (err) { toast(err.message, true); }
-        }
+      case 'del-user': deletingUserId = id; route(); break; // open inline confirm strip
+      case 'del-user-cancel': deletingUserId = null; route(); break;
+      case 'del-user-confirm': {
+        busy(t, true);
+        try {
+          await A.api('admin_delete_user', { userId: id });
+          deletingUserId = null; userProjects = null;
+          toast('User removed'); refresh();
+        } catch (err) { toast(err.message, true); busy(t, false); }
         break;
       }
       case 'invite-open': {

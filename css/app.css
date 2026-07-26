@@ -1006,6 +1006,12 @@ table.admin tr:last-child td { border-bottom: none; }
   background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border); white-space: nowrap;
 }
 .proj-chip.current { background: rgba(97, 0, 255, 0.10); color: var(--color-accent); border-color: transparent; }
+/* Inline member-delete confirm strip (replaces the row's cells) */
+.confirm-row td { background: var(--bg-subtle); }
+.row-confirm { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.row-confirm-text { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text); }
+.row-confirm-text i { color: #b3261e; flex: none; }
+.row-confirm-actions { display: flex; align-items: center; gap: 8px; flex: none; }
 
 /* ---- admin People table ---- */
 /* Uniform row height: rows with a second email line (workEmail) and pending
