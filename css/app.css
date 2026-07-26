@@ -1016,8 +1016,10 @@ table.admin tr:last-child td { border-bottom: none; }
   background: var(--bg-subtle);
 }
 .row-confirm-name { display: flex; align-items: center; gap: 10px; flex: none; font-weight: 600; color: var(--text); }
-.row-confirm-text { flex: 1 1 auto; display: flex; align-items: flex-start; gap: 8px; min-width: 0; font-size: 13px; line-height: 1.35; color: var(--text); }
-.row-confirm-text i { color: #b3261e; flex: none; margin-top: 2px; }
+/* white-space:normal overrides the inherited table td nowrap so the message
+   wraps (2 lines) inside its flex box instead of running under the buttons */
+.row-confirm-text { flex: 1 1 auto; min-width: 0; white-space: normal; font-size: 13px; line-height: 1.35; color: var(--text); }
+.row-confirm-text i { color: #b3261e; margin-right: 6px; }
 .row-confirm-actions { display: flex; align-items: center; gap: 8px; flex: none; }
 
 /* ---- admin People table ---- */
