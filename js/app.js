@@ -143,10 +143,11 @@
   // Per-project branding from bootstrap; config values are only the
   // pre-bootstrap fallback shown before the first payload arrives.
   function proj() { return (state.data && state.data.project) || {}; }
-  // The registry holds the full workshop title (e.g. "Apple Pears Pineapple 2028"
-  // or "Innovation Creativity Entrepreneurship 2026"); the short brand form
-  // (APP2028 / ICE2026) is DERIVED from it.
-  function fullTitle() { return proj().name || C.EVENT_NAME; }
+  // The registry `tagline` column holds the full workshop title (e.g.
+  // "Apple Pears Pineapple 2028" / "Innovation Creativity Entrepreneurship 2026");
+  // the short brand form (APP2028 / ICE2026) is DERIVED from it. `name` stays the
+  // short slug/id and is only a fallback here.
+  function fullTitle() { return proj().tagline || proj().name || C.EVENT_NAME; }
   // Split a title into alphabetic words + a trailing year. Handles a glued
   // single token too ("ICE2026" -> {words:["ICE"], year:"2026"}).
   function parseTitle(title) {
@@ -420,7 +421,7 @@
     var current = A.getProject();
     menu.innerHTML = projects.map(function (p) {
       return '<button class="brand-opt' + (p.id === current ? ' current' : '') + '" type="button" data-action="brand-pick" data-proj="' + esc(p.id) + '">' +
-        '<span class="brand-opt-name">' + esc(p.name) + '</span>' +
+        '<span class="brand-opt-name">' + esc(p.tagline || p.name) + '</span>' +
         (p.status === 'test' ? ' <span class="brand-opt-tag">test</span>' : p.status === 'archived' ? ' <span class="brand-opt-tag">archived</span>' : '') +
         (p.id === current ? ' <i class="fa-solid fa-check"></i>' : '') + '</button>';
     }).join('');
