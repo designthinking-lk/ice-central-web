@@ -1203,6 +1203,8 @@
       el.style.width = w + 'px'; el.style.height = w + 'px';
       el.style.left = (cell.x - minX) + 'px';
       el.style.top = (cell.y - minY) + 'px';
+      // intro fade: whole letter-group appears at once, I → C → E, slight stagger
+      el.style.animationDelay = (cell.letter * 0.35) + 's';
       word.appendChild(el);
     });
 
@@ -1220,6 +1222,8 @@
     preview.innerHTML = '<span class="hive-caption">' + hiveCaptionText(users, activeTeam) + '</span>' +
       '<div class="oct-pin"><img id="hivePvImg" alt="">' +
       '<span class="oct-pvname"><span id="hivePvNm"></span><span class="oct-pvrole" id="hivePvRole"></span></span></div>';
+    // the C-hollow preview/caption reveals just after the last letter (E)
+    preview.style.animationDelay = '0.95s';
     word.appendChild(preview);
     word.__preview = preview;
     // hollow centre in natural coords — fitWordmark re-sizes the preview from it
