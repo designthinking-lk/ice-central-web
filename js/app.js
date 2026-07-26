@@ -4783,11 +4783,18 @@
       case 'del-user-cancel': deletingUserId = null; route(); break;
       case 'del-user-confirm': {
         busy(t, true);
+        // Lock the whole confirm strip while the delete runs — no cancelling mid-flight.
+        var cancelBtn = t.closest('.row-confirm-actions');
+        cancelBtn = cancelBtn && cancelBtn.querySelector('[data-action="del-user-cancel"]');
+        if (cancelBtn) cancelBtn.disabled = true;
         try {
           await A.api('admin_delete_user', { userId: id });
           deletingUserId = null; userProjects = null;
           toast('User removed'); refresh();
-        } catch (err) { toast(err.message, true); busy(t, false); }
+        } catch (err) {
+          toast(err.message, true); busy(t, false);
+          if (cancelBtn) cancelBtn.disabled = false;
+        }
         break;
       }
       case 'invite-open': {
