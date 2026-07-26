@@ -2578,10 +2578,10 @@
       var el = form.querySelector('[name="' + n + '"]');
       if (el) mark(el, !el.value.trim());
     });
-    // photo, skills, intro video — non-input targets
+    // photo, skills — non-input targets. The intro video is OPTIONAL (the
+    // default backdrop plays when none is set), so it is never marked as a gap.
     mark(form.querySelector('.photo-vp'), !(photoEd || val('image')));
     mark(form.querySelector('#skillAddBtn'), getTagValues().length === 0);
-    mark(form.querySelector('[data-action="card-video-edit"]'), !ytId(val('video')));
     // front "flip" button glows while the back still has gaps
     var backGap = !val('bio') || !val('linkGithub') || !val('linkWebsite') || !val('linkLinkedin');
     mark(form.querySelector('.idfront [data-action="flip-card"]'), backGap);
@@ -2599,9 +2599,10 @@
     var photoOk = !!photoEd || has('image');
     var textOk = has('firstName') && has('lastName') && has('affiliation') && has('expertise') && has('bio');
     var skillsOk = getTagValues().length > 0;
-    var videoOk = !!ytId(fd.get('video') || ($('#ytInput') && $('#ytInput').value) || '');
+    // Intro video is optional — a member can join without one (the default
+    // card backdrop plays in its place), so it's not part of the gate.
     var linksOk = LINK_FIELDS.every(function (f) { return linkStatus[f] === 'ok'; });
-    var complete = photoOk && textOk && skillsOk && videoOk && linksOk;
+    var complete = photoOk && textOk && skillsOk && linksOk;
     // staged activation: complete card → consent unlocks; consent ticked →
     // button unlocks. Consent is never persisted, and it un-ticks if the
     // card drops back to incomplete.
