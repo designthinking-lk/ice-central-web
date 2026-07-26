@@ -4016,8 +4016,8 @@
           '<td>' + roleChipsHtml(u) + '</td>' +
           '<td><span class="ob-tag registered"><i class="fa-solid fa-circle-check"></i>Registered</span></td>' +
           '<td><button class="btn btn-ghost btn-sm" style="visibility:hidden" tabindex="-1"><i class="fa-regular fa-trash-can"></i></button>' +
+          // overlay starts at the Email column so the real Name cell stays visible
           '<div class="row-confirm-ov">' +
-          '<span class="row-confirm-name">' + avatar(u, 'avatar-sm') + '<span>' + esc(u.name) + '</span></span>' +
           '<span class="row-confirm-text"><i class="fa-solid fa-triangle-exclamation"></i><span>Remove from this project? Profile, skills, teams, messages &amp; photo here are deleted — their @designthinking.lk account and any other projects are kept.</span></span>' +
           '<span class="row-confirm-actions">' +
           '<button class="btn btn-danger btn-sm" data-action="del-user-confirm" data-id="' + esc(u.id) + '"><span class="label">Delete</span><span class="spin"></span></button>' +
