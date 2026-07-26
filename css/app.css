@@ -28,13 +28,15 @@ button { font-family: inherit; }
   font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
   font-variant-numeric: tabular-nums; color: var(--text-muted); opacity: 0.45;
 }
-.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
 /* scrollbar-gutter: stable reserves the scrollbar's space even when no
    scrollbar is shown, so content never shifts left when a view grows tall
    enough to scroll (e.g. the #/me wallet QR) */
-/* left padding clears the fixed sidebar (176px) while the view box itself spans
-   full width, so absolutely-positioned backgrounds (inset:0) fill under it too */
-.view { flex: 1; min-width: 0; overflow-y: auto; scrollbar-gutter: stable; padding: 24px 32px 24px calc(176px + 32px); position: relative; }
+/* Padding clears the floated sidebar (left, 176px) and the overlaid app bar
+   (top, ~60px), while the view box itself spans the full width AND full height —
+   so absolutely-positioned backgrounds (inset:0) fill under the sidebar and up
+   behind the transparent app bar, exactly like the landing video does. */
+.view { flex: 1; min-width: 0; overflow-y: auto; scrollbar-gutter: stable; padding: calc(60px + 24px) 32px 24px calc(176px + 32px); position: relative; }
 
 /* -------------------------------------------------------------------- topbar */
 .topbar {
@@ -67,7 +69,9 @@ button { font-family: inherit; }
 /* Avatar action strip — the account options are a single horizontal row that
    spawns behind the avatar circle and glides out toward the left. Sits at the
    avatar's own height; it is allowed to slide over the night-mode toggle. */
-.topbar { position: relative; }
+/* overlaid at the top of .main (out of flow) so the view fills the full height
+   and its background paints up behind this transparent bar */
+.topbar { position: absolute; top: 0; left: 0; right: 0; }
 .menu-pop {
   position: absolute; top: 50%; right: 70px; z-index: 70; /* right edge just left of the 38px avatar */
   display: flex; flex-direction: row-reverse; align-items: center; gap: 4px;
