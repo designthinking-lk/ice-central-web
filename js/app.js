@@ -446,6 +446,7 @@
     state.loaded = false;
     state.q = ''; state.roleFilter = 'all'; state.skillFilter = null; state.teamFilter = null;
     adminProjects = null;
+    userProjects = null;
     inviteCard = null;
     renderChrome();
     route();
@@ -3705,6 +3706,9 @@
   // Full registry rows, lazily fetched for the admin Projects panel (global
   // admins only — the backend rejects everyone else). null = not loaded yet.
   var adminProjects = null;
+  // Cross-project membership map (email -> [projectId]) for the People table's
+  // Projects column, lazily fetched. null = not loaded yet.
+  var userProjects = null;
 
   function projectsPanel(d) {
     if (!d.registryUrl) return ''; // only global admins manage projects
@@ -3960,6 +3964,24 @@
 
   function adminPeopleSection(d) {
     var users = (d.users || []).slice().sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
+    // Lazily load the cross-project membership map for the Projects column.
+    if (!userProjects) {
+      A.api('admin_user_projects').then(function (r) {
+        userProjects = r.memberships || {};
+        if (location.hash === '#/admin') route();
+      }).catch(function () { userProjects = {}; });
+    }
+    var curProj = A.getProject();
+    // Project chips for one person: all projects they're in (current first),
+    // falling back to just the current project until the map loads.
+    function projChips(u) {
+      var ids = (userProjects && userProjects[String(u.email || '').toLowerCase()]) || [curProj];
+      if (ids.indexOf(curProj) === -1) ids = [curProj].concat(ids);
+      ids = ids.slice().sort(function (a, b) { return a === curProj ? -1 : b === curProj ? 1 : a.localeCompare(b); });
+      return '<div class="proj-chips">' + ids.map(function (id) {
+        return '<span class="proj-chip' + (id === curProj ? ' current' : '') + '">' + esc(id) + '</span>';
+      }).join('') + '</div>';
+    }
     var regEmails = {};
     users.forEach(function (u) { if (u.email) regEmails[String(u.email).toLowerCase()] = true; });
     // Allowlist rows nobody has registered against yet → pending rows.
@@ -3979,7 +4001,7 @@
         '<td>' + esc(u.email || '') +
         (u.workEmail ? '<div class="dt-mail" title="Workshop @designthinking.lk account"><i class="fa-regular fa-comment-dots"></i>' + esc(u.workEmail) + '</div>' : '') +
         '</td>' +
-        '<td>' + esc(u.affiliation || '') + '</td>' +
+        '<td>' + projChips(u) + '</td>' +
         '<td>' + roleChipsHtml(u) + '</td>' +
         '<td><span class="ob-tag registered"><i class="fa-solid fa-circle-check"></i>Registered</span></td>' +
         '<td><button class="btn btn-ghost btn-sm" data-action="del-user" data-id="' + esc(u.id) + '" data-name="' + esc(u.name) + '"><i class="fa-regular fa-trash-can"></i></button></td></tr>';
@@ -3995,7 +4017,7 @@
         '<button class="btn btn-ghost btn-sm" data-action="invite-resend" data-id="' + esc(i.id) + '" data-email="' + esc(i.email) + '" title="Resend the invitation email"><span class="label"><i class="fa-regular fa-paper-plane"></i> Resend</span><span class="spin"></span></button></td>' +
         '<td><button class="btn btn-ghost btn-sm" data-action="invite-revoke" data-id="' + esc(i.id) + '" data-email="' + esc(i.email) + '" title="Revoke invitation"><i class="fa-regular fa-trash-can"></i></button></td></tr>';
     }).join('');
-    return head + '<div class="table-wrap"><table class="admin people"><thead><tr><th>Name</th><th>Email</th><th>Affiliation</th><th>Roles</th><th>Onboarding</th><th></th></tr></thead>' +
+    return head + '<div class="table-wrap"><table class="admin people"><thead><tr><th>Name</th><th>Email</th><th>Projects</th><th>Roles</th><th>Onboarding</th><th></th></tr></thead>' +
       '<tbody>' + rows + invRows + '</tbody></table></div>';
   }
 
@@ -4729,7 +4751,7 @@
       case 'del-user': {
         var name = t.getAttribute('data-name');
         if (await confirmModal('Remove ' + name + '?', 'Their profile is removed from the directory and from all teams.')) {
-          try { await A.api('admin_delete_user', { userId: id }); toast('User removed'); refresh(); }
+          try { await A.api('admin_delete_user', { userId: id }); userProjects = null; toast('User removed'); refresh(); }
           catch (err) { toast(err.message, true); }
         }
         break;
