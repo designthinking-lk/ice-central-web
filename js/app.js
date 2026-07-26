@@ -412,7 +412,8 @@
     var sw = $('#brandSwitch'), menu = $('#brandMenu'), brand = $('#brand');
     if (!sw || !menu || !brand) return;
     var projects = (d && d.projects) || [];
-    if (projects.length < 2) {
+    // Admins only, and only when there's more than one project to switch to.
+    if (!d || !d.isAdmin || projects.length < 2) {
       sw.hidden = true; menu.hidden = true; brandMenuOpen = false;
       brand.classList.remove('menu-open');
       return;
