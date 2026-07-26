@@ -4752,7 +4752,7 @@
         break;
       case 'del-user': {
         var name = t.getAttribute('data-name');
-        if (await confirmModal('Remove ' + name + '?', 'Their profile is removed from the directory and from all teams.')) {
+        if (await confirmModal('Remove ' + name + ' from this project?', 'Deletes their profile, skills, team membership, messages, posts and uploaded photo — in THIS project only. Their @designthinking.lk account and any other projects they’re in are kept, so a re-invite reuses the same account.')) {
           try { await A.api('admin_delete_user', { userId: id }); userProjects = null; toast('User removed'); refresh(); }
           catch (err) { toast(err.message, true); }
         }
