@@ -44,8 +44,8 @@
         crossorigin="anonymous" referrerpolicy="no-referrer">
 
   <!-- bump ?v= on any asset change: GitHub Pages caches for 10 min -->
-  <link rel="stylesheet" href="css/theme.css?v=51">
-  <link rel="stylesheet" href="css/app.css?v=135">
+  <link rel="stylesheet" href="css/theme.css?v=52">
+  <link rel="stylesheet" href="css/app.css?v=136">
   <!-- apply the saved theme before first paint so night mode never flashes -->
   <script>try{if(localStorage.getItem('ice.theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}</script>
   <!-- desktop-first: phones get the "open on desktop" gate (markup below, styles in app.css).
@@ -107,6 +107,13 @@
       <header class="topbar">
         <!-- team filter chips (People view only) — filled by app.js -->
         <div class="topbar-teams" id="topbarTeams"></div>
+        <!-- "Highlight mine" — a global emphasis toggle (members only, shown by
+             renderChrome). Glows my team, my project card and my skills across
+             every view; never filters. -->
+        <button class="mine-toggle" id="mineToggle" type="button" data-action="toggle-mine" aria-pressed="false" title="Highlight my team, project and skills" hidden>
+          <span class="mine-dot" aria-hidden="true"></span>
+          <span class="mine-label"><span class="mine-off-l">All</span><span class="mine-on-l">Mine</span></span>
+        </button>
         <button class="theme-toggle" id="themeToggle" type="button" data-action="toggle-theme" aria-label="Toggle night mode" title="Night mode">
           <i class="fa-solid fa-moon"></i>
         </button>
@@ -158,13 +165,13 @@
 
   <!-- subtle build number, visible to everyone (all views + auth states).
        Increment on EVERY deploy so we can eyeball whether a push went live. -->
-  <span class="build-tag" aria-hidden="true">v18</span>
+  <span class="build-tag" aria-hidden="true">v19</span>
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="js/config.js?v=51"></script>
   <script src="js/api.js?v=53"></script>
   <script src="js/chat.js?v=72"></script>
   <script src="js/vendor/qrcode.js?v=1"></script>
-  <script src="js/app.js?v=139"></script>
+  <script src="js/app.js?v=140"></script>
 </body>
 </html>

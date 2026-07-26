@@ -88,6 +88,33 @@
   function me() { return state.data && state.data.me; }
   function signedIn() { return !!A.getToken(); }
 
+  // ---- "Highlight mine" ----
+  // A global, view-spanning toggle that makes MY team chip, MY project card and
+  // MY skills glow wherever they appear. It never filters or hides anything —
+  // it only emphasises, so "All" and "Mine" show the same content. Mine
+  // elements are tagged `.is-mine` at render time (always); the toggle just
+  // flips `body.mine-on`, which is what CSS keys the glow off — so switching is
+  // instant and needs no re-render.
+  var MINE_KEY = 'ice.mineHi';
+  var _mySkillSet = null, _mySkillKey = null;
+  function mySkills() {
+    var arr = (me() && me().skills) || [];
+    var key = arr.join('');
+    if (key !== _mySkillKey) {
+      _mySkillKey = key; _mySkillSet = Object.create(null);
+      arr.forEach(function (s) { _mySkillSet[String(s || '').trim().toLowerCase()] = 1; });
+    }
+    return _mySkillSet;
+  }
+  function isMySkill(s) { return !!mySkills()[String(s || '').trim().toLowerCase()]; }
+  function mineOn() { return document.body.classList.contains('mine-on'); }
+  function setMine(on) {
+    document.body.classList.toggle('mine-on', !!on);
+    try { localStorage.setItem(MINE_KEY, on ? '1' : '0'); } catch (e) { /* private mode */ }
+    var btn = $('#mineToggle');
+    if (btn) { btn.classList.toggle('is-on', !!on); btn.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  }
+
   // ---- roles ----
   // users.role can hold up to 2 comma-separated roles: 'admin' plus one of
   // 'participant'/'mentor' (never both). 'none' = every role removed — the
@@ -333,6 +360,17 @@
     if (navTools) navTools.hidden = !loggedIn || noRole;
     if (navProgram) navProgram.hidden = !loggedIn || noRole;
     if (navAdmin) navAdmin.hidden = !d.isAdmin;
+    // "Highlight mine" toggle: a member-only affordance — only meaningful once
+    // there's something of mine to glow (a team or my own skills). Keep its
+    // pressed state in sync with the persisted body.mine-on class.
+    var mineBtn = $('#mineToggle');
+    if (mineBtn) {
+      var canMine = loggedIn && !!d.me && !noRole && (!!myTeam() || (d.me.skills || []).length > 0);
+      mineBtn.hidden = !canMine;
+      mineBtn.classList.toggle('is-on', mineOn());
+      mineBtn.setAttribute('aria-pressed', mineOn() ? 'true' : 'false');
+      if (!canMine && mineOn()) setMine(false); // never leave the glow stuck on for a non-member
+    }
     if (signedIn() && d.me) {
       actions.innerHTML =
         (noRole ? '<span class="topbar-norole" title="Your account has no assigned role — contact an organizer to restore access. Your data is safe."><i class="fa-solid fa-circle-info"></i>No role assigned</span>' : '') +
@@ -952,7 +990,8 @@
   // ---------------------------------------------------------------- views
 
   function skillChip(s, on, actionable) {
-    return '<span class="chip' + (on ? ' on' : '') + (actionable === false ? ' static' : '') + '"' +
+    return '<span class="chip' + (on ? ' on' : '') + (actionable === false ? ' static' : '') +
+      (isMySkill(s) ? ' is-mine' : '') + '"' +
       (actionable === false ? '' : ' data-action="filter-skill" data-skill="' + esc(s) + '"') + '>' + esc(s) + '</span>';
   }
 
@@ -1020,6 +1059,24 @@
     return teams;
   }
 
+  // My team (the real team whose members include me) and its slot in the
+  // homeTeams() order — which is also the slot its project card sits at. -1
+  // when I'm not on a team yet (or signed out).
+  function myTeam() {
+    var m = me(); if (!m) return null;
+    var found = null;
+    homeTeams().forEach(function (t) {
+      if (!t.demo && (t.members || []).indexOf(m.id) !== -1) found = t;
+    });
+    return found;
+  }
+  function myTeamSlot() {
+    var t = myTeam(); if (!t) return -1;
+    var teams = homeTeams();
+    for (var i = 0; i < teams.length; i++) if (teams[i].id === t.id) return i;
+    return -1;
+  }
+
   // Team filter chips — rendered into the app bar (renderChrome), People view only.
   function teamChipsHtml() {
     if (!state.data) return '';
@@ -1030,6 +1087,7 @@
     // chain stack: later chips tuck under earlier ones (descending z-index),
     // only their tail letter visible. Chips after the first hide their "Team"
     // prefix via an invisible span — size and letter placement stay identical.
+    var mine = myTeam();
     return '<div class="hive-teams" id="hiveTeams">' +
       teams.map(function (t, i) {
         var name = String(t.name || '');
@@ -1037,7 +1095,8 @@
         var label = (i === 0 || !cut)
           ? esc(name)
           : '<span class="tc-ghost">' + esc(name.slice(0, cut)) + '</span>' + esc(name.slice(cut));
-        return '<button class="team-chip' + (t.id === state.teamFilter ? ' on' : '') + (t.demo ? ' demo' : '') + '" type="button" ' +
+        return '<button class="team-chip' + (t.id === state.teamFilter ? ' on' : '') + (t.demo ? ' demo' : '') +
+          (mine && t.id === mine.id ? ' is-mine' : '') + '" type="button" ' +
           'style="z-index:' + (teams.length - i) + '" ' +
           'data-action="filter-team" data-team="' + esc(t.id) + '" data-name="' + esc(t.name) + '">' + label + '</button>';
       }).join('') + '</div>';
@@ -2848,7 +2907,8 @@
   function projectCardHtml(p) {
     var slot = p.slot;
     var url = projCardUrl(p);
-    return '<article class="project-card ' + projColorClass(p, slot) + '" data-action="proj-open" data-slot="' + slot + '" tabindex="0">' +
+    var mine = slot === myTeamSlot();
+    return '<article class="project-card ' + projColorClass(p, slot) + (mine ? ' is-mine' : '') + '" data-action="proj-open" data-slot="' + slot + '" tabindex="0">' +
       '<span class="pc-team">' + esc(teamLabel(slot)) + '</span>' +
       (url ? '<div class="pc-qr" data-url="' + esc(url) + '" title="Scan for the project site"></div>' : '') +
       '<div class="pc-text"><h3>' + esc(p.title) + '</h3><p>' + esc(p.description) + '</p></div>' +
@@ -2884,7 +2944,7 @@
     });
     var skills = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a] || a.localeCompare(b); });
     var skillsHtml = skills.length
-      ? skills.map(function (s) { return '<span class="pms-skill">' + esc(s) + '<b>' + counts[s] + '</b></span>'; }).join('')
+      ? skills.map(function (s) { return '<span class="pms-skill' + (isMySkill(s) ? ' is-mine' : '') + '">' + esc(s) + '<b>' + counts[s] + '</b></span>'; }).join('')
       : '<span class="pms-none">No skills listed yet.</span>';
     return '<div class="pms-head">People</div>' +
       '<div class="pms-chips">' + chips + '</div>' +
@@ -4812,6 +4872,7 @@
         applyTheme(dark, true);
         break;
       }
+      case 'toggle-mine': setMine(!mineOn()); break;
       case 'new-team': teamForm(); break;
       case 'edit-team': {
         var team = null;
@@ -5414,6 +5475,9 @@
       if (qp) A.setProject(qp.toLowerCase());
     } catch (e) { /* old browser */ }
     applyTheme(localStorage.getItem('ice.theme') === 'dark'); // sync the toggle icon
+    // restore the persisted "Highlight mine" state (renderChrome hides the
+    // button + clears the glow again if this visitor turns out not to be a member)
+    if (localStorage.getItem(MINE_KEY) === '1') document.body.classList.add('mine-on');
     if (creatingProject()) startProjectPolling(); // resume a create that was in flight before a refresh
     var justSignedIn = A.absorbLoginToken();
     state.data = A.readCache();

@@ -1298,6 +1298,74 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
 .chat-toggle[hidden] { display: none; }
 body.chat-open .chat-toggle { background: var(--color-accent-light); border-color: var(--color-accent); color: var(--color-accent-dark); }
 
+/* ---- "Highlight mine" toggle + glow ---------------------------------------
+   A member-only pill in the app bar. It flips body.mine-on, which is what every
+   glow rule below keys off — so my team chip, my project card and my skill
+   chips (all tagged .is-mine at render) light up in amber across every view. */
+.mine-toggle {
+  height: 38px; flex: none; border-radius: 999px; padding: 0 14px 0 11px;
+  border: 1px solid var(--border); background: var(--surface); cursor: pointer;
+  color: var(--text-body); font-size: 13px; font-weight: 600; letter-spacing: 0.01em;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.2s;
+}
+.mine-toggle[hidden] { display: none; }
+.mine-toggle:hover { border-color: var(--border-strong); color: var(--text); }
+.mine-toggle .mine-dot {
+  width: 9px; height: 9px; border-radius: 999px; flex: none;
+  background: var(--border-strong); transition: background 0.15s, box-shadow 0.2s;
+}
+/* label swaps All -> Mine with the pressed state */
+.mine-toggle .mine-on-l { display: none; }
+.mine-toggle.is-on .mine-off-l { display: none; }
+.mine-toggle.is-on .mine-on-l { display: inline; }
+.mine-toggle.is-on {
+  border-color: var(--mine); color: var(--mine); background: var(--mine-soft);
+  box-shadow: 0 0 0 3px var(--mine-soft);
+}
+.mine-toggle.is-on .mine-dot { background: var(--mine); box-shadow: 0 0 8px var(--mine); }
+
+/* amber spotlight — a soft pulsing ring, shared by every .is-mine target */
+@keyframes mineGlow {
+  0%, 100% { box-shadow: 0 0 0 1px var(--mine), 0 0 10px -1px var(--mine); }
+  50%      { box-shadow: 0 0 0 2px var(--mine), 0 0 20px 1px var(--mine); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.mine-on .is-mine { animation: none !important; }
+}
+
+/* team chip (People app bar) */
+body.mine-on .hive-teams .team-chip.is-mine {
+  border-color: var(--mine) !important; color: var(--mine);
+  animation: mineGlow 2s ease-in-out infinite; z-index: 999;
+}
+body.mine-on .hive-teams .team-chip.is-mine.on {
+  background: var(--mine); border-color: var(--mine) !important; color: #1a1204;
+}
+
+/* project card (Projects grid) */
+body.mine-on .project-card.is-mine {
+  animation: mineGlow 2.2s ease-in-out infinite;
+}
+/* a small amber "mine" star badge, top-right of the card */
+body.mine-on .project-card.is-mine::after {
+  content: "\2605"; position: absolute; top: 10px; right: 12px;
+  font-size: 13px; line-height: 1; color: var(--mine);
+  text-shadow: 0 0 8px var(--mine); pointer-events: none;
+}
+
+/* skill chips — wherever they render (profile panels, project people strip) */
+body.mine-on .chip.is-mine {
+  border-color: var(--mine); color: var(--mine); background: var(--mine-soft);
+  box-shadow: 0 0 0 1px var(--mine), 0 0 10px -2px var(--mine);
+}
+body.mine-on .chip.is-mine.on { background: var(--mine); border-color: var(--mine); color: #1a1204; }
+body.mine-on .pms-skill.is-mine {
+  border-color: var(--mine); color: var(--mine); background: var(--mine-soft);
+  box-shadow: 0 0 8px -2px var(--mine);
+}
+body.mine-on .pms-skill.is-mine b { color: var(--mine); }
+
 .chatpane {
   flex: none; width: 300px; height: 100vh; background: var(--surface);
   border-left: 1px solid var(--border); display: flex; flex-direction: column;

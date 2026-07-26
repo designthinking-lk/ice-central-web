@@ -4,6 +4,10 @@
   --color-accent:        #6100FF;
   --color-accent-dark:   #4400B3;
   --color-accent-light:  #904DFF;
+  /* "Highlight mine" spotlight — a warm amber kept deliberately apart from the
+     purple/cyan selection accent, so "this is mine" never reads as "selected". */
+  --mine:      #F59E0B;
+  --mine-soft: rgba(245, 158, 11, 0.16);
   --gradient-start:      #00D7EE;
   --gradient-end:        #6100FF;
   --gradient-brand:      linear-gradient(221deg, #00D7EE 0%, #6100FF 100%);
@@ -67,6 +71,9 @@ html.theme-fade *::after {
   --color-accent:       #00D7EE;
   --color-accent-dark:  #00B7CC;
   --color-accent-light: #5EE6F5;
+  /* Amber lifts a touch at night to hold contrast against the dark surfaces. */
+  --mine:      #FFC24B;
+  --mine-soft: rgba(255, 194, 75, 0.18);
   --bg:            #121316;
   --bg-subtle:     #1B1D22;
   --border:        #262930;
