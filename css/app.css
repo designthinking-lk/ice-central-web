@@ -1055,6 +1055,10 @@ table.admin.people .btn.loading .spin, .invite-card .btn.loading .spin { positio
 }
 .echip .chip-x:hover { opacity: 1; }
 .invite-hint { margin: 10px 0 0; color: var(--text-muted); font-size: 13px; }
+/* already-invited / already-member address in the composer — flagged, blocks send */
+.invite-input .echip.echip-bad, .echip.echip-bad { background: rgba(179, 38, 30, 0.08); border-color: #e5b3b3; color: #b3261e; }
+.echip-warn { margin-right: 5px; font-size: 11px; color: #b3261e; }
+.invite-hint-bad { display: flex; align-items: center; gap: 6px; color: #b3261e; }
 .ob-tag {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;

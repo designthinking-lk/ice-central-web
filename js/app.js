@@ -3913,6 +3913,20 @@
   var inviteCard = null;
   var INVITE_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+  // Is this email already in the project — a pending invite (either role) or a
+  // registered member? Returns 'invited' | 'registered' | null. Used to block
+  // re-inviting an address before it's accepted (the app also forbids one email
+  // being both participant and mentor, so any existing invite blocks it).
+  function inviteEmailStatus(email) {
+    var e = String(email || '').toLowerCase();
+    var d = state.data || {};
+    var us = d.users || [];
+    for (var i = 0; i < us.length; i++) if (String(us[i].email || '').toLowerCase() === e) return 'registered';
+    var inv = d.invites || [];
+    for (var j = 0; j < inv.length; j++) if (String(inv[j].email || '').toLowerCase() === e) return 'invited';
+    return null;
+  }
+
   function inviteCardHtml() {
     var c = inviteCard;
     var n = c.chips.length;
@@ -3920,18 +3934,27 @@
     // refresh() can rebuild the view while the batch is still in flight.
     var frozen = !!c.sending;
     var dis = frozen ? ' disabled' : '';
+    var dupCount = 0;
     var chips = c.chips.map(function (em, i) {
-      return '<span class="chip static echip">' + esc(em) +
+      var st = inviteEmailStatus(em);
+      if (st) dupCount++;
+      var tip = st === 'registered' ? 'Already a member' : st === 'invited' ? 'Already invited' : '';
+      return '<span class="chip static echip' + (st ? ' echip-bad' : '') + '"' + (tip ? ' title="' + tip + '"' : '') + '>' +
+        (st ? '<i class="fa-solid fa-triangle-exclamation echip-warn"></i>' : '') + esc(em) +
         '<button type="button" class="chip-x" data-action="invite-chip-x" data-idx="' + i + '" title="Remove"' + dis + '><i class="fa-solid fa-xmark"></i></button></span>';
     }).join('');
+    // Send is blocked while any address is already invited/registered — remove it first.
+    var canSend = n > 0 && dupCount === 0 && !frozen;
     return '<div class="panel invite-card">' +
       '<h3><i class="fa-regular fa-paper-plane"></i>Invite ' + (c.role === 'mentor' ? 'mentors' : 'participants') + '</h3>' +
       '<div class="tag-input invite-input" data-action="invite-focus">' + chips +
       '<input id="inviteEntry" type="text" autocomplete="off" spellcheck="false" value="' + esc(c.text || '') + '" placeholder="' + (n ? 'Add another…' : 'Type or paste email addresses…') + '"' + dis + '>' +
       '</div>' +
-      '<p class="invite-hint">Each address gets an invitation email to sign in and complete registration as a ' + c.role + '. Only invited addresses can register.</p>' +
+      (dupCount
+        ? '<p class="invite-hint invite-hint-bad"><i class="fa-solid fa-triangle-exclamation"></i>' + dupCount + (dupCount === 1 ? ' address is' : ' addresses are') + ' already invited or a member — remove ' + (dupCount === 1 ? 'it' : 'them') + ' to send.</p>'
+        : '<p class="invite-hint">Each address gets an invitation email to sign in and complete registration as a ' + c.role + '. Only invited addresses can register.</p>') +
       '<div class="form-actions" style="margin-top:14px">' +
-      '<button class="btn btn-gradient btn-sm' + (frozen ? ' loading' : '') + '" data-action="invite-send"' + (n && !frozen ? '' : ' disabled') + '><span class="label"><i class="fa-regular fa-paper-plane"></i> Send ' + (n ? n + ' ' : '') + 'invitation' + (n === 1 ? '' : 's') + '</span><span class="spin"></span></button>' +
+      '<button class="btn btn-gradient btn-sm' + (frozen ? ' loading' : '') + '" data-action="invite-send"' + (canSend ? '' : ' disabled') + '><span class="label"><i class="fa-regular fa-paper-plane"></i> Send ' + (n ? n + ' ' : '') + 'invitation' + (n === 1 ? '' : 's') + '</span><span class="spin"></span></button>' +
       '<button class="btn btn-ghost btn-sm" data-action="invite-cancel"' + dis + '>Cancel</button>' +
       '</div></div>';
   }
