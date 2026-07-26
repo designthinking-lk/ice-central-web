@@ -45,7 +45,7 @@
 
   <!-- bump ?v= on any asset change: GitHub Pages caches for 10 min -->
   <link rel="stylesheet" href="css/theme.css?v=51">
-  <link rel="stylesheet" href="css/app.css?v=114">
+  <link rel="stylesheet" href="css/app.css?v=115">
   <!-- apply the saved theme before first paint so night mode never flashes -->
   <script>try{if(localStorage.getItem('ice.theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}</script>
   <!-- desktop-first: phones get the "open on desktop" gate (markup below, styles in app.css).
@@ -80,10 +80,14 @@
            other half overflowing off-screen; the nav sits inside it -->
       <span class="side-oct" aria-hidden="true"></span>
       <div class="sidebar-top">
-        <a class="brand" href="#/"><span class="brand-name">ICE</span></a>
+        <div class="brand" id="brand">
+          <!-- workshop switcher: circle button before the title; opening it hides
+               the title and lists the projects (filled by app.js) -->
+          <button class="brand-switch" id="brandSwitch" type="button" data-action="brand-switch" title="Switch workshop" aria-label="Switch workshop" hidden><i class="fa-solid fa-chevron-down"></i></button>
+          <a class="brand-home" href="#/"><span class="brand-name">ICE</span></a>
+          <div class="brand-menu" id="brandMenu" hidden></div>
+        </div>
       </div>
-      <!-- project switcher — filled by app.js when more than one project is visible -->
-      <div class="project-switcher" id="projectSwitcher" hidden></div>
       <nav class="nav" id="nav">
         <a href="#/people" data-nav="people" title="People"><i class="fa-solid fa-users"></i><span>People</span></a>
         <a href="#/projects" data-nav="projects" id="navProjects" title="Projects"><i class="fa-solid fa-diagram-project"></i><span>Projects</span></a>
@@ -157,6 +161,6 @@
   <script src="js/api.js?v=52"></script>
   <script src="js/chat.js?v=72"></script>
   <script src="js/vendor/qrcode.js?v=1"></script>
-  <script src="js/app.js?v=118"></script>
+  <script src="js/app.js?v=119"></script>
 </body>
 </html>

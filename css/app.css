@@ -114,7 +114,7 @@ button { font-family: inherit; }
   background: var(--bg-subtle);
 }
 /* real content paints above the octagon */
-.project-switcher, .nav { position: relative; z-index: 1; }
+.nav { position: relative; z-index: 1; }
 /* sidebar-top holds the fixed animated brand; its z-index is the stacking
    context the brand lives in, so it must clear the frosted app-bar band (z 4)
    and topbar (z 10) — otherwise the ICE letters paint behind the glass. */
@@ -124,7 +124,42 @@ button { font-family: inherit; }
 /* The brand escapes the sidebar's overflow clip (position: fixed, no
    transformed ancestor) so the animated title can expand across the topbar. */
 .sidebar-top { min-height: 30px; }
-.brand { display: flex; align-items: center; position: fixed; top: 17px; left: 22px; z-index: 70; }
+.brand { display: flex; align-items: center; gap: 9px; position: fixed; top: 15px; left: 20px; z-index: 70; }
+/* circle button that opens the workshop switcher, just before the title */
+.brand-switch {
+  flex: none; width: 26px; height: 26px; border-radius: 50%;
+  border: 1.5px solid var(--border-strong); background: var(--surface);
+  color: var(--text-muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 11px;
+  transition: border-color 0.12s, color 0.12s;
+}
+.brand-switch[hidden] { display: none; }
+.brand-switch:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.brand-switch i { transition: transform 0.2s ease; }
+.brand.menu-open .brand-switch i { transform: rotate(180deg); }
+.brand-home { display: flex; align-items: center; text-decoration: none; }
+/* opening the switcher hides the title and reveals the project list in its place */
+.brand.menu-open .brand-home { display: none; }
+.brand-menu {
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; box-shadow: var(--shadow-md, 0 8px 28px rgba(0,0,0,0.14));
+  padding: 6px; min-width: 210px; max-height: 66vh; overflow: auto;
+}
+.brand-menu[hidden] { display: none; }
+.brand-opt {
+  display: flex; align-items: center; gap: 7px;
+  text-align: left; padding: 6px 10px; border: none; background: none;
+  border-radius: 8px; color: var(--text-body); cursor: pointer; white-space: nowrap;
+  font-family: var(--font-display); font-weight: 700; font-size: 14px;
+}
+.brand-opt:hover { background: var(--bg-subtle); color: var(--text); }
+.brand-opt.current { color: var(--color-accent); }
+.brand-opt .fa-check { margin-left: auto; font-size: 11px; }
+.brand-opt-tag {
+  font-family: var(--font-body, inherit); font-weight: 500; font-size: 11px;
+  color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 6px;
+}
 .brand-name {
   font-family: var(--font-display); font-weight: 800; font-size: 24px;
   letter-spacing: -0.02em; color: var(--text); white-space: nowrap;
@@ -189,16 +224,6 @@ button { font-family: inherit; }
   font-size: 11px; font-weight: 600; line-height: 18px; text-align: center;
 }
 
-/* project switcher — under the brand; visible only when several projects exist */
-.project-switcher { padding: 0 2px; margin-top: -10px; }
-.project-switcher[hidden] { display: none; }
-.project-select {
-  width: 100%; padding: 6px 8px;
-  border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
-  color: var(--text-body); font-size: 13px; font-weight: 500;
-  cursor: pointer;
-}
-.project-select:hover { border-color: var(--border-strong); color: var(--text); }
 
 /* ------------------------------------------------------ topbar auth actions */
 .avatar-circle-btn {
@@ -1445,8 +1470,6 @@ body.hive-full .hive .oct { pointer-events: auto; }
    the hive tiles beneath — pass the pointer through except on the controls */
 body.hive-full .nav { pointer-events: none; }
 body.hive-full .nav a { pointer-events: auto; }
-body.hive-full .project-switcher { pointer-events: none; }
-body.hive-full .project-switcher select { pointer-events: auto; }
 
 /* night mode: cyan accent glow (the purple text-shadows are hardcoded above) */
 :root[data-theme="dark"] .nav a.active { animation-name: nav-glow-dark; }

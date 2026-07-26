@@ -143,7 +143,32 @@
   // Per-project branding from bootstrap; config values are only the
   // pre-bootstrap fallback shown before the first payload arrives.
   function proj() { return (state.data && state.data.project) || {}; }
-  function eventName() { return proj().name || C.EVENT_NAME; }
+  // The registry holds the full workshop title (e.g. "Apple Pears Pineapple 2028"
+  // or "Innovation Creativity Entrepreneurship 2026"); the short brand form
+  // (APP2028 / ICE2026) is DERIVED from it.
+  function fullTitle() { return proj().name || C.EVENT_NAME; }
+  // Split a title into alphabetic words + a trailing year. Handles a glued
+  // single token too ("ICE2026" -> {words:["ICE"], year:"2026"}).
+  function parseTitle(title) {
+    var tokens = String(title || '').trim().split(/\s+/).filter(Boolean);
+    var year = '';
+    if (tokens.length && /^\d+$/.test(tokens[tokens.length - 1])) year = tokens.pop();
+    if (tokens.length === 1 && !year) {
+      var m = tokens[0].match(/^([A-Za-z].*?)(\d+)$/);
+      if (m) { tokens = [m[1]]; year = m[2]; }
+    }
+    return { words: tokens, year: year };
+  }
+  // "Apple Pears Pineapple 2028" -> "APP2028"; a single word is used as-is.
+  function shortName(title) {
+    var p = parseTitle(title);
+    var acr = p.words.length >= 2
+      ? p.words.map(function (s) { return s.charAt(0).toUpperCase(); }).join('')
+      : (p.words[0] || '').toUpperCase();
+    return acr + p.year;
+  }
+  // Everywhere the brand appears as plain text uses the short form.
+  function eventName() { return shortName(fullTitle()); }
   function eventTagline() { return proj().tagline || C.EVENT_TAGLINE; }
   function siteUrl() { return proj().siteUrl || location.host; }
 
@@ -180,27 +205,30 @@
   // The lowercase letters of each word spawn below their capital and glide up,
   // one rank per word in parallel (ICE → InCrEn → InnCreEnt → …), the phrase
   // widening as they land. Fully-closed and fully-open states hold for 8 s.
-  var BRAND_WORDS = ['Innovation', 'Creativity', 'Entrepreneurship'];
   var BRAND_HOLD = 8000, BRAND_STEP = 90;
   var brandTimers = [];
 
   function renderBrand(el) {
-    var m = String(eventName()).match(/^ICE(\d+)$/i);
-    if (!m || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    var parsed = parseTitle(fullTitle());
+    var brandWords = parsed.words, brandYear = parsed.year;
+    var key = fullTitle();
+    // Single-word titles (or reduced motion) render the static short form —
+    // there's nothing to expand to.
+    if (brandWords.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       brandTimers.forEach(clearTimeout); brandTimers = [];
       el.removeAttribute('data-anim');
       el.innerHTML = brandHtml(false);
       return;
     }
-    if (el.getAttribute('data-anim') === m[1]) return; // loop already running
-    el.setAttribute('data-anim', m[1]);
+    if (el.getAttribute('data-anim') === key) return; // loop already running for this project
+    el.setAttribute('data-anim', key);
     var html = '';
-    BRAND_WORDS.forEach(function (w) {
-      html += '<span class="bw">' + w.charAt(0);
-      for (var i = 1; i < w.length; i++) html += '<span class="bl">' + w.charAt(i) + '</span>';
+    brandWords.forEach(function (w) {
+      html += '<span class="bw">' + esc(w.charAt(0).toUpperCase());
+      for (var i = 1; i < w.length; i++) html += '<span class="bl">' + esc(w.charAt(i)) + '</span>';
       html += '</span>';
     });
-    html += '<span class="brand-year">' + esc(m[1]) + '</span>';
+    if (brandYear) html += '<span class="brand-year">' + esc(brandYear) + '</span>';
     el.innerHTML = html;
     var words = [].map.call(el.querySelectorAll('.bw'), function (w) {
       return [].slice.call(w.querySelectorAll('.bl'));
@@ -374,22 +402,30 @@
     });
   }
 
-  // Project switcher — a <select> between the brand and the nav. Hidden until
-  // bootstrap lists more than one visible project. Switching swaps in the
-  // target project's cached bootstrap (per-project cache keys — no
-  // bleed-through) and refreshes.
+  // Workshop switcher — a circle button sitting just before the animated brand.
+  // Opening it hides the title and lists every visible project by its full
+  // registry name; picking one switches (a full redirect to that subdomain in
+  // production). Hidden entirely until bootstrap lists more than one project.
+  var brandMenuOpen = false;
   function renderProjectSwitcher(d) {
-    var box = $('#projectSwitcher');
-    if (!box) return;
-    var projects = d.projects || [];
+    var sw = $('#brandSwitch'), menu = $('#brandMenu'), brand = $('#brand');
+    if (!sw || !menu || !brand) return;
+    var projects = (d && d.projects) || [];
+    if (projects.length < 2) {
+      sw.hidden = true; menu.hidden = true; brandMenuOpen = false;
+      brand.classList.remove('menu-open');
+      return;
+    }
+    sw.hidden = false;
     var current = A.getProject();
-    if (projects.length < 2) { box.hidden = true; box.innerHTML = ''; return; }
-    box.hidden = false;
-    box.innerHTML = '<select class="project-select" data-action="switch-project" aria-label="Switch project">' +
-      projects.map(function (p) {
-        return '<option value="' + esc(p.id) + '"' + (p.id === current ? ' selected' : '') + '>' +
-          esc(p.name) + (p.status === 'test' ? ' (test)' : p.status === 'archived' ? ' (archived)' : '') + '</option>';
-      }).join('') + '</select>';
+    menu.innerHTML = projects.map(function (p) {
+      return '<button class="brand-opt' + (p.id === current ? ' current' : '') + '" type="button" data-action="brand-pick" data-proj="' + esc(p.id) + '">' +
+        '<span class="brand-opt-name">' + esc(p.name) + '</span>' +
+        (p.status === 'test' ? ' <span class="brand-opt-tag">test</span>' : p.status === 'archived' ? ' <span class="brand-opt-tag">archived</span>' : '') +
+        (p.id === current ? ' <i class="fa-solid fa-check"></i>' : '') + '</button>';
+    }).join('');
+    menu.hidden = !brandMenuOpen;
+    brand.classList.toggle('menu-open', brandMenuOpen);
   }
 
   function switchProject(id) {
@@ -4460,6 +4496,10 @@
 
   document.addEventListener('click', async function (e) {
     var t = e.target.closest('[data-action]');
+    // Close the workshop switcher when clicking anywhere outside the brand.
+    if (brandMenuOpen && !e.target.closest('#brand')) {
+      brandMenuOpen = false; renderProjectSwitcher(state.data || {});
+    }
     if (!t) return;
     var action = t.getAttribute('data-action');
     var id = t.getAttribute('data-id');
@@ -4839,6 +4879,15 @@
       case 'open-skills': openSkills(); break;
       case 'close-skills': closeSkills(); break;
       case 'add-typed-skill': { var si3 = $('#skillInput'); if (si3) { addTag(si3.value); si3.value = ''; si3.focus(); } break; }
+      case 'brand-switch': e.preventDefault(); brandMenuOpen = !brandMenuOpen; renderProjectSwitcher(state.data || {}); break;
+      case 'brand-pick': {
+        e.preventDefault();
+        var bp = t.getAttribute('data-proj');
+        brandMenuOpen = false;
+        if (bp === A.getProject()) { renderProjectSwitcher(state.data || {}); break; }
+        switchProject(bp); // full redirect to the project's subdomain (production)
+        break;
+      }
       case 'new-project': showNewProject = true; route(); break;
       case 'cancel-new-project': showNewProject = false; route(); break;
       case 'switch-project-btn': switchProject(t.getAttribute('data-proj')); break;
@@ -4962,9 +5011,6 @@
         adminProjects = null;
         refresh();
       } catch (err) { toast(err.message, true); }
-    }
-    if (t.getAttribute('data-action') === 'switch-project') {
-      switchProject(t.value);
     }
     // Inline project editors in the admin Projects panel — each row targets
     // its own project via an explicit `project` override.
