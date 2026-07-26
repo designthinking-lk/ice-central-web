@@ -805,6 +805,24 @@ textarea.input { resize: vertical; min-height: 90px; }
 .link-status[data-status="checking"] { color: rgba(255,255,255,0.65); }
 .link-status[data-status="ok"] { color: #4ade80; }
 .link-status[data-status="bad"] { color: #f87171; }
+/* github / linkedin: the fixed part is printed, you only type the username.
+   Prefix + input sit flush so at rest they read as one URL — "github.com/you". */
+.cfield-handle .handle-wrap { flex: 1; min-width: 0; display: flex; align-items: center; }
+.cfield-handle .handle-prefix { flex: none; color: rgba(255,255,255,0.55); font-size: 13.5px; white-space: nowrap; }
+.cfield-handle .cinput { flex: 1; min-width: 0; width: auto; }
+
+/* onboarding cue: fields that still need a value glow gently until filled */
+@keyframes fieldHint {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,214,138,0); }
+  50%      { box-shadow: 0 0 0 3px rgba(255,214,138,0.30); }
+}
+.needs-fill { animation: fieldHint 2.4s ease-in-out infinite; }
+.cinput.needs-fill { border-radius: 8px; }
+.cinput.needs-fill:not(:focus) { background: rgba(255,255,255,0.06); }
+.cinput.needs-fill:focus { animation: none; }  /* being filled right now */
+@media (prefers-reduced-motion: reduce) {
+  .needs-fill { animation: none; box-shadow: 0 0 0 2px rgba(255,214,138,0.28); }
+}
 
 /* skills row on the card front (max 3, single line) */
 .idcard-skills { display: flex; align-items: center; gap: 7px; min-height: 26px; flex: none; margin-bottom: 9px; }

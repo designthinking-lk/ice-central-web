@@ -2019,6 +2019,23 @@
     return pre + handle;
   }
 
+  // The GitHub / LinkedIn fields show the fixed part ("github.com/") as static
+  // text and only take the username. Given anything — a bare handle, a full URL
+  // someone pasted, "@name", "www.linkedin.com/in/name/" — reduce it to just the
+  // username so the input mirrors what sits after the prefix.
+  function linkHandle(field, v) {
+    v = String(v || '').trim();
+    if (!v || (field !== 'linkGithub' && field !== 'linkLinkedin')) return v;
+    v = v.replace(/^@/, '').replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+    if (field === 'linkGithub') {
+      v = v.replace(/^github\.com\//i, '');
+    } else {
+      v = v.replace(/^linkedin\.com\//i, '').replace(/^(in|pub)\//i, '');
+    }
+    // keep only the first path segment (the profile handle), drop query/hash
+    return v.split(/[?#]/)[0].split('/')[0];
+  }
+
   function validateProfile(form) {
     var fd = new FormData(form);
     if (!String(fd.get('firstName') || '').trim()) return 'Please enter your first name.';
@@ -2148,9 +2165,9 @@
       '<div class="idband"></div>' +
       '<textarea class="cinput cbio" name="bio" maxlength="260" placeholder="Short bio — who you are, what excites you">' + esc(u.bio || '') + '</textarea>' +
       '<div class="idlinks">' +
-      '<label class="cfield"><i class="fa-brands fa-github"></i><input class="cinput" name="linkGithub" maxlength="200" placeholder="github.com/you" value="' + esc(lg) + '"><span class="link-status" id="ls_linkGithub" data-status=""></span></label>' +
+      '<label class="cfield cfield-handle"><i class="fa-brands fa-github"></i><span class="handle-wrap"><span class="handle-prefix">github.com/</span><input class="cinput" name="linkGithub" maxlength="120" placeholder="username" value="' + esc(linkHandle('linkGithub', lg)) + '"></span><span class="link-status" id="ls_linkGithub" data-status=""></span></label>' +
       '<label class="cfield"><i class="fa-solid fa-globe"></i><input class="cinput" name="linkWebsite" maxlength="200" placeholder="yourwebsite.com" value="' + esc(lw) + '"><span class="link-status" id="ls_linkWebsite" data-status=""></span></label>' +
-      '<label class="cfield"><i class="fa-brands fa-linkedin-in"></i><input class="cinput" name="linkLinkedin" maxlength="200" placeholder="linkedin.com/in/you" value="' + esc(ll) + '"><span class="link-status" id="ls_linkLinkedin" data-status=""></span></label>' +
+      '<label class="cfield cfield-handle"><i class="fa-brands fa-linkedin-in"></i><span class="handle-wrap"><span class="handle-prefix">linkedin.com/in/</span><input class="cinput" name="linkLinkedin" maxlength="120" placeholder="username" value="' + esc(linkHandle('linkLinkedin', ll)) + '"></span><span class="link-status" id="ls_linkLinkedin" data-status=""></span></label>' +
       '</div>' +
       '<div class="idcard-foot"><span class="idcard-url">' + esc(eventTagline()) + '</span>' +
       '<button type="button" class="flip-btn" data-action="flip-card"><i class="fa-solid fa-rotate"></i><span>Front</span></button></div>' +
@@ -2368,8 +2385,11 @@
       firstName: fd.get('firstName') || '', lastName: fd.get('lastName') || '',
       affiliation: fd.get('affiliation') || '', expertise: fd.get('expertise') || '',
       bio: fd.get('bio') || '', gender: fd.get('gender') || '',
-      linkGithub: fd.get('linkGithub') || '', linkWebsite: fd.get('linkWebsite') || '',
-      linkLinkedin: fd.get('linkLinkedin') || '', video: fd.get('video') || '',
+      // links stored complete (bare handle → github.com/name) so re-bucketing by
+      // hostname works on reload; the field re-derives the bare handle to display
+      linkGithub: completeLink('linkGithub', fd.get('linkGithub')) || '',
+      linkWebsite: fd.get('linkWebsite') || '',
+      linkLinkedin: completeLink('linkLinkedin', fd.get('linkLinkedin')) || '', video: fd.get('video') || '',
       image: fd.get('image') || '', skills: getTagValues(),
     };
   }
@@ -2488,29 +2508,71 @@
     LINK_FIELDS.forEach(function (f) {
       var input = pform.querySelector('[name="' + f + '"]');
       if (!input) return;
-      if (input.value.trim()) checkLink(f, input.value); else setLinkStatus(f, 'empty');
+      var isHandle = f === 'linkGithub' || f === 'linkLinkedin';
+      var runCheck = function () {
+        if (input.value.trim()) checkLink(f, input.value); else setLinkStatus(f, 'empty');
+      };
+      runCheck();
       input.addEventListener('input', function () {
+        // a pasted full URL in a handle field collapses to just the username,
+        // so the input always mirrors what shows after the fixed prefix
+        if (isHandle) {
+          var h = linkHandle(f, input.value);
+          if (h !== input.value) {
+            var atEnd = input.selectionStart === input.value.length;
+            input.value = h;
+            if (atEnd) { try { input.setSelectionRange(h.length, h.length); } catch (e) {} }
+          }
+        }
         setLinkStatus(f, input.value.trim() ? 'checking' : 'empty');
         clearTimeout(linkTimers[f]);
-        linkTimers[f] = setTimeout(function () {
-          if (input.value.trim()) checkLink(f, input.value); else setLinkStatus(f, 'empty');
-        }, 600);
+        linkTimers[f] = setTimeout(runCheck, 600);
       });
-      // a bare handle materialises as the full URL once the user leaves the
-      // field, so the card shows exactly what will be saved
       input.addEventListener('blur', function () {
-        var full = completeLink(f, input.value);
-        if (full !== input.value.trim()) {
-          input.value = full;
-          checkLink(f, full);
+        // handle fields stay as the bare username; other fields (website)
+        // materialise a bare host into a full URL on leave
+        var next = isHandle ? linkHandle(f, input.value) : completeLink(f, input.value);
+        if (next !== input.value.trim()) {
+          input.value = next;
+          runCheck();
           saveRegDraft();
         }
       });
     });
   }
 
+  // Onboarding cue: a new user reported it wasn't obvious what to do, so every
+  // field still needing a value gets a subtle animated glow until it's filled —
+  // and while the back of the card has gaps, the "flip" button glows too, to
+  // point people to the other side. Runs for both the new and edit forms; on a
+  // complete profile nothing glows.
+  function updateFieldHints() {
+    var form = $('#profileForm');
+    if (!form) return;
+    var val = function (n) {
+      var el = form.querySelector('[name="' + n + '"]');
+      return el ? String(el.value || '').trim() : '';
+    };
+    var mark = function (el, need) { if (el) el.classList.toggle('needs-fill', !!need); };
+
+    // text fields on the card (names, affiliation, expertise, bio, links)
+    ['firstName', 'lastName', 'affiliation', 'expertise', 'bio',
+     'linkGithub', 'linkWebsite', 'linkLinkedin'].forEach(function (n) {
+      var el = form.querySelector('[name="' + n + '"]');
+      if (el) mark(el, !el.value.trim());
+    });
+    // photo, skills, intro video — non-input targets
+    mark(form.querySelector('.photo-vp'), !(photoEd || val('image')));
+    mark(form.querySelector('#skillAddBtn'), getTagValues().length === 0);
+    mark(form.querySelector('[data-action="card-video-edit"]'), !ytId(val('video')));
+    // front "flip" button glows while the back still has gaps
+    var backGap = !val('bio') || !val('linkGithub') || !val('linkWebsite') || !val('linkLinkedin');
+    mark(form.querySelector('.idfront [data-action="flip-card"]'), backGap);
+  }
+
   // Enable Join only when the whole card is complete (new registrations only).
   function updateJoinState() {
+    updateFieldHints();
     var form = $('#profileForm');
     if (!form || form.getAttribute('data-new') !== '1') return;
     var btn = form.querySelector('button[type="submit"]');
@@ -2667,6 +2729,10 @@
       personaLastPayload = '';
       pform.addEventListener('input', schedulePersona);
       pform.addEventListener('change', schedulePersona);
+      // Keep the "needs filling" glow in sync as text fields change (updateJoinState
+      // covers photo/skills/video/links, but bails early on the edit form).
+      pform.addEventListener('input', updateFieldHints);
+      pform.addEventListener('change', updateFieldHints);
       refreshPersona(); // initial (edit form / restored draft / prefill)
       var isNew = pform.getAttribute('data-new') === '1';
       if (isNew) {
