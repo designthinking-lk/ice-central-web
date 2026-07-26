@@ -112,16 +112,31 @@
   function signIn() {
     sessionStorage.setItem(ROUTE_KEY, location.hash || '#/');
     var redirect = location.origin + location.pathname;
-    location.href = C.AUTH_URL + '?redirect=' + encodeURIComponent(redirect);
+    // The auth broker exec URL carries no /u/N/ account index. On a browser
+    // signed into several Google accounts, hitting it directly lets Google PIN
+    // whichever account sits in slot /u/2/ etc. — and if that guessed slot is
+    // stale or lacks access, the visitor dead-ends on Google's "unable to open
+    // the file" page before our doGet ever runs. Route through AccountChooser
+    // so the user consciously PICKS the account (Google then resolves the right
+    // slot). continue= must stay on a Google-owned host — script.google.com is.
+    var exec = C.AUTH_URL + '?redirect=' + encodeURIComponent(redirect);
+    location.href = 'https://accounts.google.com/AccountChooser?continue=' +
+      encodeURIComponent(exec);
   }
 
   function signOut() {
     setToken(null);
     // Signing out is global (one identity) — drop every project's cached
-    // bootstrap so no member state survives the reload.
+    // bootstrap, half-filled registration draft, and chat state so NO member
+    // state survives the reload (otherwise the next account signed in on this
+    // browser would inherit the previous person's card / draft).
     try {
       Object.keys(localStorage)
-        .filter(function (k) { return k.indexOf('ice.bootstrap.') === 0; })
+        .filter(function (k) {
+          return k.indexOf('ice.bootstrap.') === 0 ||
+                 k.indexOf('ice.regdraft.') === 0 ||
+                 k.indexOf('ice.chat.') === 0;
+        })
         .forEach(function (k) { localStorage.removeItem(k); });
     } catch (e) { /* private mode */ }
     sessionStorage.removeItem(ROUTE_KEY);

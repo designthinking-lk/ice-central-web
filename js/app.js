@@ -2396,10 +2396,27 @@
   function saveRegDraft() {
     var d = collectRegDraft();
     if (!d) return;
+    // Stamp the draft with the signed-in identity so it can only ever be
+    // restored for the SAME person — a draft must not bleed into a different
+    // account on a shared browser, nor resurrect an old card for someone who
+    // was deleted and re-invited.
+    d._email = (state.data && state.data.email) || '';
     try { localStorage.setItem(regDraftKey(), JSON.stringify(d)); } catch (e) { /* quota */ }
   }
   function loadRegDraft() {
-    try { return JSON.parse(localStorage.getItem(regDraftKey()) || 'null'); } catch (e) { return null; }
+    try {
+      var d = JSON.parse(localStorage.getItem(regDraftKey()) || 'null');
+      if (!d) return null;
+      // Different identity than the one that saved it (account switch, or this
+      // email was offboarded and re-invited) — the draft is stale. Drop it and
+      // fall back to the server prefill (blank profile + the pre-created work
+      // email), which is the intended fresh-start state.
+      if ((d._email || '') !== ((state.data && state.data.email) || '')) {
+        clearRegDraft();
+        return null;
+      }
+      return d;
+    } catch (e) { return null; }
   }
   function clearRegDraft() { localStorage.removeItem(regDraftKey()); }
 
