@@ -4004,11 +4004,20 @@
     var rows = users.map(function (u) {
       // Inline delete confirm: the row's cells are replaced by a confirm strip.
       if (deletingUserId === u.id) {
-        // Keep the Name cell (avatar + name) so columns don't shift; the confirm
-        // message spans the remaining columns and may wrap to two lines.
-        return '<tr class="confirm-row"><td style="display:flex;align-items:center;gap:10px">' + avatar(u, 'avatar-sm') +
+        // Zero column shift: render the row's REAL cells unchanged (so every
+        // column keeps its exact width) and float the confirm UI as an absolute
+        // overlay on top (the <tr> is the positioning context).
+        return '<tr class="confirm-row">' +
+          '<td style="display:flex;align-items:center;gap:10px">' + avatar(u, 'avatar-sm') +
           '<a href="#/profile/' + esc(u.id) + '">' + esc(u.name) + '</a></td>' +
-          '<td colspan="5" class="confirm-cell"><div class="row-confirm">' +
+          '<td>' + esc(u.email || '') +
+          (u.workEmail ? '<div class="dt-mail"><i class="fa-regular fa-comment-dots"></i>' + esc(u.workEmail) + '</div>' : '') + '</td>' +
+          '<td>' + projChips(u) + '</td>' +
+          '<td>' + roleChipsHtml(u) + '</td>' +
+          '<td><span class="ob-tag registered"><i class="fa-solid fa-circle-check"></i>Registered</span></td>' +
+          '<td><button class="btn btn-ghost btn-sm" style="visibility:hidden" tabindex="-1"><i class="fa-regular fa-trash-can"></i></button>' +
+          '<div class="row-confirm-ov">' +
+          '<span class="row-confirm-name">' + avatar(u, 'avatar-sm') + '<span>' + esc(u.name) + '</span></span>' +
           '<span class="row-confirm-text"><i class="fa-solid fa-triangle-exclamation"></i><span>Remove from this project? Profile, skills, teams, messages &amp; photo here are deleted — their @designthinking.lk account and any other projects are kept.</span></span>' +
           '<span class="row-confirm-actions">' +
           '<button class="btn btn-danger btn-sm" data-action="del-user-confirm" data-id="' + esc(u.id) + '"><span class="label">Delete</span><span class="spin"></span></button>' +

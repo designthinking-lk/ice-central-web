@@ -1006,12 +1006,16 @@ table.admin tr:last-child td { border-bottom: none; }
   background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border); white-space: nowrap;
 }
 .proj-chip.current { background: rgba(97, 0, 255, 0.10); color: var(--color-accent); border-color: transparent; }
-/* Inline member-delete confirm strip — Name cell stays; message spans the rest */
+/* Inline member-delete confirm — the row keeps its real cells (columns never
+   shift); the confirm UI floats as an absolute overlay covering the row. */
+.confirm-row { position: relative; }
 .confirm-row td { background: var(--bg-subtle); }
-/* override table.admin td's white-space:nowrap so the message wraps (2 lines)
-   instead of overflowing and pushing the buttons off-screen */
-table.admin td.confirm-cell { white-space: normal; }
-.row-confirm { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.row-confirm-ov {
+  position: absolute; inset: 0; z-index: 1;
+  display: flex; align-items: center; gap: 16px; padding: 0 14px;
+  background: var(--bg-subtle);
+}
+.row-confirm-name { display: flex; align-items: center; gap: 10px; flex: none; font-weight: 600; color: var(--text); }
 .row-confirm-text { flex: 1 1 auto; display: flex; align-items: flex-start; gap: 8px; min-width: 0; font-size: 13px; line-height: 1.35; color: var(--text); }
 .row-confirm-text i { color: #b3261e; flex: none; margin-top: 2px; }
 .row-confirm-actions { display: flex; align-items: center; gap: 8px; flex: none; }
