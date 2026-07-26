@@ -4023,8 +4023,10 @@
         '<td>' + projChips(u) + '</td>' +
         '<td>' + roleChipsHtml(u) + '</td>' +
         '<td><span class="ob-tag registered"><i class="fa-solid fa-circle-check"></i>Registered</span></td>' +
-        // While a delete is being confirmed, hide every other row's delete button.
-        '<td>' + (deletingUserId ? '' : '<button class="btn btn-ghost btn-sm" data-action="del-user" data-id="' + esc(u.id) + '" data-name="' + esc(u.name) + '"><i class="fa-regular fa-trash-can"></i></button>') + '</td></tr>';
+        // While a delete is being confirmed, other delete buttons are made
+        // invisible (visibility:hidden) — they still occupy their space so the
+        // action column width never changes, but can't be clicked.
+        '<td><button class="btn btn-ghost btn-sm" data-action="del-user" data-id="' + esc(u.id) + '" data-name="' + esc(u.name) + '"' + (deletingUserId ? ' style="visibility:hidden" tabindex="-1"' : '') + '><i class="fa-regular fa-trash-can"></i></button></td></tr>';
     }).join('');
     var invRows = pending.map(function (i) {
       var roleTag = i.role === 'mentor' ? 'mentor' : 'participant';
@@ -4035,7 +4037,7 @@
         '<td><div class="role-cell"><span class="role-tag ' + roleTag + '">' + roleTag + '</span></div></td>' +
         '<td><span class="ob-tag invited"><i class="fa-regular fa-clock"></i>Invited</span>' +
         '<button class="btn btn-ghost btn-sm" data-action="invite-resend" data-id="' + esc(i.id) + '" data-email="' + esc(i.email) + '" title="Resend the invitation email"><span class="label"><i class="fa-regular fa-paper-plane"></i> Resend</span><span class="spin"></span></button></td>' +
-        '<td>' + (deletingUserId ? '' : '<button class="btn btn-ghost btn-sm" data-action="invite-revoke" data-id="' + esc(i.id) + '" data-email="' + esc(i.email) + '" title="Revoke invitation"><i class="fa-regular fa-trash-can"></i></button>') + '</td></tr>';
+        '<td><button class="btn btn-ghost btn-sm" data-action="invite-revoke" data-id="' + esc(i.id) + '" data-email="' + esc(i.email) + '" title="Revoke invitation"' + (deletingUserId ? ' style="visibility:hidden" tabindex="-1"' : '') + '><i class="fa-regular fa-trash-can"></i></button></td></tr>';
     }).join('');
     return head + '<div class="table-wrap"><table class="admin people"><thead><tr><th>Name</th><th>Email</th><th>Projects</th><th>Roles</th><th>Onboarding</th><th></th></tr></thead>' +
       '<tbody>' + rows + invRows + '</tbody></table></div>';
