@@ -1006,11 +1006,11 @@ table.admin tr:last-child td { border-bottom: none; }
   background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border); white-space: nowrap;
 }
 .proj-chip.current { background: rgba(97, 0, 255, 0.10); color: var(--color-accent); border-color: transparent; }
-/* Inline member-delete confirm strip (replaces the row's cells) */
+/* Inline member-delete confirm strip — Name cell stays; message spans the rest */
 .confirm-row td { background: var(--bg-subtle); }
 .row-confirm { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.row-confirm-text { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text); }
-.row-confirm-text i { color: #b3261e; flex: none; }
+.row-confirm-text { display: flex; align-items: flex-start; gap: 8px; min-width: 0; font-size: 13px; line-height: 1.35; color: var(--text); }
+.row-confirm-text i { color: #b3261e; flex: none; margin-top: 2px; }
 .row-confirm-actions { display: flex; align-items: center; gap: 8px; flex: none; }
 
 /* ---- admin People table ---- */
