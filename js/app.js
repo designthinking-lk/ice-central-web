@@ -2760,9 +2760,7 @@
     var slot = p.slot;
     var url = projCardUrl(p);
     return '<article class="project-card ' + projColorClass(p, slot) + '" data-action="proj-open" data-slot="' + slot + '" tabindex="0">' +
-      '<span class="pc-tag">Project</span>' +
       '<span class="pc-team">' + esc(teamLabel(slot)) + '</span>' +
-      (canEditProject(slot) ? '<button class="pc-edit" type="button" data-action="proj-edit" data-slot="' + slot + '" title="Edit your team’s project"><i class="fa-solid fa-pen"></i></button>' : '') +
       (url ? '<div class="pc-qr" data-url="' + esc(url) + '" title="Scan for the project site"></div>' : '') +
       '<div class="pc-text"><h3>' + esc(p.title) + '</h3><p>' + esc(p.description) + '</p></div>' +
       '</article>';
