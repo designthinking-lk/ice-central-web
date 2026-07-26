@@ -45,15 +45,16 @@ button { font-family: inherit; }
 .shell::before {
   content: ""; position: fixed; top: 0; left: 0; right: 0; height: 104px;
   z-index: 4; pointer-events: none;
-  background: rgba(244, 247, 249, 0.55);
-  -webkit-backdrop-filter: blur(14px) saturate(120%);
-  backdrop-filter: blur(14px) saturate(120%);
+  /* transparent: the app bar no longer paints a frosted band, so the main
+     view's effects show through the top strip unblocked (matches the sidebar).
+     The tagline pill and account menu keep their own frosting for legibility. */
+  background: transparent;
   /* long, gradual fade on the lower edge — solid only across the top third,
      then eased out to nothing so there's no hard line (matches the footer) */
   -webkit-mask-image: linear-gradient(to bottom, #000 35%, rgba(0,0,0,0.5) 62%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 35%, rgba(0,0,0,0.5) 62%, transparent 100%);
 }
-:root[data-theme="dark"] .shell::before { background: rgba(18, 19, 22, 0.5); }
+:root[data-theme="dark"] .shell::before { background: transparent; }
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
 
 /* Avatar action strip — the account options are a single horizontal row that
