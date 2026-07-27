@@ -2548,25 +2548,43 @@ html.is-mobile.is-wallet .btn-wallet { width: 100%; box-sizing: border-box; }
 .wallet-action { display: flex; flex-direction: column; gap: 12px; align-items: center; }
 
 /* ============================================================================
-   EXPERIMENT — fixed real credit-card-size project cards
-   Revert = delete this whole block (down to END EXPERIMENT) and re-bump ?v=.
+   EXPERIMENT — real credit-card-size project cards (calibratable)
+   Revert = delete this whole block (down to END EXPERIMENT), the boot line and
+   the 'pcard-cal' input handler in app.js (both marked EXP:cardsize), and the
+   calibrator row in viewProjects(); then re-bump ?v=.
    ----------------------------------------------------------------------------
-   ID-1 / ISO-7810 bank cards are 85.6 x 53.98 mm. Expressing the card in `mm`
-   pins it to ONE uniform size on every screen (CSS maps 1mm to the 96dpi
-   reference px, ~3.78px, so it renders the same on a MacBook and a large
-   monitor) instead of the fluid 1fr grid that made cards shrink on smaller
-   viewports and stretch on bigger ones. The grid switches to fixed-width
-   columns, centred, leaving even margins around the deck.
-   The open/stack animation reads live offset geometry, so no JS change needed.
-   ============================================================================ */
-:root { --pcard-w: 85.6mm; --pcard-h: 53.98mm; }
+   ID-1 / ISO-7810 bank cards are 85.6 x 53.98 mm. CSS `mm` is NOT a physical mm
+   — browsers anchor it to the 96dpi reference (~3.78px/mm), so `85.6mm` renders
+   smaller than a real card on a high-dpi laptop. There is no CSS unit for true
+   physical size, so the card is sized as 85.6 x 53.98 "mm" where 1mm = a
+   calibratable --pcard-ppmm px. The default (~5.15) is tuned to real size on a
+   Retina MacBook; the inline slider on the Projects view lets any screen dial
+   it in exactly (persisted as ice.pcardPpmm). Uniform across screens either way.
+   The open/stack animation reads live offset geometry, so it needs no change. */
+:root {
+  --pcard-ppmm: 5.15; /* px per mm — overridden inline from ice.pcardPpmm */
+  --pcard-w: calc(85.6px * var(--pcard-ppmm));
+  --pcard-h: calc(53.98px * var(--pcard-ppmm));
+}
 .projects-grid {
   grid-template-columns: repeat(3, var(--pcard-w));
   justify-content: center;
 }
 @media (max-width: 1100px) { .projects-grid { grid-template-columns: repeat(2, var(--pcard-w)); } }
-@media (max-width: 720px)  { .projects-grid { grid-template-columns: var(--pcard-w); } }
+@media (max-width: 820px)  { .projects-grid { grid-template-columns: var(--pcard-w); } }
 .project-card {
   width: var(--pcard-w); height: var(--pcard-h); aspect-ratio: auto;
 }
+/* inline size calibrator, centred above the deck */
+.pcard-cal {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin: 0 auto 18px; font-size: 12px; color: var(--text-muted);
+}
+.pcard-cal i { color: var(--text-faint); }
+.pcard-cal input[type="range"] { width: 170px; accent-color: var(--color-accent); cursor: ew-resize; }
+.pcard-cal .pcard-reset {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  color: var(--color-accent); font-size: 12px; font-weight: 500;
+}
+.pcard-cal .pcard-reset:hover { text-decoration: underline; }
 /* ============================ END EXPERIMENT ============================== */
