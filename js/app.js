@@ -4477,6 +4477,10 @@
   // same caps, so a stale board can never oversubscribe a team).
   var TEAM_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
   var TEAM_CAP = { participant: 5, mentor: 2 };
+  // Compact team labels for the board: Team A → T1 … Team F → T6. Data/name
+  // stay letter-based; only the visible admin labels are numbered.
+  function teamNum(L) { return String(TEAM_LETTERS.indexOf(L) + 1); }
+  function teamShort(L) { return 'T' + teamNum(L); }
 
   // Participant chip → participant slot; mentor chip (or admin-only) → mentor slot.
   function teamSlot(u) { return hasRoleU(u, 'participant') ? 'participant' : 'mentor'; }
@@ -4536,7 +4540,7 @@
       var removeCtl = busy
         ? '<span class="tb-remove tb-remove-busy" title="Removing…"><i class="fa-solid fa-spinner fa-spin"></i></span>'
         : '<button class="tb-remove" type="button" data-action="unassign-team" data-id="' + esc(u.id) + '"' +
-          (teamBusy ? ' disabled' : '') + ' title="Remove from Team ' + L + '"><i class="fa-solid fa-xmark"></i></button>';
+          (teamBusy ? ' disabled' : '') + ' title="Remove from ' + teamShort(L) + '"><i class="fa-solid fa-xmark"></i></button>';
       return '<div class="tb-member' + (busy ? ' tb-member-busy' : '') + '">' + avatar(u, 'avatar-sm') +
         '<a href="#/profile/' + esc(u.id) + '" title="' + esc(u.name) + '">' + esc(u.name) + '</a>' +
         (teamSlot(u) === 'mentor' ? '<i class="fa-solid fa-user-tie tb-tie" title="mentor"></i>' : '') +
@@ -4585,11 +4589,11 @@
       // the team row exists (created on first assignment).
       var scoreCtl = tr
         ? '<span class="tb-score"><i class="fa-solid fa-trophy"></i>' +
-            '<input type="number" class="tb-score-in" value="' + score + '" data-team="' + esc(tr.id) + '" aria-label="Team ' + L + ' score">' +
+            '<input type="number" class="tb-score-in" value="' + score + '" data-team="' + esc(tr.id) + '" aria-label="' + teamShort(L) + ' score">' +
             '<button class="tb-score-save" type="button" data-action="save-score" data-team="' + esc(tr.id) + '" title="Save score">Save</button></span>'
         : '<span class="tb-score tb-score-na" title="Assign members first"><i class="fa-solid fa-trophy"></i>—</span>';
       return '<div class="tb-card' + (full ? ' tb-full' : '') + (canFit ? ' tb-target' : '') + '">' +
-        '<div class="tb-head"><h3>Team ' + L + '</h3>' + scoreCtl + headExtra +
+        '<div class="tb-head"><h3>' + teamShort(L) + '</h3>' + scoreCtl + headExtra +
         '</div><div class="tb-slots">' + slots + '</div></div>';
     }).join('');
 
@@ -4616,7 +4620,7 @@
         tail = '<div class="tb-quickrow">' + TEAM_LETTERS.map(function (L) {
           var isFull = counts[L][st] >= TEAM_CAP[st];
           return '<button type="button" class="tb-qletter" data-action="assign-team" data-id="' + esc(u.id) + '" data-team="' + L + '"' +
-            ((isFull || teamBusy) ? ' disabled title="Team ' + L + ' has no free ' + st + ' slot"' : ' title="Assign to Team ' + L + '"') + '>' + L + '</button>';
+            ((isFull || teamBusy) ? ' disabled title="' + teamShort(L) + ' has no free ' + st + ' slot"' : ' title="Assign to ' + teamShort(L) + '"') + '>' + teamNum(L) + '</button>';
         }).join('') + '</div>' +
           '<button type="button" class="tb-qclose" data-action="tb-quick-close" title="Close"><i class="fa-solid fa-xmark"></i></button>';
       } else {
