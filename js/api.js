@@ -135,6 +135,7 @@
         .filter(function (k) {
           return k.indexOf('ice.bootstrap.') === 0 ||
                  k.indexOf('ice.regdraft.') === 0 ||
+                 k.indexOf('ice.editdraft.') === 0 ||
                  k.indexOf('ice.chat.') === 0;
         })
         .forEach(function (k) { localStorage.removeItem(k); });

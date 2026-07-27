@@ -2272,9 +2272,9 @@
       '<div class="idband"></div>' +
       '<textarea class="cinput cbio" name="bio" maxlength="260" placeholder="Short bio — who you are, what excites you">' + esc(u.bio || '') + '</textarea>' +
       '<div class="idlinks">' +
-      '<label class="cfield cfield-handle"><i class="fa-brands fa-github"></i><span class="handle-wrap"><span class="handle-prefix">github.com/</span><input class="cinput" name="linkGithub" maxlength="120" placeholder="username" value="' + esc(linkHandle('linkGithub', lg)) + '"></span><span class="link-status" id="ls_linkGithub" data-status=""></span></label>' +
-      '<label class="cfield"><i class="fa-solid fa-globe"></i><input class="cinput" name="linkWebsite" maxlength="200" placeholder="yourwebsite.com" value="' + esc(lw) + '"><span class="link-status" id="ls_linkWebsite" data-status=""></span></label>' +
-      '<label class="cfield cfield-handle"><i class="fa-brands fa-linkedin-in"></i><span class="handle-wrap"><span class="handle-prefix">linkedin.com/in/</span><input class="cinput" name="linkLinkedin" maxlength="120" placeholder="username" value="' + esc(linkHandle('linkLinkedin', ll)) + '"></span><span class="link-status" id="ls_linkLinkedin" data-status=""></span></label>' +
+      '<label class="cfield cfield-handle"><i class="fa-brands fa-github"></i><span class="handle-wrap"><span class="handle-prefix">github.com/</span><input class="cinput" name="linkGithub" autocomplete="off" maxlength="120" placeholder="username" value="' + esc(linkHandle('linkGithub', lg)) + '"></span><span class="link-status" id="ls_linkGithub" data-status=""></span></label>' +
+      '<label class="cfield"><i class="fa-solid fa-globe"></i><input class="cinput" name="linkWebsite" autocomplete="off" maxlength="200" placeholder="yourwebsite.com" value="' + esc(lw) + '"><span class="link-status" id="ls_linkWebsite" data-status=""></span></label>' +
+      '<label class="cfield cfield-handle"><i class="fa-brands fa-linkedin-in"></i><span class="handle-wrap"><span class="handle-prefix">linkedin.com/in/</span><input class="cinput" name="linkLinkedin" autocomplete="off" maxlength="120" placeholder="username" value="' + esc(linkHandle('linkLinkedin', ll)) + '"></span><span class="link-status" id="ls_linkLinkedin" data-status=""></span></label>' +
       '</div>' +
       '<div class="idcard-foot"><span class="idcard-url">' + esc(eventTagline()) + '</span>' +
       '<button type="button" class="flip-btn" data-action="flip-card"><i class="fa-solid fa-rotate"></i><span>Front</span></button></div>' +
@@ -2477,16 +2477,24 @@
     if (ov) ov.hidden = true;
   }
 
-  // ---- registration draft autosave (localStorage) ----
-  // Only the fresh-registration form is persisted (data-new="1"); editing an
-  // existing profile isn't, to avoid a stale draft shadowing live data.
-  // Keyed per project — a draft started in a test project must never surface
-  // in another project's register form.
+  // ---- profile draft autosave (localStorage) ----
+  // Both forms are persisted so a refresh never drops typed values: the
+  // fresh-registration form under regdraft, an existing profile's in-progress
+  // edits under editdraft (kept separate so a half-typed edit can't shadow the
+  // registration flow, and vice versa). Keyed per project — a draft started in a
+  // test project must never surface in another project's form. Cleared on a
+  // successful save.
   function regDraftKey() { return 'ice.regdraft.' + A.getProject(); }
+  function editDraftKey() { return 'ice.editdraft.' + A.getProject(); }
+  // The active form's key: registration vs editing an existing profile.
+  function activeDraftKey() {
+    var form = $('#profileForm');
+    return (form && form.getAttribute('data-new') === '1') ? regDraftKey() : editDraftKey();
+  }
 
   function collectRegDraft() {
     var form = $('#profileForm');
-    if (!form || form.getAttribute('data-new') !== '1') return null;
+    if (!form) return null;
     var fd = new FormData(form);
     return {
       firstName: fd.get('firstName') || '', lastName: fd.get('lastName') || '',
@@ -2508,24 +2516,25 @@
     // account on a shared browser, nor resurrect an old card for someone who
     // was deleted and re-invited.
     d._email = (state.data && state.data.email) || '';
-    try { localStorage.setItem(regDraftKey(), JSON.stringify(d)); } catch (e) { /* quota */ }
+    try { localStorage.setItem(activeDraftKey(), JSON.stringify(d)); } catch (e) { /* quota */ }
   }
-  function loadRegDraft() {
+  function loadDraftAt_(key) {
     try {
-      var d = JSON.parse(localStorage.getItem(regDraftKey()) || 'null');
+      var d = JSON.parse(localStorage.getItem(key) || 'null');
       if (!d) return null;
       // Different identity than the one that saved it (account switch, or this
-      // email was offboarded and re-invited) — the draft is stale. Drop it and
-      // fall back to the server prefill (blank profile + the pre-created work
-      // email), which is the intended fresh-start state.
+      // email was offboarded and re-invited) — the draft is stale, drop it.
       if ((d._email || '') !== ((state.data && state.data.email) || '')) {
-        clearRegDraft();
+        localStorage.removeItem(key);
         return null;
       }
       return d;
     } catch (e) { return null; }
   }
+  function loadRegDraft() { return loadDraftAt_(regDraftKey()); }
+  function loadEditDraft() { return loadDraftAt_(editDraftKey()); }
   function clearRegDraft() { localStorage.removeItem(regDraftKey()); }
+  function clearEditDraft() { localStorage.removeItem(editDraftKey()); }
 
   // Draft → the user-shaped object profileForm() expects (name recombined,
   // links re-bucketed by hostname into the github/website/linkedin fields).
@@ -2584,7 +2593,11 @@
     setTimeout(afterProfileForm, 0);
     // Add-to-Wallet is a button next to "Save changes"; tapping it flips a QR
     // into the persona space (see showWalletFlyout) — no scrolling panel here.
-    return profileScaffold('', '', profileForm(me(), false));
+    // In-progress edits (autosaved to editdraft) survive a refresh: overlay them
+    // on the live profile so id/role/workEmail stay, but typed values return.
+    var ed = loadEditDraft();
+    var seed = ed ? Object.assign({}, me(), draftToUser(ed)) : me();
+    return profileScaffold('', '', profileForm(seed, false));
   }
 
   function profileScaffold(title, sub, inner) {
@@ -2859,10 +2872,13 @@
       pform.addEventListener('input', updateFieldHints);
       pform.addEventListener('change', updateFieldHints);
       refreshPersona(); // initial (edit form / restored draft / prefill)
+      // Autosave BOTH forms (new + edit) so a refresh never drops typed values.
+      pform.addEventListener('input', saveRegDraft);
+      pform.addEventListener('change', saveRegDraft);
       var isNew = pform.getAttribute('data-new') === '1';
       if (isNew) {
-        // Autosave the fresh-registration form + re-evaluate the Join gate.
-        var onEdit = function () { saveRegDraft(); updateJoinState(); };
+        // Re-evaluate the Join gate as the fresh-registration form changes.
+        var onEdit = function () { updateJoinState(); };
         pform.addEventListener('input', onEdit);
         pform.addEventListener('change', onEdit);
         // Debounced proposed-email lookup as the first/last name change.
@@ -5389,7 +5405,7 @@
           // attempt succeeded and only its response was lost — carry on.
           if (!(isNew && err.code === 'exists')) throw err;
         }
-        if (isNew) clearRegDraft();
+        if (isNew) clearRegDraft(); else clearEditDraft();
         photoEd = null;
         await refresh();
         toast(isNew ? 'Welcome aboard' : 'Profile saved');
