@@ -2143,7 +2143,9 @@ body.hive-full .nav a { pointer-events: auto; }
 }
 /* right-third detail panel: blurb + people + projects for the picked skill */
 .skills-side {
-  position: absolute; top: 16px; right: 20px; bottom: 16px; z-index: 2;
+  /* start below the app bar (min-height 60px) so the panel title never slides
+     under the top-right controls (We / night / avatar) */
+  position: absolute; top: 72px; right: 20px; bottom: 16px; z-index: 2;
   width: min(320px, 28%); overflow-y: auto; padding: 6px 4px;
 }
 .skills-side .ss-empty {
