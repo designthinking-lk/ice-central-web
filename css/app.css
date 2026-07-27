@@ -536,12 +536,14 @@ a.card { color: inherit; display: block; }
 .member-stack .avatar-sm:first-child { margin-left: 0; }
 
 /* ------------------------------------------------------------------ detail */
-.page-head { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 28px; }
+/* detail pages (profile, team) centre on a comfortable column so they don't
+   stretch thin and empty on a large / 4K screen; still full-ish on a laptop. */
+.page-head { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; margin: 0 auto 28px; max-width: 1280px; }
 .page-head .info { flex: 1; min-width: 260px; }
 .page-head h1 { font-size: 32px; letter-spacing: -0.02em; margin-bottom: 4px; }
 .meta-row { display: flex; gap: 18px; flex-wrap: wrap; color: var(--text-muted); font-size: 14px; margin: 6px 0 12px; }
 .meta-row i { margin-right: 6px; color: var(--text-faint); }
-.detail-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start; }
+.detail-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start; max-width: 1280px; margin: 0 auto; }
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; }
 .panel h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
 .panel h3 i { color: var(--color-accent); font-size: 14px; }
