@@ -135,6 +135,10 @@
   }
   function hasRoleU(u, role) { return rolesOf(u).indexOf(role) !== -1; }
   function hasAccess(u) { return rolesOf(u).length > 0; }
+  // Shown in the community surfaces — the ICE letter hive, teams and project
+  // cards — only if they hold a participant/mentor role. Admin-only accounts
+  // (organizers with no community chip) stay off those views.
+  function isCommunityMember(u) { return hasRoleU(u, 'participant') || hasRoleU(u, 'mentor'); }
   // Roles an admin can still add to this person (max 2; participant/mentor
   // are mutually exclusive).
   function addableRoles(u) {
@@ -1165,7 +1169,7 @@
 
   // mentors/participants counts — shown beside the team chain in the app bar
   function topbarLegendHtml() {
-    var users = ((state.data && state.data.users) || []).filter(hasAccess);
+    var users = ((state.data && state.data.users) || []).filter(isCommunityMember);
     var mentors = users.filter(function (u) { return hasRoleU(u, 'mentor'); }).length;
     var participants = users.filter(function (u) { return hasRoleU(u, 'participant'); }).length;
     return '<div class="topbar-legend">' +
@@ -1274,7 +1278,7 @@
     var word = $('#word');
     if (!word) return;
     // role-less rows (access removed) stay off the hive
-    var users = ((state.data && state.data.users) || []).filter(hasAccess);
+    var users = ((state.data && state.data.users) || []).filter(isCommunityMember);
     var built = wordCells();
     var cells = built.cells;
     var w = 74, minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
@@ -2237,7 +2241,7 @@
   function cardRole(u, isNew) {
     if (!isNew) return hasRoleU(u, 'admin') ? 'admin' : hasRoleU(u, 'mentor') ? 'mentor' : 'participant';
     var d = state.data || {};
-    if (d.invite) return d.invite.role === 'mentor' ? 'mentor' : 'participant';
+    if (d.invite) return d.invite.role === 'mentor' ? 'mentor' : d.invite.role === 'admin' ? 'admin' : 'participant';
     return d.isAdmin ? 'admin' : 'participant';
   }
 
@@ -3022,7 +3026,8 @@
   function projectMembers(slot) {
     var team = projectTeam(slot);
     if (!team || team.demo) return [];
-    return (team.members || []).map(userById).filter(Boolean);
+    // admin-only members never surface on a project card
+    return (team.members || []).map(userById).filter(Boolean).filter(isCommunityMember);
   }
   function canEditProject(slot) {
     if (!me()) return false;
@@ -4267,7 +4272,7 @@
     // Send is blocked while any address is already invited/registered — remove it first.
     var canSend = n > 0 && dupCount === 0 && !frozen;
     return '<div class="panel invite-card">' +
-      '<h3><i class="fa-regular fa-paper-plane"></i>Invite ' + (c.role === 'mentor' ? 'mentors' : 'participants') + '</h3>' +
+      '<h3><i class="fa-regular fa-paper-plane"></i>Invite ' + (c.role === 'mentor' ? 'mentors' : c.role === 'admin' ? 'admins' : 'participants') + '</h3>' +
       '<div class="tag-input invite-input" data-action="invite-focus">' + chips +
       '<input id="inviteEntry" type="text" autocomplete="off" spellcheck="false" value="' + esc(c.text || '') + '" placeholder="' + (n ? 'Add another…' : 'Type or paste email addresses…') + '"' + dis + '>' +
       '</div>' +
@@ -4341,6 +4346,7 @@
     var head = '<div class="invite-bar">' +
       '<button class="btn btn-outline btn-sm" data-action="invite-open" data-role="participant"><i class="fa-solid fa-user-plus"></i>Invite participants</button>' +
       '<button class="btn btn-outline btn-sm" data-action="invite-open" data-role="mentor"><i class="fa-solid fa-user-tie"></i>Invite mentors</button>' +
+      '<button class="btn btn-outline btn-sm" data-action="invite-open" data-role="admin"><i class="fa-solid fa-shield-halved"></i>Invite admins</button>' +
       '</div>' + (inviteCard ? inviteCardHtml() : '');
     if (!users.length && !pending.length) {
       return head + '<div class="empty"><i class="fa-solid fa-users"></i>Nobody has registered yet.</div>';
@@ -4382,7 +4388,7 @@
         '<td><button class="btn btn-ghost btn-sm" data-action="del-user" data-id="' + esc(u.id) + '" data-name="' + esc(u.name) + '"' + (deletingUserId ? ' style="visibility:hidden" tabindex="-1"' : '') + '><i class="fa-regular fa-trash-can"></i></button></td></tr>';
     }).join('');
     var invRows = pending.map(function (i) {
-      var roleTag = i.role === 'mentor' ? 'mentor' : 'participant';
+      var roleTag = i.role === 'mentor' ? 'mentor' : i.role === 'admin' ? 'admin' : 'participant';
       return '<tr class="invite-row"><td style="display:flex;align-items:center;gap:10px">' +
         '<span class="avatar avatar-sm invite-avatar"><i class="fa-regular fa-envelope"></i></span><span class="invite-noname">—</span></td>' +
         '<td>' + esc(i.email) + '</td>' +
@@ -5153,7 +5159,8 @@
       }
       case 'invite-open': {
         if (inviteCard && inviteCard.sending) break;
-        inviteCard = { role: t.getAttribute('data-role') === 'mentor' ? 'mentor' : 'participant', chips: [] };
+        var invRole = t.getAttribute('data-role');
+        inviteCard = { role: (invRole === 'mentor' || invRole === 'admin') ? invRole : 'participant', chips: [] };
         route();
         var invEntry0 = $('#inviteEntry');
         if (invEntry0) invEntry0.focus();
