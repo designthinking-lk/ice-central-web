@@ -16,6 +16,7 @@
     roleFilter: 'all',
     skillFilter: null,
     teamFilter: null, // active team highlight on the People hive (team id or null)
+    renderedSig: null, // signature of the data the current view was built from
   };
 
   // ------------------------------------------------------------- utilities
@@ -307,9 +308,47 @@
     return false;
   }
 
+  // Signature of the payload for change-detection, EXCLUDING volatile fields
+  // that change on every fetch: `online` (presence — the backend even marks US
+  // online as a side effect of the call) and `unread`. Without this exclusion a
+  // plain reload always looks "changed", so the boot background refresh would
+  // re-render the whole view ~3s in — a visible flash for no reason. Those two
+  // fields are reflected without a re-render: `unread` via renderChrome's chat
+  // badge, presence via refreshPresenceDots.
+  function dataSig(d) {
+    if (!d) return '';
+    try {
+      return JSON.stringify(d, function (k, v) {
+        return (k === 'online' || k === 'unread') ? undefined : v;
+      });
+    } catch (e) { return ''; }
+  }
+
+  // Update the People hive's online dots in place (cheap, no re-render) so
+  // presence stays fresh even when a background refresh brings no structural
+  // change and therefore skips route().
+  function refreshPresenceDots() {
+    var word = $('#word');
+    if (!word) return;
+    var online = (state.data && state.data.online) || [];
+    $all('.oct[data-uid]', word).forEach(function (el) {
+      var isOn = online.indexOf(el.getAttribute('data-uid')) !== -1;
+      var dot = el.querySelector('.oct-online');
+      if (isOn && !dot) {
+        var s = document.createElement('span');
+        s.className = 'oct-online'; s.title = 'Online';
+        el.appendChild(s);
+      } else if (!isOn && dot) {
+        dot.remove();
+      }
+      el.title = (el.title || '').replace(/ — online$/, '') + (isOn ? ' — online' : '');
+    });
+  }
+
   // opts.background = true: data-only refresh (chrome updates, but the view is
-  // only re-rendered when it's safe — never mid-interaction). User-triggered
-  // refreshes (after a save, etc.) pass nothing and always re-render.
+  // only re-rendered when it's safe — never mid-interaction, and never when the
+  // fresh data is structurally identical to what's already on screen). User-
+  // triggered refreshes (after a save, etc.) pass nothing and always re-render.
   async function refresh(opts) {
     opts = opts || {};
     try {
@@ -319,9 +358,18 @@
       state.loaded = true;
       A.writeCache(data);
       renderChrome();
-      // Always re-render on first paint (no prior data); otherwise a background
-      // refresh defers to the view when it's busy.
-      if (!opts.background || !hadData || !viewBusy()) route();
+      // First paint (no prior data) or an explicit refresh → always render.
+      // A background refresh only re-renders when the payload STRUCTURALLY
+      // changed (new/edited people, teams, projects…) and the view isn't busy;
+      // otherwise it just updates the decorative presence dots in place. This
+      // is what stops the one-off view repaint a few seconds after every load.
+      if (!opts.background || !hadData) {
+        route();
+      } else if (dataSig(data) !== state.renderedSig && !viewBusy()) {
+        route();
+      } else {
+        refreshPresenceDots();
+      }
     } catch (err) {
       // A stale/deleted project selection must not brick the app — fall back
       // to the default project once.
@@ -4574,6 +4622,10 @@
 
   function route() {
     var hash = location.hash || '#/';
+    // The view is (re)built from the current payload — record its signature so
+    // a following background refresh can tell whether anything structural
+    // actually changed before deciding to repaint (see refresh()).
+    state.renderedSig = dataSig(state.data);
     // #/wallet is phone-first — keep the .is-wallet flag in sync so its CSS
     // bypasses the mobile gate and shows only the handoff view.
     document.documentElement.classList.toggle('is-wallet', /^#\/wallet/.test(hash));
