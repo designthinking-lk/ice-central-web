@@ -1481,7 +1481,7 @@
             : (signedIn() && me()
                 ? (workEmailOf(u) ? '<button class="btn btn-primary btn-sm" data-action="chat-dm" data-person="' + esc(u.id) + '"><i class="fa-regular fa-message"></i><span class="label">Message</span><span class="spin"></span></button>' : '')
                 : '<button class="btn btn-primary btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in to message</button>'))) +
-      (u.video ? ' <a class="btn btn-ghost btn-sm" href="' + esc(u.video) + '" target="_blank" rel="noopener"><i class="fa-solid fa-video"></i>Intro video</a>' : '') +
+      (u.video ? ' <button class="btn btn-ghost btn-sm" type="button" data-action="profile-video-play" data-src="' + esc(u.video) + '"><i class="fa-solid fa-play"></i><span class="label">Play intro</span></button>' : '') +
       '</div></div></div>' +
       '<div class="detail-grid"><div>' +
       (u.bio ? '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-regular fa-id-badge"></i>About</h3><p style="white-space:pre-wrap;color:var(--text-body);margin:0">' + esc(u.bio) + '</p></div>' : '') +
@@ -2040,111 +2040,213 @@
     return canvas.toDataURL('image/jpeg', 0.88);
   }
 
-  // ---- youtube intro video ----
+  // ---- intro / pitch video: shared upload + validation ----
+  // Uploaded clips must be Full-HD landscape (1920×1080), ≤60s and ≤32 MB. The
+  // Apps Script upload path (a single base64 POST) tops out near 32 MB, so we
+  // reject anything larger in the browser before it is ever sent; the same caps
+  // live server-side as a backstop.
+  var VIDEO_MAX_BYTES = 32 * 1024 * 1024;
+  var VIDEO_MAX_SECONDS = 60.5;
+  var VIDEO_REQ_W = 1920, VIDEO_REQ_H = 1080;
 
-  function ytId(url) {
-    var m = String(url || '').match(/(?:youtube\.com\/(?:watch\?[^#\s]*v=|shorts\/|embed\/|live\/)|youtu\.be\/)([\w-]{11})/);
-    return m ? m[1] : null;
+  // The requirements notice shown inside every upload panel.
+  function videoReqHtml() {
+    return '<div class="vid-req"><i class="fa-solid fa-circle-info"></i>' +
+      '<span>Upload a <b>Full-HD 1920×1080</b> landscape clip, <b>up to 60 seconds</b>, <b>max 32 MB</b>. ' +
+      'Portrait or higher-resolution videos aren’t accepted.</span></div>';
   }
 
-  function ytCardHtml(url) {
-    var id = ytId(url);
-    if (!id) {
-      return '<div class="yt-empty"><i class="fa-brands fa-youtube"></i>' +
-        '<input id="ytInput" placeholder="Paste a YouTube link" value="' + esc(url || '') + '"></div>';
-    }
-    return '<div class="yt-preview">' +
-      '<img class="yt-thumb" src="https://i.ytimg.com/vi/' + esc(id) + '/hqdefault.jpg" alt="">' +
-      '<div class="yt-info"><div class="yt-title" id="ytTitle">YouTube video</div>' +
-      '<input class="yt-url" value="https://youtu.be/' + esc(id) + '" readonly onclick="this.select()"></div>' +
-      '<button type="button" class="yt-remove" data-action="yt-remove" title="Remove video"><i class="fa-solid fa-xmark"></i></button>' +
-      '</div>';
+  // Build <source> tags for a stored video: a public Drive URL gets two Drive
+  // endpoints (lh3 + uc fallback); a bundled asset path is used as-is.
+  function videoSourcesHtml(url) {
+    var m = String(url).match(/\/d\/([^/?]+)/) || String(url).match(/[?&]id=([^&]+)/);
+    var id = m ? m[1] : '';
+    var list = id
+      ? ['https://lh3.googleusercontent.com/d/' + id, 'https://drive.google.com/uc?export=download&id=' + id]
+      : [url];
+    return list.map(function (s) { return '<source src="' + esc(s) + '">'; }).join('');
   }
 
-  function ytRender(url) {
-    var box = $('#ytCard');
-    if (!box) return;
-    var id = ytId(url);
+  // Validate a picked File against the rules; report progress/errors through
+  // setStatus(msg, isErr) and call onOk(file) only when everything passes.
+  function validateVideoFile(file, setStatus, onOk) {
+    if (!file) return;
+    if (!/^video\//.test(file.type || '')) return setStatus('Please choose a video file (MP4 or WebM).', true);
+    if (file.size > VIDEO_MAX_BYTES) return setStatus('Video is ' + (file.size / 1024 / 1024).toFixed(1) + ' MB — must be under 32 MB.', true);
+    setStatus('Checking video…', false);
+    var url = URL.createObjectURL(file);
+    var probe = document.createElement('video');
+    probe.preload = 'metadata';
+    probe.onloadedmetadata = function () {
+      var dur = probe.duration, w = probe.videoWidth, h = probe.videoHeight;
+      URL.revokeObjectURL(url);
+      if (!isFinite(dur) || !w || !h) return setStatus('Could not read the video. Try an MP4.', true);
+      if (w !== VIDEO_REQ_W || h !== VIDEO_REQ_H) {
+        return setStatus('Video is ' + w + '×' + h + ' — must be Full-HD 1920×1080 (landscape).', true);
+      }
+      if (dur > VIDEO_MAX_SECONDS) return setStatus('Video is ' + Math.round(dur) + 's — must be 60 seconds or less.', true);
+      onOk(file);
+    };
+    probe.onerror = function () { URL.revokeObjectURL(url); setStatus('Could not read that video. Try an MP4.', true); };
+    probe.src = url;
+  }
+
+  // Open a file picker and run the choice through validation.
+  function pickVideoFile(setStatus, onOk) {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'video/mp4,video/webm,video/quicktime,video/ogg,video/*';
+    input.onchange = function () { validateVideoFile(input.files && input.files[0], setStatus, onOk); };
+    input.click();
+  }
+
+  // ---- profile intro video: upload panel (inside the card overlay) ----
+
+  function profileVideoUrl() {
     var hid = $('#profileForm [name="video"]');
-    if (hid) hid.value = id ? 'https://youtu.be/' + id : '';
-    box.innerHTML = ytCardHtml(url);
-    wireYt();
+    return (hid && hid.value) || '';
+  }
+
+  function videoPanelHtml() {
+    var has = !!profileVideoUrl();
+    return videoReqHtml() +
+      '<div class="vid-actions">' +
+        '<button type="button" class="btn btn-outline btn-sm" data-action="profile-video-pick"><i class="fa-solid fa-upload"></i>' + (has ? 'Replace video' : 'Upload video') + '</button>' +
+        (has ? '<button type="button" class="btn btn-ghost btn-sm" data-action="profile-video-remove"><i class="fa-regular fa-trash-can"></i>Remove</button>' : '') +
+      '</div>' +
+      (has ? '<div class="vid-ok"><i class="fa-solid fa-circle-check"></i>Video added — it loops as your card backdrop.</div>' : '') +
+      '<div class="vid-status" id="profileVideoStatus"></div>';
+  }
+
+  function renderVideoPanel() {
+    var box = $('#ytCard');
+    if (box) box.innerHTML = videoPanelHtml();
+  }
+
+  function profileVideoStatus(msg, isErr) {
+    var el = $('#profileVideoStatus');
+    if (el) { el.textContent = msg; el.className = 'vid-status' + (isErr ? ' err' : ''); }
+    if (isErr) toast(msg, true);
+  }
+
+  function pickProfileVideo() {
+    pickVideoFile(profileVideoStatus, uploadProfileVideo);
+  }
+
+  function uploadProfileVideo(file) {
+    profileVideoStatus('Uploading… this can take a moment.', false);
+    var reader = new FileReader();
+    reader.onload = function () {
+      A.api('upload_profile_video', { data: reader.result, filename: file.name.replace(/\.[^.]+$/, '') })
+        .then(function (r) {
+          var hid = $('#profileForm [name="video"]');
+          if (hid && r && r.url) hid.value = r.url;
+          profileVideoStatus('', false);
+          renderVideoPanel();
+          renderCardVideo(); // the card backdrop follows the picked video live
+          updateJoinState();
+          saveRegDraft();
+          toast('Video uploaded');
+        })
+        .catch(function (err) { profileVideoStatus(err.message || 'Upload failed', true); });
+    };
+    reader.onerror = function () { profileVideoStatus('Could not read the file.', true); };
+    reader.readAsDataURL(file);
+  }
+
+  function removeProfileVideo() {
+    var hid = $('#profileForm [name="video"]');
+    if (hid) hid.value = '';
+    renderVideoPanel();
+    renderCardVideo();
     updateJoinState();
     saveRegDraft();
-    renderCardVideo(); // the card backdrop follows the picked video live
-    if (id) {
-      fetch('https://noembed.com/embed?url=' + encodeURIComponent('https://youtu.be/' + id))
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          var el = $('#ytTitle');
-          if (el && d && d.title) el.textContent = d.title;
-        })
-        .catch(function () { /* thumbnail alone is fine */ });
-    }
   }
 
-  function wireYt() {
-    var input = $('#ytInput');
-    if (input) {
-      input.addEventListener('input', function () {
-        if (ytId(input.value)) ytRender(input.value);
-      });
+  // ---- profile page: play the member's intro clip as the page backdrop ----
+  // A member who uploaded a clip gets a Play button on their profile; it drops a
+  // looping video layer behind the page content (in .main, so it survives the
+  // #view repaint on data refreshes) until they stop it or leave the page.
+  var profileBg = null, profileBgHash = '';
+  function playProfileBg(src) {
+    stopProfileBg();
+    var main = document.querySelector('.main');
+    if (!main || !src) return;
+    var layer = document.createElement('div');
+    layer.className = 'profile-bg-video';
+    layer.innerHTML =
+      '<video id="profileBgEl" autoplay loop playsinline preload="auto">' + videoSourcesHtml(src) + '</video>' +
+      '<div class="profile-bg-scrim"></div>' +
+      '<div class="profile-bg-ctrls">' +
+        '<button type="button" class="profile-bg-btn" data-action="profile-bg-mute" title="Mute"><i class="fa-solid fa-volume-high"></i></button>' +
+        '<button type="button" class="profile-bg-btn" data-action="profile-bg-stop" title="Stop"><i class="fa-solid fa-xmark"></i></button>' +
+      '</div>';
+    main.insertBefore(layer, main.firstChild);
+    document.body.classList.add('profile-bg-on');
+    profileBg = layer;
+    profileBgHash = location.hash || '';
+    var v = $('#profileBgEl');
+    if (v) {
+      v.muted = false;
+      var p = v.play();
+      if (p && p.catch) p.catch(function () { v.muted = true; setProfileBgMuteIcon(); v.play().catch(function () {}); });
     }
+    setProfileBgMuteIcon();
+  }
+  function stopProfileBg() {
+    if (profileBg && profileBg.parentNode) profileBg.parentNode.removeChild(profileBg);
+    profileBg = null; profileBgHash = '';
+    document.body.classList.remove('profile-bg-on');
+  }
+  function setProfileBgMuteIcon() {
+    var v = $('#profileBgEl');
+    var btn = profileBg && profileBg.querySelector('[data-action="profile-bg-mute"]');
+    if (!v || !btn) return;
+    btn.innerHTML = '<i class="fa-solid ' + (v.muted ? 'fa-volume-xmark' : 'fa-volume-high') + '"></i>';
+    btn.title = v.muted ? 'Unmute' : 'Mute';
   }
 
   // ---- intro video as the card backdrop ----
   // The video fills the card above the footer row (~16:9 there), on loop at
   // reduced opacity so the card gradient tints through. When the member has
-  // no intro video the default backdrop plays instead — it is display-only
-  // and never written into the form's video field. Playback starts muted
-  // (autoplay policy), then unmutes as soon as the player is ready; the
-  // footer speaker button toggles via the YouTube iframe postMessage API.
-  var DEFAULT_CARD_VIDEO = 'TeaZL3LJ7ME';
+  // no intro video, a bundled default loop plays instead — display-only, never
+  // written into the form's video field. The backdrop starts muted so autoplay
+  // is always allowed; the footer speaker button toggles the <video> directly.
+  var DEFAULT_CARD_VIDEO = 'assets/video/default-card-bg.mp4';
   var cardVideoMuted = true;
 
-  function cardVideoFrame(id) {
-    var qs = 'autoplay=1&mute=1&loop=1&playlist=' + id +
-      '&controls=0&playsinline=1&rel=0&modestbranding=1&iv_load_policy=3&disablekb=1' +
-      '&enablejsapi=1&origin=' + encodeURIComponent(location.origin);
-    return '<iframe id="cardVideoIf" src="https://www.youtube.com/embed/' + esc(id) + '?' + qs + '"' +
-      ' allow="autoplay; encrypted-media" tabindex="-1" title="Intro video backdrop"></iframe>';
+  function cardVideoTag(src) {
+    return '<video id="cardVideoEl" autoplay loop playsinline preload="auto"' +
+      (cardVideoMuted ? ' muted' : '') + '>' + videoSourcesHtml(src) + '</video>';
   }
 
   function renderCardVideo() {
     var box = $('#cardVideo');
     if (!box) return;
-    var hid = $('#profileForm [name="video"]');
-    var own = ytId(hid && hid.value);
-    var id = own || DEFAULT_CARD_VIDEO; // fallback backdrop, never saved
+    var own = profileVideoUrl();
+    var src = own || DEFAULT_CARD_VIDEO; // fallback backdrop, never saved
     var muteBtn = $('#cardMuteBtn');
     var label = $('#cardVideoLabel');
     if (label) label.textContent = own ? '' : 'Add video';
     if (muteBtn) muteBtn.hidden = false;
-    // only rebuild the iframe when the video actually changed, so re-renders
-    // don't restart playback
-    if (box.getAttribute('data-vid') !== id) {
-      box.setAttribute('data-vid', id);
-      box.innerHTML = cardVideoFrame(id);
-      // sound on by default: the embed must start muted to be allowed to
-      // autoplay, so unmute through the API once the player has loaded
-      cardVideoMuted = false;
-      setCardMuteIcon();
-      var f = $('#cardVideoIf');
-      if (f) f.addEventListener('load', function () {
-        setTimeout(function () {
-          if (cardVideoMuted) return; // user hit mute before the player woke up
-          cardVideoCmd('unMute');
-          cardVideoCmd('playVideo');
-        }, 700);
-      });
+    // only rebuild when the source actually changed, so re-renders don't
+    // restart playback
+    if (box.getAttribute('data-vid') !== src) {
+      box.setAttribute('data-vid', src);
+      box.innerHTML = cardVideoTag(src);
+      var v = $('#cardVideoEl');
+      if (v) {
+        v.muted = cardVideoMuted;
+        var p = v.play();
+        // an unmuted autoplay can be blocked until the user interacts — fall
+        // back to muted playback and reflect it on the speaker button
+        if (p && p.catch) p.catch(function () {
+          v.muted = true; cardVideoMuted = true; setCardMuteIcon();
+          v.play().catch(function () {});
+        });
+      }
     }
-  }
-
-  function cardVideoCmd(func) {
-    var f = $('#cardVideoIf');
-    if (f && f.contentWindow) {
-      f.contentWindow.postMessage(JSON.stringify({ event: 'command', func: func, args: [] }), '*');
-    }
+    setCardMuteIcon();
   }
 
   function setCardMuteIcon() {
@@ -2154,18 +2256,13 @@
     btn.title = cardVideoMuted ? 'Unmute video' : 'Mute video';
   }
 
-  // Add/edit the video URL — the yt-card picker lives in an inline overlay on
+  // Add/replace the intro video — the upload panel lives in an inline overlay on
   // the card front, opened from the footer's video button.
   function openVideoOverlay() {
     var ov = $('#videoOverlay');
     if (!ov) return;
-    var hid = $('#profileForm [name="video"]');
-    var box = $('#ytCard');
-    if (box) box.innerHTML = ytCardHtml((hid && hid.value) || '');
+    renderVideoPanel();
     ov.hidden = false;
-    wireYt();
-    var input = $('#ytInput');
-    if (input) input.focus();
   }
 
   function closeVideoOverlay() {
@@ -2230,8 +2327,8 @@
         return linkRules[i][2] + ' link should point to ' + linkRules[i][2].toLowerCase() + '.com.';
       }
     }
-    var ytIn = $('#ytInput');
-    if (ytIn && ytIn.value.trim() && !ytId(ytIn.value)) return 'That does not look like a YouTube link.';
+    // Intro video is validated at upload time (resolution/length/size) and only
+    // a Drive URL ever reaches the hidden field, so there's nothing to check here.
     return null;
   }
 
@@ -2257,7 +2354,9 @@
     });
     var skills = (u.skills || []);
     var gender = u.gender || '';
-    var vid = ytId(u.video || '');
+    // only a Drive-hosted clip is carried into the editor; legacy YouTube links
+    // are dropped (the member re-uploads), so the default backdrop shows instead
+    var vid = /^https:\/\/(lh3\.googleusercontent\.com|drive\.(google|usercontent\.google)\.com)\//.test(u.video || '') ? u.video : '';
     // The card edits first + last separately; they recombine into the stored `name`.
     var nameParts = String(u.name || '').trim().split(/\s+/).filter(Boolean);
     var firstName = nameParts.shift() || '';
@@ -2312,7 +2411,7 @@
       '<div class="idcard-foot"><span class="idcard-url">' + esc(siteUrl()) + '</span>' +
       '<span class="foot-right">' +
       '<button type="button" class="foot-icon" id="cardMuteBtn" data-action="card-video-mute" title="Unmute video" hidden><i class="fa-solid fa-volume-xmark"></i></button>' +
-      '<button type="button" class="foot-icon" data-action="card-video-edit" title="Intro video — YouTube link"><i class="fa-solid fa-video"></i><span class="foot-icon-label" id="cardVideoLabel"></span></button>' +
+      '<button type="button" class="foot-icon" data-action="card-video-edit" title="Intro video — upload a clip"><i class="fa-solid fa-video"></i><span class="foot-icon-label" id="cardVideoLabel"></span></button>' +
       '<button type="button" class="flip-btn" data-action="flip-card"><i class="fa-solid fa-rotate"></i><span>More on the back</span></button>' +
       '</span></div>' +
       // skill picker — a temporary overlay over the card front
@@ -2331,8 +2430,8 @@
       '<div class="cskill-overlay video-overlay" id="videoOverlay" hidden>' +
       '<div class="cskill-oh"><span>Intro video</span>' +
       '<button type="button" class="cskill-close" data-action="close-video" aria-label="Done"><i class="fa-solid fa-xmark"></i></button></div>' +
-      '<p class="video-ov-hint">Paste a YouTube link — it plays as your card’s backdrop.</p>' +
-      '<div class="yt-card" id="ytCard"></div>' +
+      '<p class="video-ov-hint">Upload a short clip — it loops as your card’s backdrop.</p>' +
+      '<div class="vid-panel" id="ytCard"></div>' +
       '</div>' +
       '</div>' + // close .idfront
 
@@ -2357,7 +2456,7 @@
       '<div class="pf-right">' +
       // intro video lives on the card (backdrop + footer buttons); only the
       // value travels with the form
-      '<input type="hidden" name="video" value="' + (vid ? 'https://youtu.be/' + esc(vid) : '') + '">' +
+      '<input type="hidden" name="video" value="' + esc(vid) + '">' +
 
       // live persona — Claude interprets the card as it fills in
       '<div class="persona" id="personaPanel"><p class="persona-text" id="personaText">' + esc(personaDefaultText(isNew)) + '</p></div>' +
@@ -3146,7 +3245,8 @@
       var tabBody;
       if (tab === 'video') {
         tabBody =
-          '<p class="proj-vid-lead">Your team’s pitch clip — up to 30 seconds. It loops as the card background.</p>' +
+          '<p class="proj-vid-lead">Your team’s pitch clip — it loops as the card background.</p>' +
+          videoReqHtml() +
           '<div class="proj-vid-row">' +
             '<button class="btn btn-outline" type="button" data-action="proj-upload-video" data-slot="' + slot + '"><i class="fa-solid fa-upload"></i>' + (p.video ? 'Replace video' : 'Upload video') + '</button>' +
             (p.video ? '<button class="btn btn-ghost proj-vid-remove" type="button" data-action="proj-remove-video" data-slot="' + slot + '"><i class="fa-regular fa-trash-can"></i>Remove</button>' : '') +
@@ -3450,34 +3550,12 @@
     });
   }
 
-  // Pick + validate (format, ≤30s, ≤25MB) + upload a team pitch video to Drive.
-  var PROJ_VIDEO_MAX = 25 * 1024 * 1024;
+  // Pick + validate (Full-HD 1920×1080, ≤60s, ≤32MB) + upload a team pitch video
+  // to Drive. Shares the same rules as the profile intro video.
   function pickProjectVideo(slot, btn) {
-    var input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'video/mp4,video/webm,video/quicktime,video/ogg,video/*';
-    input.onchange = function () {
-      var file = input.files && input.files[0];
-      if (!file) return;
-      var status = $('#projVideoStatus');
-      function setStatus(msg, isErr) { if (status) { status.textContent = msg; status.className = 'proj-vid-status' + (isErr ? ' err' : ''); } if (isErr) toast(msg, true); }
-      if (!/^video\//.test(file.type || '')) return setStatus('Please choose a video file (MP4 or WebM).', true);
-      if (file.size > PROJ_VIDEO_MAX) return setStatus('Video is ' + (file.size / 1024 / 1024).toFixed(1) + ' MB — must be under 25 MB.', true);
-      setStatus('Checking video…', false);
-      var url = URL.createObjectURL(file);
-      var probe = document.createElement('video');
-      probe.preload = 'metadata';
-      probe.onloadedmetadata = function () {
-        var dur = probe.duration;
-        URL.revokeObjectURL(url);
-        if (!isFinite(dur)) return setStatus('Could not read the video length. Try an MP4.', true);
-        if (dur > 30.5) return setStatus('Video is ' + Math.round(dur) + 's — must be 30 seconds or less.', true);
-        uploadProjectVideo(slot, file, btn, setStatus);
-      };
-      probe.onerror = function () { URL.revokeObjectURL(url); setStatus('Could not read that video. Try an MP4.', true); };
-      probe.src = url;
-    };
-    input.click();
+    var status = $('#projVideoStatus');
+    function setStatus(msg, isErr) { if (status) { status.textContent = msg; status.className = 'proj-vid-status' + (isErr ? ' err' : ''); } if (isErr) toast(msg, true); }
+    pickVideoFile(setStatus, function (file) { uploadProjectVideo(slot, file, btn, setStatus); });
   }
   function uploadProjectVideo(slot, file, btn, setStatus) {
     busy(btn, true);
@@ -4770,6 +4848,9 @@
     // bypasses the mobile gate and shows only the handoff view.
     document.documentElement.classList.toggle('is-wallet', /^#\/(wallet|pcard)/.test(hash));
     closeMenu();
+    // Stop a profile-backdrop video when navigating away (route() also re-runs on
+    // in-place data refreshes — those keep the same hash, so playback survives).
+    if (profileBg && hash !== profileBgHash) stopProfileBg();
     // Drop an open announcement draft when leaving the news page.
     if (annDraft.open && !/^#\/announcements$/.test(hash)) annDraft = { open: false, editing: null };
     var view = $('#view');
@@ -4876,8 +4957,8 @@
       normUrl(fd.get('linkWebsite')),
       normUrl(completeLink('linkLinkedin', fd.get('linkLinkedin'))),
     ].filter(Boolean);
-    var ytIn = $('#ytInput');
-    var video = fd.get('video') || (ytIn && ytId(ytIn.value) ? 'https://youtu.be/' + ytId(ytIn.value) : '');
+    // the hidden `video` field holds the uploaded intro clip's Drive URL (or '')
+    var video = fd.get('video') || '';
     var first = String(fd.get('firstName') || '').trim();
     var last = String(fd.get('lastName') || '').trim();
     return {
@@ -5280,17 +5361,24 @@
       case 'pick-image': pickImage(t); break;
       case 'photo-pick': { var pf = $('#photoFile'); if (pf) pf.click(); break; }
       case 'flip-card': { var card = $('#idcard'); if (card) card.classList.toggle('flipped'); break; }
-      case 'yt-remove': {
-        var hid = $('#profileForm [name="video"]');
-        if (hid) hid.value = '';
-        ytRender('');
+      case 'profile-video-pick': pickProfileVideo(); break;
+      case 'profile-video-remove': removeProfileVideo(); break;
+      case 'profile-video-play': playProfileBg(t.getAttribute('data-src')); break;
+      case 'profile-bg-stop': stopProfileBg(); break;
+      case 'profile-bg-mute': {
+        var bv = $('#profileBgEl');
+        if (bv) { bv.muted = !bv.muted; if (!bv.muted) { var bp = bv.play(); if (bp && bp.catch) bp.catch(function () {}); } setProfileBgMuteIcon(); }
         break;
       }
       case 'card-video-edit': openVideoOverlay(); break;
       case 'close-video': closeVideoOverlay(); break;
       case 'card-video-mute': {
         cardVideoMuted = !cardVideoMuted;
-        cardVideoCmd(cardVideoMuted ? 'mute' : 'unMute');
+        var cv = $('#cardVideoEl');
+        if (cv) {
+          cv.muted = cardVideoMuted;
+          if (!cardVideoMuted) { var pr = cv.play(); if (pr && pr.catch) pr.catch(function () {}); }
+        }
         setCardMuteIcon();
         break;
       }

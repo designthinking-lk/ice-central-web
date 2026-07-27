@@ -920,14 +920,14 @@ textarea.input { resize: vertical; min-height: 90px; }
   overflow: hidden; pointer-events: none; z-index: 0;
 }
 .card-video:empty { display: none; }
-.card-video iframe {
+.card-video video {
   position: absolute; left: 0; top: 50%; transform: translateY(-50%);
   width: 100%; aspect-ratio: 16 / 9; height: auto; border: 0;
-  opacity: 0.35;
-  animation: cv-reveal 7s ease;
+  object-fit: cover; opacity: 0.35;
+  animation: cv-reveal 0.9s ease;
 }
 @keyframes cv-reveal {
-  0%, 80% { opacity: 0; }  /* ~5.6s hidden — outlasts YouTube's title overlay */
+  0% { opacity: 0; }
   100% { opacity: 0.35; }
 }
 /* card content paints above the video layer */
@@ -967,6 +967,52 @@ textarea.input { resize: vertical; min-height: 90px; }
   display: flex; align-items: center; justify-content: center;
 }
 .yt-remove:hover { background: rgba(14,15,17,0.8); }
+
+/* --------------------------------------------------- intro / pitch video UI */
+/* Upload panel shared by the profile card overlay (dark) and the project video
+   tab (light). Base styles suit the light surface; the .video-overlay overrides
+   flip them for the dark card overlay. */
+.vid-panel { display: flex; flex-direction: column; gap: 10px; }
+.vid-req {
+  display: flex; gap: 9px; align-items: flex-start; margin: 0 0 12px;
+  font-size: 12.5px; line-height: 1.5; padding: 9px 12px; border-radius: 8px;
+  background: rgba(240,165,0,0.10); border: 1px solid rgba(240,165,0,0.42); color: var(--text-body);
+}
+.vid-req i { color: #cf8f00; margin-top: 1px; flex: none; font-size: 13px; }
+.vid-req b { color: var(--text); font-weight: 700; }
+.vid-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.vid-ok { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #2e9e5b; }
+.vid-status { font-size: 12.5px; min-height: 15px; color: var(--text-muted); }
+.vid-status.err { color: #d23; }
+/* dark card overlay context */
+.video-overlay .vid-panel { gap: 12px; }
+.video-overlay .vid-req { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.26); color: rgba(255,255,255,0.85); }
+.video-overlay .vid-req i { color: #ffd36b; }
+.video-overlay .vid-req b { color: #fff; }
+.video-overlay .vid-ok { color: #7fe0a3; }
+.video-overlay .vid-status { color: rgba(255,255,255,0.72); }
+.video-overlay .vid-status.err { color: #ff9a9a; }
+
+/* ------------------------------------------ profile page: video as backdrop */
+/* A member's intro clip plays fixed behind the profile content (lives in .main,
+   a non-scrolling relative parent, so it survives #view repaints). A scrim keeps
+   the header text legible; content panels paint opaque on top. */
+.profile-bg-video { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.profile-bg-video video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.profile-bg-scrim { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(10,11,13,0.5) 0%, rgba(10,11,13,0.72) 100%); }
+body.profile-bg-on .view { position: relative; z-index: 1; }
+/* force header text light so it reads over the (dark-scrimmed) video in both themes */
+body.profile-bg-on .page-head h1,
+body.profile-bg-on .page-head .meta-row span { color: #fff !important; }
+body.profile-bg-on .page-head .meta-row i,
+body.profile-bg-on .page-head .meta-row { color: rgba(255,255,255,0.72) !important; }
+.profile-bg-ctrls { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: flex; gap: 8px; pointer-events: auto; }
+.profile-bg-btn {
+  width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer;
+  background: rgba(14,15,17,0.62); color: #fff; font-size: 15px;
+  display: flex; align-items: center; justify-content: center; backdrop-filter: blur(6px);
+}
+.profile-bg-btn:hover { background: rgba(14,15,17,0.85); }
 
 /* ----------------------------------------------------------- announcements */
 .ann { padding: 20px 22px; margin-bottom: 14px; }
