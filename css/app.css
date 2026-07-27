@@ -1347,11 +1347,10 @@ body.mine-on .hive-teams .team-chip.is-mine.on {
 body.mine-on .project-card.is-mine {
   animation: mineGlow 2.2s ease-in-out infinite;
 }
-/* a small amber "mine" star badge, top-right of the card */
-body.mine-on .project-card.is-mine::after {
-  content: "\2605"; position: absolute; top: 10px; right: 12px;
-  font-size: 13px; line-height: 1; color: var(--mine);
-  text-shadow: 0 0 8px var(--mine); pointer-events: none;
+/* a small amber "mine" star tucked in beside the "Team X" chip */
+body.mine-on .project-card.is-mine .pc-team::after {
+  content: "\2605"; margin-left: 5px; color: var(--mine);
+  text-shadow: 0 0 8px var(--mine);
 }
 
 /* skill chips — wherever they render (profile panels, project people strip) */
