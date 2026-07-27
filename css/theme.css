@@ -8,6 +8,9 @@
      purple/cyan selection accent, so "this is mine" never reads as "selected". */
   --mine:      #F59E0B;
   --mine-soft: rgba(245, 158, 11, 0.16);
+  /* subtle edge on hive octagons so a white-background photo still shows its
+     octagon shape against the page (dark edge on the light theme). */
+  --oct-outline: rgba(20, 22, 26, 0.28);
   --gradient-start:      #00D7EE;
   --gradient-end:        #6100FF;
   --gradient-brand:      linear-gradient(221deg, #00D7EE 0%, #6100FF 100%);
@@ -74,6 +77,8 @@ html.theme-fade *::after {
   /* Amber lifts a touch at night to hold contrast against the dark surfaces. */
   --mine:      #FFC24B;
   --mine-soft: rgba(255, 194, 75, 0.18);
+  /* light edge at night so the shape reads against the dark page */
+  --oct-outline: rgba(255, 255, 255, 0.30);
   --bg:            #121316;
   --bg-subtle:     #1B1D22;
   --border:        #262930;
