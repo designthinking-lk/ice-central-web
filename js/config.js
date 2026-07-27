@@ -8,6 +8,11 @@ window.ICE_CONFIG = {
   EVENT_TAGLINE: 'Innovation & Collaboration Experience',
   API_URL: 'https://script.google.com/macros/s/AKfycbz0THh0OrmG8umv5ZomVvv1kQu7Ogs1jYp2tKqJFOe6gAMWGnL5Y5_Ww5hZOFVeNSA/exec',
   AUTH_URL: 'https://script.google.com/macros/s/AKfycbwvFYU1o9pwCePbf3mTINgqsZhbVeeCX97M3rG76DN74sLSyJRDdXXqaqbnbTlVPONZ/exec',
+  // Direct 1:1 messaging (Google Chat) is TEMPORARILY DISABLED while messaging
+  // is re-architected. false hides the chat FAB, the chat/broadcast pane, and
+  // the profile "Message" buttons — all the code stays in place (js/chat.js and
+  // the chat-* handlers). To restore: flip to true (CHAT_CLIENT_ID must be set).
+  CHAT_ENABLED: false,
   // Google Chat handoff — OAuth web client ID from the ahlab.org GCP project.
   // Empty = chat buttons show a "not set up yet" message. See docs/google-chat-setup.md.
   CHAT_CLIENT_ID: '664996878590-6chfseq2fn94ir8fg2tj53oncl2ebh74.apps.googleusercontent.com',

@@ -440,7 +440,7 @@
     // chat & broadcasts pane — for registered participants (DMs need a
     // workshop account). Hide the sidebar button + force-close otherwise.
     var chatBtn = $('#navChatBtn');
-    var showChat = signedIn() && !!d.me && !noRole;
+    var showChat = chatEnabled() && signedIn() && !!d.me && !noRole;
     if (chatBtn) chatBtn.hidden = !showChat;
     if (!showChat) {
       var pane = $('#chatpane');
@@ -588,6 +588,11 @@
   var convoMeta = {};              // personId -> { space, lastTime, lastText, unread }
   var convoPollTimer = null, unreadPollTimer = null;
   var CONVO_POLL = 4000, UNREAD_POLL = 15000;
+
+  // Master switch for direct 1:1 messaging (see ICE_CONFIG.CHAT_ENABLED).
+  // false unwires every chat entry point — FAB, pane, "Message" buttons — while
+  // leaving all the chat code (js/chat.js + the chat-* handlers) in place.
+  function chatEnabled() { return !!C.CHAT_ENABLED; }
 
   function chatConfigured() { return !!(window.IceChat && window.IceChat.configured()); }
 
@@ -1468,9 +1473,10 @@
       (u.workEmail ? '<div class="meta-row"><span title="Workshop @designthinking.lk account"><i class="fa-regular fa-comment-dots"></i>' + esc(u.workEmail) + '</span></div>' : '') +
       '<div>' +
       (isMe ? '<a class="btn btn-outline btn-sm" href="#/me"><i class="fa-solid fa-pen"></i>Edit profile</a>'
+            : (!chatEnabled() ? ''            // messaging temporarily disabled — no Message CTA
             : (signedIn() && me()
                 ? (workEmailOf(u) ? '<button class="btn btn-primary btn-sm" data-action="chat-dm" data-person="' + esc(u.id) + '"><i class="fa-regular fa-message"></i><span class="label">Message</span><span class="spin"></span></button>' : '')
-                : '<button class="btn btn-primary btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in to message</button>')) +
+                : '<button class="btn btn-primary btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in to message</button>'))) +
       (u.video ? ' <a class="btn btn-ghost btn-sm" href="' + esc(u.video) + '" target="_blank" rel="noopener"><i class="fa-solid fa-video"></i>Intro video</a>' : '') +
       '</div></div></div>' +
       '<div class="detail-grid"><div>' +
@@ -4982,7 +4988,7 @@
         }
         break;
       }
-      case 'toggle-chat': { var cp = $('#chatpane'); if (cp) setChatPane(cp.hidden); break; }
+      case 'toggle-chat': { if (!chatEnabled()) break; var cp = $('#chatpane'); if (cp) setChatPane(cp.hidden); break; }
       case 'comm-tab':
         commTab = t.getAttribute('data-tab') === 'broadcast' ? 'broadcast' : 'chat';
         if (commTab === 'chat' && chatUI.mode === 'convo') closeConvo();
@@ -5103,6 +5109,7 @@
         } catch (err) { toast(err.message, true); }
         break;
       case 'chat-dm': {
+        if (!chatEnabled()) break;   // messaging temporarily disabled
         // Open the in-site messaging pane on this person's conversation.
         var chatPerson = t.getAttribute('data-person');
         if (!chatPerson) { toast('This person has no workshop account yet.', true); break; }
