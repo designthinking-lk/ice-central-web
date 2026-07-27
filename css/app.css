@@ -2546,3 +2546,27 @@ html.is-mobile.is-wallet .btn-wallet { width: 100%; box-sizing: border-box; }
 .wallet-hero h1 { font-family: var(--font-display); font-size: 23px; letter-spacing: -0.02em; margin: 0 0 8px; }
 .wallet-sub { margin: 0 0 22px; color: var(--text-muted); font-size: 14px; line-height: 1.5; }
 .wallet-action { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+
+/* ============================================================================
+   EXPERIMENT — fixed real credit-card-size project cards
+   Revert = delete this whole block (down to END EXPERIMENT) and re-bump ?v=.
+   ----------------------------------------------------------------------------
+   ID-1 / ISO-7810 bank cards are 85.6 x 53.98 mm. Expressing the card in `mm`
+   pins it to ONE uniform size on every screen (CSS maps 1mm to the 96dpi
+   reference px, ~3.78px, so it renders the same on a MacBook and a large
+   monitor) instead of the fluid 1fr grid that made cards shrink on smaller
+   viewports and stretch on bigger ones. The grid switches to fixed-width
+   columns, centred, leaving even margins around the deck.
+   The open/stack animation reads live offset geometry, so no JS change needed.
+   ============================================================================ */
+:root { --pcard-w: 85.6mm; --pcard-h: 53.98mm; }
+.projects-grid {
+  grid-template-columns: repeat(3, var(--pcard-w));
+  justify-content: center;
+}
+@media (max-width: 1100px) { .projects-grid { grid-template-columns: repeat(2, var(--pcard-w)); } }
+@media (max-width: 720px)  { .projects-grid { grid-template-columns: var(--pcard-w); } }
+.project-card {
+  width: var(--pcard-w); height: var(--pcard-h); aspect-ratio: auto;
+}
+/* ============================ END EXPERIMENT ============================== */
