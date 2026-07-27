@@ -1074,6 +1074,11 @@
     ['11111', '10000', '10000', '11110', '10000', '10000', '11111'], // E
   ];
   var WORD_GAP = 1.4; // empty columns between letters
+  // The I hugs the left edge and paints over the nav rail. Nudge just the I
+  // right by one grid column — the bounding box is measured from base positions
+  // (below), so C, E and the centring stay put; the vacated column becomes a
+  // left margin the nav sits in.
+  var I_SHIFT = 1; // columns the I glyph slides right (0 = flush left)
 
   // Build the ordered list of cells (grid col/row) plus the C-hollow centroid.
   function wordCells() {
@@ -1269,8 +1274,13 @@
     var cells = built.cells;
     var w = 74, minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
     cells.forEach(function (cell) {
-      cell.x = cell.c * w; cell.y = cell.r * w;
-      minX = Math.min(minX, cell.x); maxX = Math.max(maxX, cell.x + w);
+      var bx = cell.c * w; // base column position (drives the bounding box)
+      // render the I one column to the right; C/E stay at their base position
+      cell.x = bx + (cell.letter === 0 ? I_SHIFT * w : 0);
+      cell.y = cell.r * w;
+      // measure from base positions so the box, C/E and centring are unchanged —
+      // the I just slides right within the reserved left margin
+      minX = Math.min(minX, bx); maxX = Math.max(maxX, bx + w);
       minY = Math.min(minY, cell.y); maxY = Math.max(maxY, cell.y + w);
     });
     // Natural (unscaled) dimensions; fitWordmark scales from these and sets the
