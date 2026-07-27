@@ -2548,32 +2548,15 @@ html.is-mobile.is-wallet .btn-wallet { width: 100%; box-sizing: border-box; }
 .wallet-action { display: flex; flex-direction: column; gap: 12px; align-items: center; }
 
 /* ============================================================================
-   EXPERIMENT — real credit-card-size project cards
+   EXPERIMENT — larger, ~credit-card-size project cards
    Revert = delete this whole block (down to END EXPERIMENT) and re-bump ?v=.
    ----------------------------------------------------------------------------
-   ID-1 / ISO-7810 bank cards are 85.6 x 53.98 mm. CSS `mm` is NOT a physical mm
-   — browsers anchor it to the 96dpi reference (~3.78px/mm), so `85.6mm` renders
-   smaller than a real card on a high-dpi laptop, and there is no web API for a
-   display's true physical size. So the card is sized as 85.6 x 53.98 "mm" where
-   1mm = --pcard-ppmm px, a fixed value calibrated once on a Retina MacBook to
-   match a real card. Uniform (same CSS size) on every screen; it just can't
-   self-correct to physical size on a very different-dpi display — unavoidable.
-   The open/stack animation reads live offset geometry, so it needs no change. */
-:root {
-  --pcard-ppmm: 5.0; /* px per mm — calibrated on a Retina MacBook */
-  --pcard-w: calc(85.6px * var(--pcard-ppmm));
-  --pcard-h: calc(53.98px * var(--pcard-ppmm));
-}
-/* fixed-width columns, centred, with a snug gap so the deck fits the screen.
-   3-across only kicks in when three real-size cards actually fit; below that we
-   drop to 2 then 1 so cards never overflow or shrink. */
-.projects-grid {
-  grid-template-columns: repeat(3, var(--pcard-w));
-  justify-content: center; gap: 18px; max-width: none;
-}
-@media (max-width: 1480px) { .projects-grid { grid-template-columns: repeat(2, var(--pcard-w)); } }
-@media (max-width: 980px)  { .projects-grid { grid-template-columns: var(--pcard-w); } }
-.project-card {
-  width: var(--pcard-w); height: var(--pcard-h); aspect-ratio: auto;
-}
+   Keeps the ORIGINAL fluid 3-column grid + aspect-ratio card (so it always fits
+   3-across on desktop and scales with the viewport — never overflows, never
+   drops to 2 columns on a laptop). A FIXED-pixel card can't work: CSS has no
+   true-physical-size unit, and a hard px size breaks the moment the display
+   scaling changes. Instead we just widen the grid's max-width so cards grow to
+   ~real ID-1 size (~85.6mm ≈ 428px at the 96dpi reference) on roomy screens and
+   shrink to fit on tighter ones, and tighten the gap a touch. */
+.projects-grid { max-width: 1320px; gap: 18px; }
 /* ============================ END EXPERIMENT ============================== */
