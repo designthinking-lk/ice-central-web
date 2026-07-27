@@ -1920,7 +1920,7 @@ body.hive-full .nav a { pointer-events: auto; }
    convention as .btn-primary: white on purple, dark teal on dark-mode cyan) */
 .admin-tabs .comm-tab.active { background: var(--color-accent); color: #fff; }
 :root[data-theme="dark"] .admin-tabs .comm-tab.active { color: #08272B; }
-.admin-tabview { flex: 1; min-height: 0; overflow-y: auto; padding-top: 8px; }
+.admin-tabview { flex: 1; min-height: 0; overflow-y: auto; padding-top: 8px; padding-bottom: 12px; }
 
 /* admin Resources tab — compact link directory, fits one screen */
 .res-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
@@ -1954,8 +1954,8 @@ body.hive-full .nav a { pointer-events: auto; }
 /* Unassigned as a tall left column; the six team cards fill three columns to
    its right — one + three = four columns across the same area. */
 .tb-layout { display: grid; grid-template-columns: minmax(230px, 300px) 1fr; gap: 16px; align-items: stretch; height: 100%; }
-.tb-unassigned { display: flex; flex-direction: column; min-height: 0; padding: 12px 14px 8px; }
-.tb-uhead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.tb-unassigned { display: flex; flex-direction: column; min-height: 0; padding: 8px 12px 6px; }
+.tb-uhead { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .tb-uhead h3 { margin: 0; display: flex; align-items: center; gap: 8px; }
 .tb-spin { color: var(--color-accent); font-size: 13px; }
 .tb-progress { margin-left: auto; font-weight: 400; font-size: 13px; color: var(--text-muted); }
@@ -1969,8 +1969,8 @@ body.hive-full .nav a { pointer-events: auto; }
 .tb-pool { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 1px; margin: 0 -6px; padding: 0 2px 4px; }
 .tb-prow { border-radius: var(--radius-sm); }
 .tb-prow-row {
-  display: flex; align-items: center; gap: 8px; min-height: 34px;
-  padding: 3px 6px; border-radius: var(--radius-sm); user-select: none;
+  display: flex; align-items: center; gap: 8px; min-height: 30px;
+  padding: 2px 6px; border-radius: var(--radius-sm); user-select: none;
 }
 .tb-prow-row:not(.tb-quickactive):hover { background: var(--surface-2, rgba(97, 0, 255, 0.05)); }
 .tb-prow.selected .tb-prow-row { background: rgba(97, 0, 255, 0.11); }
@@ -2010,10 +2010,10 @@ body.hive-full .nav a { pointer-events: auto; }
    footer and their slots breathe instead of clustering at the top */
 /* minmax(0,1fr) rows: no min-content floor, so two card rows shrink to fit the
    height instead of overflowing past the footer */
-.tb-teams { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; height: 100%; }
+.tb-teams { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); gap: 4px; height: 100%; }
 /* full-width variant when there is no unassigned column */
 .tb-teams-full { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.tb-card { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 4px 10px 5px; min-height: 0; overflow: hidden; }
+.tb-card { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 3px 9px 3px; min-height: 0; overflow: hidden; }
 .tb-card.tb-full { border-color: rgba(24, 128, 56, 0.5); }
 .tb-card.tb-target { border-color: var(--color-accent); box-shadow: 0 0 0 1px var(--color-accent); }
 .tb-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 1px; }
@@ -2022,7 +2022,9 @@ body.hive-full .nav a { pointer-events: auto; }
 /* slots stack one per row (full name shows) and share the card height evenly;
    minmax(0,1fr) lets them shrink so all 7 rows stay on screen */
 .tb-slots { flex: 1; display: grid; grid-template-columns: 1fr; grid-auto-rows: minmax(0, 1fr); gap: 1px; min-height: 0; overflow: hidden; }
-.tb-member { display: flex; align-items: center; gap: 7px; padding: 0 2px; font-size: 12.5px; min-height: 15px; min-width: 0; overflow: hidden; }
+.tb-member { display: flex; align-items: center; gap: 7px; padding: 0 2px; font-size: 12.5px; min-height: 14px; min-width: 0; overflow: hidden; }
+/* compact avatars in the assignment board (pool rows + team member rows) */
+.tb-member .avatar-sm, .tb-prow-row .avatar-sm { width: 26px; height: 26px; }
 .tb-member > a { color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tb-member .avatar-sm { flex: none; }
 .tb-empty {
