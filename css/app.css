@@ -772,6 +772,9 @@ textarea.input { resize: vertical; min-height: 90px; }
 .cinput:not(:focus) { background: transparent; border-color: transparent; padding-left: 0; padding-right: 0; }
 .cinput:not(:focus):hover { background: rgba(255,255,255,0.08); }
 .cinput:focus { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.7); }
+/* URL fields read as printed links (github.com/you, linkedin.com/in/you) at rest
+   AND on hover — the editable box appears only on click (focus). */
+.idlinks .cinput:not(:focus):hover { background: transparent; }
 /* keep browser autofill from painting a white box + dark text on the card */
 .cinput:-webkit-autofill,
 .cinput:-webkit-autofill:hover,
