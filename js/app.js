@@ -1672,6 +1672,52 @@
     });
   }
 
+  /** #/pcard handoff — the phone lands here after scanning a shared project
+   *  business card QR. The `wt` in the URL authenticates; we ask project_pass /
+   *  apple_project_pass for the save URLs and hand off to the wallet app. */
+  function viewProjectCard() {
+    return '<div class="wallet-view" id="pcardView">' +
+      '<div class="wallet-hero">' +
+      '<div class="wallet-mark"><i class="fa-solid fa-id-card"></i></div>' +
+      '<h1>ICE project card</h1>' +
+      '<p class="wallet-sub">Add this project business card to your wallet.</p>' +
+      '<div class="wallet-action"><div class="wallet-loading"><span class="spin"></span> Preparing the card…</div></div>' +
+      '</div></div>';
+  }
+
+  function initProjectCardHandoff() {
+    var view = $('#pcardView');
+    if (!view) return;
+    var action = view.querySelector('.wallet-action');
+    var m = (location.hash || '').match(/[?&]wt=([^&]+)/);
+    var wt = m ? decodeURIComponent(m[1]) : '';
+    var params = wt ? { wt: wt } : {};
+    if (!wt && !signedIn()) {
+      action.innerHTML = '<p class="wallet-err">This card link is missing or expired.</p>';
+      return;
+    }
+    Promise.all([
+      A.api('project_pass', params).then(function (r) { return { google: r && r.url }; }, function () { return {}; }),
+      A.api('apple_project_pass', params).then(function (r) { return { apple: r && r.url }; }, function () { return {}; })
+    ]).then(function (rs) {
+      var g = null, a = null;
+      rs.forEach(function (x) { if (x.google) g = x.google; if (x.apple) a = x.apple; });
+      var btnG = g ? '<a class="btn-wallet btn-wallet-google btn-wallet-lg" href="' + esc(g) + '"><i class="fa-brands fa-google-wallet"></i><span>Add to Google Wallet</span></a>' : '';
+      var btnA = a ? '<a class="btn-wallet btn-wallet-apple btn-wallet-lg" href="' + esc(a) + '"><i class="fa-brands fa-apple"></i><span>Add to Apple Wallet</span></a>' : '';
+      var apple = isApplePlatform_();
+      action.innerHTML = (apple ? (btnA + btnG) : (btnG + btnA)) ||
+        '<p class="wallet-err">Could not prepare this card.</p>';
+      var primary = apple ? (a || g) : (g || a);
+      var phone = /Mobi|Android/i.test(navigator.userAgent) || apple;
+      var jumped = false;
+      try { jumped = sessionStorage.getItem('ice.pcard.jumped') === (wt || 'self'); } catch (e) {}
+      if (primary && phone && !jumped) {
+        try { sessionStorage.setItem('ice.pcard.jumped', wt || 'self'); } catch (e) {}
+        location.href = primary;
+      }
+    });
+  }
+
   // ------------------------------------------------------------- teams
 
   function teamCard(t) {
@@ -3134,8 +3180,13 @@
         '<h2 class="proj-d-title">' + esc(p.title) + '</h2>' +
         '<p class="proj-d-desc">' + esc(p.description) + '</p>' +
         (p.fullDescription ? '<p class="proj-d-full">' + esc(p.fullDescription).replace(/\n/g, '<br>') + '</p>' : '');
-      // website on the left of the footer, edit as an icon on the right
-      footer = web + (canEdit
+      // website on the left of the footer, edit as an icon on the right. On your
+      // OWN project a shareable "business card" wallet button sits between them.
+      var mineProj = signedIn() && slot === myTeamSlot();
+      var walletBtn = mineProj
+        ? '<button class="btn btn-outline btn-sm proj-wallet-btn" type="button" data-action="pcard-show" data-slot="' + slot + '"><i class="fa-solid fa-wallet"></i>Add to wallet</button>'
+        : '';
+      footer = web + walletBtn + (canEdit
         ? '<button class="proj-edit-btn" type="button" data-action="proj-edit-inline" data-slot="' + slot + '" title="Edit project" aria-label="Edit project"><i class="fa-solid fa-pen"></i></button>'
         : '');
     }
@@ -3149,6 +3200,49 @@
       '<button class="proj-close" type="button" data-action="proj-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
       '<div class="proj-d-inner">' + inner + '</div>' +
       (footer ? '<div class="' + footerCls + '">' + footer + '</div>' : '');
+  }
+
+  // ---- Project business-card wallet: flip the open detail into a QR + wallet
+  //      buttons, hiding its text. The QR encodes the shareable #/pcard handoff.
+  function showProjectCardWallet(slot) {
+    var detail = $('#projDetail');
+    if (!detail || slot !== myTeamSlot()) return;
+    detail.classList.add('pcard-open');
+    var ov = detail.querySelector('.proj-wallet-overlay');
+    if (!ov) { ov = document.createElement('div'); ov.className = 'proj-wallet-overlay'; detail.appendChild(ov); }
+    ov.innerHTML =
+      '<button class="proj-wallet-back" type="button" data-action="pcard-hide" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>' +
+      '<div class="pwo-head"><i class="fa-solid fa-id-card"></i> Share your project card</div>' +
+      '<div class="pwo-body"><div class="wallet-loading"><span class="spin"></span> Preparing…</div></div>';
+    var body = ov.querySelector('.pwo-body');
+    A.api('project_wallet_link', {}).then(function (r) {
+      if (!r || !r.url) throw new Error((r && r.message) || 'Could not prepare the card.');
+      return Promise.all([
+        r.url,
+        A.api('project_pass', {}).then(function (x) { return x && x.url; }, function () { return null; }),
+        A.api('apple_project_pass', {}).then(function (x) { return x && x.url; }, function () { return null; })
+      ]);
+    }).then(function (res) {
+      if (!detail.classList.contains('pcard-open')) return; // closed meanwhile
+      var link = res[0], g = res[1], a = res[2];
+      var btnG = g ? '<a class="btn-wallet btn-wallet-google" href="' + esc(g) + '" target="_blank" rel="noopener"><i class="fa-brands fa-google-wallet"></i><span>Google Wallet</span></a>' : '';
+      var btnA = a ? '<a class="btn-wallet btn-wallet-apple" href="' + esc(a) + '" target="_blank" rel="noopener"><i class="fa-brands fa-apple"></i><span>Apple Wallet</span></a>' : '';
+      var order = isApplePlatform_() ? (btnA + btnG) : (btnG + btnA);
+      body.innerHTML =
+        '<div class="pwo-qr" id="pcardQr"></div>' +
+        '<p class="pwo-scan">Scan to add — or share it so others can save your card.</p>' +
+        '<div class="wallet-btns pwo-btns">' + (order || '') + '</div>';
+      renderQr_($('#pcardQr'), link);
+    }).catch(function (err) {
+      body.innerHTML = '<p class="wallet-err">' + esc((err && err.message) || 'Could not prepare the card.') + '</p>';
+    });
+  }
+  function hideProjectCardWallet() {
+    var detail = $('#projDetail');
+    if (!detail) return;
+    detail.classList.remove('pcard-open');
+    var ov = detail.querySelector('.proj-wallet-overlay');
+    if (ov) ov.remove();
   }
 
   function projCardMap() {
@@ -4646,6 +4740,7 @@
     { re: /^#\/register$/, view: viewRegister },
     { re: /^#\/me$/, view: viewMe },
     { re: /^#\/wallet(?:\?.*)?$/, view: viewWallet },
+    { re: /^#\/pcard(?:\?.*)?$/, view: viewProjectCard },
     { re: /^#\/admin$/, view: viewAdmin },
   ];
 
@@ -4657,7 +4752,7 @@
     state.renderedSig = dataSig(state.data);
     // #/wallet is phone-first — keep the .is-wallet flag in sync so its CSS
     // bypasses the mobile gate and shows only the handoff view.
-    document.documentElement.classList.toggle('is-wallet', /^#\/wallet/.test(hash));
+    document.documentElement.classList.toggle('is-wallet', /^#\/(wallet|pcard)/.test(hash));
     closeMenu();
     // Drop an open announcement draft when leaving the news page.
     if (annDraft.open && !/^#\/announcements$/.test(hash)) annDraft = { open: false, editing: null };
@@ -4694,6 +4789,7 @@
     // wallet: profile QR panel + the phone's #/wallet handoff page
     if ($('#walletPanel')) initWalletPanel();
     if ($('#walletView')) initWalletHandoff();
+    if ($('#pcardView')) initProjectCardHandoff();
     // projects: draw the QR on any card with a valid website
     if ($('#projectsGrid')) renderProjectCardQRs();
     // skill tag input
@@ -4859,6 +4955,8 @@
       case 'proj-save': saveProject(Number(t.getAttribute('data-slot')), t); break;
       case 'proj-close': closeProject(); break;
       case 'proj-nav': closeProject(); break; // let the profile link navigate
+      case 'pcard-show': e.preventDefault(); e.stopPropagation(); showProjectCardWallet(Number(t.getAttribute('data-slot'))); break;
+      case 'pcard-hide': e.preventDefault(); hideProjectCardWallet(); break;
       case 'close-modal': closeModal(); break;
       case 'filter-skill': {
         var s = t.getAttribute('data-skill');

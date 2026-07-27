@@ -1844,6 +1844,30 @@ body.hive-full .nav a { pointer-events: auto; }
 .proj-detail.has-video .proj-d-web.broken { background: rgba(240, 180, 0, 0.28); border-color: rgba(240, 180, 0, 0.7); color: #fff; }
 .proj-vid-remove { color: #b3261e; }
 .proj-vid-remove:hover { background: rgba(179, 38, 30, 0.08); }
+
+/* Project business-card wallet: an overlay that fills the open detail pane with
+   a QR + Apple/Google buttons, hiding the project text underneath while shown. */
+.proj-detail.pcard-open .proj-d-inner,
+.proj-detail.pcard-open .proj-d-footer { visibility: hidden; }
+.proj-wallet-overlay {
+  position: absolute; inset: 0; z-index: 6; background: var(--surface);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 26px 28px; overflow-y: auto; gap: 14px;
+  animation: proj-detail-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.proj-wallet-back {
+  position: absolute; top: 14px; left: 14px; width: 34px; height: 34px;
+  border-radius: 50%; border: 1px solid var(--border); background: var(--bg-subtle);
+  color: var(--text-body); cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+}
+.proj-wallet-back:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.pwo-head { font-weight: 700; font-size: 15px; margin-top: 6px; display: flex; align-items: center; gap: 8px; color: var(--text); }
+.pwo-head i { color: var(--color-accent); }
+.pwo-body { width: 100%; max-width: 300px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.pwo-qr { width: 190px; max-width: 70%; padding: 10px; background: #fff; border-radius: var(--radius-md); border: 1px solid var(--border); line-height: 0; }
+.pwo-qr img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.pwo-scan { color: var(--text-muted); font-size: 12.5px; text-align: center; margin: 0; }
+.pwo-btns { width: 100%; }
 /* frozen while a save is in flight — no further input on the card */
 .proj-detail.proj-busy { pointer-events: none; }
 .proj-detail.proj-busy .proj-tabs, .proj-detail.proj-busy .proj-tab-body, .proj-detail.proj-busy .proj-colors { opacity: 0.5; transition: opacity 0.15s ease; }
