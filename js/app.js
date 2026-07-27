@@ -1065,9 +1065,12 @@
   // (mentors purple, participants cyan). Hovering a face dims the rest and
   // shows a large preview in the hollow of the C. Clicking opens the profile.
 
+  // 42 slots total = 6 teams × 7 — trimmed from 48 so a full workshop fills the
+  // wordmark exactly: I loses its 4 serif-end corners (5-wide → 3-wide top &
+  // bottom), C loses its 2 left-side corners. I=11, C=13, E=18.
   var WORD_LETTERS = [
-    ['11111', '00100', '00100', '00100', '00100', '00100', '11111'], // I
-    ['11111', '10000', '10000', '10000', '10000', '10000', '11111'], // C
+    ['01110', '00100', '00100', '00100', '00100', '00100', '01110'], // I
+    ['01111', '10000', '10000', '10000', '10000', '10000', '01111'], // C
     ['11111', '10000', '10000', '11110', '10000', '10000', '11111'], // E
   ];
   var WORD_GAP = 1.4; // empty columns between letters
