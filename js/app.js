@@ -2965,24 +2965,11 @@
 
   function viewProjects() {
     projSel = null; projEdit = false; projEditColor = ''; // always render the grid state
-    return '<div class="projects-wrap">' + pcardCalHtml() +
-      '<div class="projects-grid" id="projectsGrid">' +
+    return '<div class="projects-wrap"><div class="projects-grid" id="projectsGrid">' +
       teamProjectsData().map(projectCardHtml).join('') +
       '<div class="proj-members-strip" id="projMembersStrip" hidden></div>' +
       '<div class="proj-detail" id="projDetail" hidden></div>' +
       '</div></div>';
-  }
-
-  // EXP:cardsize — inline calibrator so the deck can be dialed to exact physical
-  // credit-card size on any screen (CSS mm can't do true physical size).
-  var PCARD_PPMM_DEFAULT = 5.15;
-  function pcardCalHtml() {
-    var v = localStorage.getItem('ice.pcardPpmm') || String(PCARD_PPMM_DEFAULT);
-    return '<div class="pcard-cal" title="Hold a real credit card to the screen and slide until a card matches its width">' +
-      '<i class="fa-regular fa-credit-card"></i><span>Actual card size</span>' +
-      '<input id="pcardCal" type="range" min="3.6" max="6.8" step="0.02" value="' + esc(v) + '">' +
-      '<button type="button" class="pcard-reset" data-action="pcard-reset">Reset</button>' +
-      '</div>';
   }
 
   // People circles + aggregated skills, shown below the stacked card.
@@ -4938,12 +4925,6 @@
         break;
       }
       case 'toggle-mine': setMine(!mineOn()); break;
-      case 'pcard-reset': { // EXP:cardsize — back to the default calibration
-        try { localStorage.removeItem('ice.pcardPpmm'); } catch (err) { /* private mode */ }
-        document.documentElement.style.setProperty('--pcard-ppmm', String(PCARD_PPMM_DEFAULT));
-        var cal = $('#pcardCal'); if (cal) cal.value = String(PCARD_PPMM_DEFAULT);
-        break;
-      }
       case 'new-team': teamForm(); break;
       case 'edit-team': {
         var team = null;
@@ -5538,14 +5519,6 @@
     document.addEventListener(ev, function (e) { syncProjectForm(e.target); });
   });
 
-  // EXP:cardsize — live-apply + persist the credit-card calibration slider
-  document.addEventListener('input', function (e) {
-    if (!e.target || e.target.id !== 'pcardCal') return;
-    var v = e.target.value;
-    document.documentElement.style.setProperty('--pcard-ppmm', v);
-    try { localStorage.setItem('ice.pcardPpmm', v); } catch (err) { /* private mode */ }
-  });
-
   (function boot() {
     // ?project=<slug> deep-links into a specific project (e.g. a next-year
     // invite link) — it becomes the sticky selection.
@@ -5557,9 +5530,6 @@
     // restore the persisted "Highlight mine" state (renderChrome hides the
     // button + clears the glow again if this visitor turns out not to be a member)
     if (localStorage.getItem(MINE_KEY) === '1') document.body.classList.add('mine-on');
-    // EXP:cardsize — restore the persisted real-credit-card calibration
-    var pcardPpmm = localStorage.getItem('ice.pcardPpmm');
-    if (pcardPpmm) document.documentElement.style.setProperty('--pcard-ppmm', pcardPpmm);
     if (creatingProject()) startProjectPolling(); // resume a create that was in flight before a refresh
     var justSignedIn = A.absorbLoginToken();
     state.data = A.readCache();
