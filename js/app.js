@@ -2214,26 +2214,47 @@
       (cardVideoMuted ? ' muted' : '') + '>' + videoSourcesHtml(src) + '</video>';
   }
 
-  // Wait until the browser can play the opening through without stalling, then
-  // start from the very beginning. Capped so a slow network still starts within
-  // a couple of seconds. Unmuted playback that the browser blocks falls back to
-  // muted (and still restarts from 0, so no notes are skipped either way).
+  // Start playback so the opening (its most important notes) is never clipped:
+  //  1) wait until the clip has buffered enough to play through (canplaythrough),
+  //     capped so a slow network still starts within a couple of seconds;
+  //  2) when sound is wanted, "prime" the audio decoder by playing muted for a
+  //     beat, then seek back to 0 and unmute — a cold decoder drops its first
+  //     samples, so the warm-up keeps the very first notes intact.
+  // Unmuted playback the browser blocks (no user gesture) falls back to muted,
+  // still restarted from 0, so nothing is skipped either way.
+  var CARD_AUDIO_PRIME_MS = 250;
   function startCardVideo(v) {
     var started = false;
-    function go() {
+    function begin() {
       if (started || !v.isConnected) return;
       started = true;
-      try { v.currentTime = 0; } catch (e) { /* not seekable yet — plays from 0 anyway */ }
-      var p = v.play();
-      if (p && p.catch) p.catch(function () {
-        v.muted = true; cardVideoMuted = true; setCardMuteIcon();
+      // No sound wanted — just play muted from the top, nothing to prime.
+      if (cardVideoMuted) {
+        try { v.currentTime = 0; } catch (e) { /* plays from 0 anyway */ }
+        v.muted = true;
+        var pm = v.play(); if (pm && pm.catch) pm.catch(function () {});
+        return;
+      }
+      // Warm-up pass (muted), then restart from 0 with the intended mute state.
+      v.muted = true;
+      try { v.currentTime = 0; } catch (e) { /* ignore */ }
+      var pw = v.play(); if (pw && pw.catch) pw.catch(function () { /* even muted blocked */ });
+      setTimeout(function () {
+        if (!v.isConnected) return;
         try { v.currentTime = 0; } catch (e) { /* ignore */ }
-        v.play().catch(function () {});
-      });
+        v.muted = cardVideoMuted; // respect a mute toggle made during the warm-up
+        var pu = v.play();
+        if (pu && pu.catch) pu.catch(function () {
+          v.muted = true; cardVideoMuted = true; setCardMuteIcon();
+          try { v.currentTime = 0; } catch (e) { /* ignore */ }
+          v.play().catch(function () {});
+        });
+        setCardMuteIcon();
+      }, CARD_AUDIO_PRIME_MS);
     }
-    if (v.readyState >= 4) { go(); return; }       // HAVE_ENOUGH_DATA already
-    v.addEventListener('canplaythrough', go, { once: true });
-    setTimeout(go, 2500);                           // safety cap on the buffer wait
+    if (v.readyState >= 4) { begin(); return; }     // HAVE_ENOUGH_DATA already
+    v.addEventListener('canplaythrough', begin, { once: true });
+    setTimeout(begin, 2500);                         // safety cap on the buffer wait
   }
 
   function renderCardVideo() {
