@@ -3332,6 +3332,7 @@
   var projStack = [];      // slots front→back while a project is open (for flipping)
   var projEditTab = 'details';         // active edit tab: 'details' | 'about' | 'video'
   var projViewTab = 'details';         // active VIEW tab: 'details' | 'demo'
+  var projWebStatus = 'ok';            // website reachability: 'empty'|'checking'|'ok'|'bad'
   var projEditDraft = { title: '', description: '', fullDescription: '', website: '' }; // unsaved edits
 
   function teamProjectsData() {
@@ -3498,14 +3499,15 @@
         footer =
           '<div class="proj-vid-foot">' +
             '<div class="vid-status" id="projVideoStatus"></div>' +
-            '<div class="vid-progress" id="projVideoProgress" hidden><div class="vid-progress-bar" id="projVideoBar"></div></div>' +
-            '<div class="proj-vid-footrow">' +
+            '<div class="proj-vid-footrow" id="projVideoFootRow">' +
               '<div class="vid-actions" id="projVideoActions">' +
                 '<button class="btn btn-outline btn-sm" type="button" data-action="proj-upload-video" data-slot="' + slot + '"><i class="fa-solid fa-upload"></i>' + (p.video ? 'Replace video' : 'Upload video') + '</button>' +
                 (p.video ? '<button class="btn btn-ghost btn-sm proj-vid-remove" type="button" data-action="proj-remove-video" data-slot="' + slot + '"><i class="fa-regular fa-trash-can"></i>Remove</button>' : '') +
               '</div>' +
               footActions +
             '</div>' +
+            // during a transfer the whole button row hides and this bar takes its place
+            '<div class="vid-progress" id="projVideoProgress" hidden><div class="vid-progress-bar" id="projVideoBar"></div></div>' +
           '</div>';
       } else {
         // Colour swatches belong to Details only.
@@ -3710,7 +3712,7 @@
     if (detail && projSel != null) {
       detail.classList.toggle('has-video', projShowVideo(projSel));
       detail.innerHTML = projectDetailHtml(projSel);
-      if (projEdit) { var ti = $('#projTitleIn'); if (ti) ti.focus(); wireProjectEditPreview(); }
+      if (projEdit) { var ti = $('#projTitleIn'); if (ti) ti.focus(); wireProjectEditPreview(); updateProjSaveState(); }
     }
   }
   // Live-preview title/description onto the stacked front card as the user types,
@@ -3725,14 +3727,50 @@
     if (fu) fu.oninput = function () { projEditDraft.fullDescription = fu.value; };
     if (we) {
       var qp = $('#projQrPreview');
-      var paint = function () {
-        projEditDraft.website = we.value;
+      var webTimer = null, webSeq = 0;
+      // Validate reachability (server curls the URL). A live QR renders only for a
+      // reachable link; an unreachable one shows a warning where the QR would be
+      // and blocks Save until it's fixed or cleared.
+      var checkWeb = function () {
         var v = we.value.trim();
         var enc = v && !/^https?:\/\//i.test(v) ? 'https://' + v : v; // match what we save
-        if (qp) { if (looksLikeUrl(v)) renderMiniQr_(qp, enc); else qp.innerHTML = ''; }
+        if (!v || !looksLikeUrl(v)) {
+          projWebStatus = 'empty';
+          if (qp) qp.innerHTML = '';
+          updateProjSaveState();
+          return;
+        }
+        projWebStatus = 'checking';
+        if (qp) qp.innerHTML = '<i class="fa-solid fa-spinner fa-spin proj-qr-check"></i>';
+        updateProjSaveState();
+        var seq = ++webSeq;
+        A.api('check_url', { url: enc }).then(function (r) {
+          if (seq !== webSeq) return; // superseded by a newer keystroke
+          if (r && r.exists) { projWebStatus = 'ok'; if (qp) renderMiniQr_(qp, enc); }
+          else { projWebStatus = 'bad'; if (qp) qp.innerHTML = '<i class="fa-solid fa-triangle-exclamation proj-qr-bad" title="This link didn’t respond — fix it or clear it to save."></i>'; }
+          updateProjSaveState();
+        }).catch(function () {
+          if (seq !== webSeq) return;
+          projWebStatus = 'bad';
+          if (qp) qp.innerHTML = '<i class="fa-solid fa-triangle-exclamation proj-qr-bad" title="Could not verify this link — fix it or clear it to save."></i>';
+          updateProjSaveState();
+        });
       };
-      we.oninput = paint; paint(); // live QR as they type
+      we.oninput = function () {
+        projEditDraft.website = we.value;
+        clearTimeout(webTimer);
+        webTimer = setTimeout(checkWeb, 500);
+      };
+      checkWeb(); // validate the loaded value immediately
     }
+  }
+  // Disable "Save changes" while the website is unreachable (bad).
+  function updateProjSaveState() {
+    var btn = $('#projDetail [data-action="proj-save"]');
+    if (!btn) return;
+    var bad = projWebStatus === 'bad';
+    btn.disabled = bad;
+    btn.classList.toggle('btn-disabled', bad);
   }
   function captureProjectDraft() {
     var ti = $('#projTitleIn'); if (ti) projEditDraft.title = ti.value;
@@ -3743,6 +3781,9 @@
   function startProjectEdit(slot) {
     var p = projectBySlot(slot) || {};
     projEdit = true; projEditColor = ''; projEditTab = 'details';
+    // seed from the last saved reachability so Save is gated even before Details
+    // is opened; the live check refines it once the website field is on screen
+    projWebStatus = (p.website && !truthyStr(p.websiteOk)) ? 'bad' : 'ok';
     projEditDraft = { title: p.title || '', description: p.description || '', fullDescription: p.fullDescription || '', website: p.website || '' };
   }
   function closeProject() {
@@ -3816,7 +3857,10 @@
   // buttons hidden while the single (upload + server-process) request runs.
   function projVideoBusy(on) {
     var pr = $('#projVideoProgress'); if (pr) { pr.hidden = !on; pr.classList.toggle('indet', on); }
-    var acts = $('#projVideoActions'); if (acts) acts.hidden = on;
+    // hide the whole button row (upload/remove + cancel/save) so only the bar
+    // shows in their place, and freeze the tabs (proj-busy = pointer-events off)
+    var row = $('#projVideoFootRow'); if (row) row.hidden = on;
+    var detail = $('#projDetail'); if (detail) detail.classList.toggle('proj-busy', on);
   }
   function uploadProjectVideo(slot, file, btn, setStatus) {
     videoActionPending = true;
