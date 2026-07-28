@@ -3330,7 +3330,8 @@
   var projEdit = false;    // inline edit mode within the open panel
   var projEditColor = '';  // pending colour while editing
   var projStack = [];      // slots front→back while a project is open (for flipping)
-  var projEditTab = 'details';         // active edit tab: 'details' | 'video'
+  var projEditTab = 'details';         // active edit tab: 'details' | 'about' | 'video'
+  var projViewTab = 'details';         // active VIEW tab: 'details' | 'demo'
   var projEditDraft = { title: '', description: '', fullDescription: '', website: '' }; // unsaved edits
 
   function teamProjectsData() {
@@ -3415,10 +3416,9 @@
   // Same streaming fix as videoSourcesHtml — Drive videos must come from the
   // usercontent download endpoint, not the lh3 poster-frame URL.
   function projVideoSourcesHtml(url) { return videoSourcesHtml(url); }
-  function projShowVideo(slot) {
-    var p = projectBySlot(slot);
-    return !!(p && p.video) && !(projEdit && canEditProject(slot));
-  }
+  // The pitch clip no longer plays as an ambient card backdrop — it lives in the
+  // view card's Demo tab — so nothing drives the has-video styling any more.
+  function projShowVideo() { return false; }
   function truthyStr(v) { return v === '1' || v === 1 || v === true || v === 'true'; }
   function prettyUrl(u) { return String(u || '').replace(/^https?:\/\//i, '').replace(/\/$/, ''); }
   function looksLikeUrl(u) { return /^https?:\/\/\S+\.\S+/i.test(u) || /^[\w-]+(\.[\w-]+)+/.test(u); }
@@ -3461,15 +3461,15 @@
         '</div>';
       var tabBody;
       if (tab === 'video') {
+        // Buttons/progress live in the footer (below); the body just states the
+        // rules (no clip) or confirms what's playing (clip present).
         tabBody =
-          '<p class="proj-vid-lead">Your team’s pitch clip — it loops as the card background.</p>' +
-          videoReqHtml() +
-          '<div class="proj-vid-row">' +
-            '<button class="btn btn-outline" type="button" data-action="proj-upload-video" data-slot="' + slot + '"><i class="fa-solid fa-upload"></i>' + (p.video ? 'Replace video' : 'Upload video') + '</button>' +
-            (p.video ? '<button class="btn btn-ghost proj-vid-remove" type="button" data-action="proj-remove-video" data-slot="' + slot + '"><i class="fa-regular fa-trash-can"></i>Remove</button>' : '') +
-          '</div>' +
-          (p.video ? '<div class="proj-vid-ok"><i class="fa-solid fa-circle-check"></i>Video added — it loops on the card.</div>' : '') +
-          '<div class="proj-vid-status" id="projVideoStatus"></div>';
+          '<p class="proj-vid-lead">Your team’s pitch clip — plays in the card’s Demo tab.</p>' +
+          (p.video
+            ? '<div class="vid-now"><i class="fa-solid fa-circle-play"></i><div class="vid-now-txt">' +
+                '<span class="vid-now-label">Added to your project</span>' +
+                '<span class="vid-now-name">Your pitch clip</span></div></div>'
+            : videoReqHtml());
       } else if (tab === 'about') {
         tabBody =
           '<p class="proj-vid-lead">A longer write-up — shown under the short description when the card is open.</p>' +
@@ -3487,42 +3487,79 @@
           '</div>';
       }
       inner = tabs + '<div class="proj-tab-body">' + tabBody + '</div>';
-      footer =
-        '<div class="proj-colors">' + [1, 2, 3, 4, 5, 6].map(function (n) {
-          var c = 'pc-' + n;
-          return '<button type="button" class="proj-swatch ' + c + (c === color ? ' on' : '') + '" data-action="proj-color" data-color="' + c + '" data-slot="' + slot + '" aria-label="Colour ' + n + '"></button>';
-        }).join('') + '</div>' +
+      var footActions =
         '<div class="proj-foot-actions">' +
           '<button class="btn btn-ghost" type="button" data-action="proj-cancel">Cancel</button>' +
           '<button class="btn btn-gradient" type="button" data-action="proj-save" data-slot="' + slot + '"><span class="label">Save changes</span><span class="spin"></span></button>' +
         '</div>';
-    } else {
-      var web = '';
-      if (p.website) {
-        var broken = !truthyStr(p.websiteOk);
-        web = '<a class="proj-d-web' + (broken ? ' broken' : '') + '" href="' + esc(p.website) + '" target="_blank" rel="noopener">' +
-          (broken ? '<i class="fa-solid fa-triangle-exclamation" title="This link looked broken when last saved"></i>' : '<i class="fa-solid fa-globe"></i>') +
-          '<span>' + esc(prettyUrl(p.website)) + '</span></a>';
+      if (tab === 'video') {
+        // The video tab reclaims the footer for its own controls: status + a
+        // progress bar (during a transfer) over a row of upload/remove + save.
+        footer =
+          '<div class="proj-vid-foot">' +
+            '<div class="vid-status" id="projVideoStatus"></div>' +
+            '<div class="vid-progress" id="projVideoProgress" hidden><div class="vid-progress-bar" id="projVideoBar"></div></div>' +
+            '<div class="proj-vid-footrow">' +
+              '<div class="vid-actions" id="projVideoActions">' +
+                '<button class="btn btn-outline btn-sm" type="button" data-action="proj-upload-video" data-slot="' + slot + '"><i class="fa-solid fa-upload"></i>' + (p.video ? 'Replace video' : 'Upload video') + '</button>' +
+                (p.video ? '<button class="btn btn-ghost btn-sm proj-vid-remove" type="button" data-action="proj-remove-video" data-slot="' + slot + '"><i class="fa-regular fa-trash-can"></i>Remove</button>' : '') +
+              '</div>' +
+              footActions +
+            '</div>' +
+          '</div>';
+      } else {
+        // Colour swatches belong to Details only.
+        var swatches = (tab === 'details')
+          ? '<div class="proj-colors">' + [1, 2, 3, 4, 5, 6].map(function (n) {
+              var c = 'pc-' + n;
+              return '<button type="button" class="proj-swatch ' + c + (c === color ? ' on' : '') + '" data-action="proj-color" data-color="' + c + '" data-slot="' + slot + '" aria-label="Colour ' + n + '"></button>';
+            }).join('') + '</div>'
+          : '';
+        footer = swatches + footActions;
       }
-      inner =
-        '<h2 class="proj-d-title">' + esc(p.title) + '</h2>' +
-        '<p class="proj-d-desc">' + esc(p.description) + '</p>' +
-        (p.fullDescription ? '<p class="proj-d-full">' + esc(p.fullDescription).replace(/\n/g, '<br>') + '</p>' : '');
-      // website on the left of the footer, edit as an icon on the right. On your
-      // OWN project a shareable "business card" wallet button sits between them.
-      var mineProj = signedIn() && slot === myTeamSlot();
-      var walletBtn = mineProj
-        ? '<button class="btn btn-outline btn-sm proj-wallet-btn" type="button" data-action="pcard-show" data-slot="' + slot + '"><i class="fa-solid fa-wallet"></i>Add to wallet</button>'
+    } else {
+      // ---- view mode: Details / Demo tabs (Demo only when a clip exists) ----
+      var hasVid = !!p.video;
+      var vtab = (hasVid && projViewTab === 'demo') ? 'demo' : 'details';
+      var vtabs = hasVid
+        ? '<div class="proj-tabs proj-view-tabs">' +
+            '<button type="button" class="proj-tab' + (vtab === 'details' ? ' on' : '') + '" data-action="proj-view-tab" data-tab="details">Details</button>' +
+            '<button type="button" class="proj-tab' + (vtab === 'demo' ? ' on' : '') + '" data-action="proj-view-tab" data-tab="demo"><i class="fa-solid fa-clapperboard"></i>Demo</button>' +
+          '</div>'
         : '';
-      footer = web + walletBtn + (canEdit
-        ? '<button class="proj-edit-btn" type="button" data-action="proj-edit-inline" data-slot="' + slot + '" title="Edit project" aria-label="Edit project"><i class="fa-solid fa-pen"></i></button>'
-        : '');
+      if (vtab === 'demo') {
+        // Manual playback: native controls (play + scrubber + fullscreen) plus an
+        // explicit full-screen button. No autoplay — the member presses play.
+        inner = vtabs +
+          '<div class="proj-demo">' +
+            '<video class="proj-demo-video" id="projDemoVideo" controls playsinline preload="metadata">' + projVideoSourcesHtml(p.video) + '</video>' +
+            '<button class="proj-demo-fs" type="button" data-action="proj-demo-fullscreen" title="Full screen"><i class="fa-solid fa-expand"></i></button>' +
+          '</div>';
+        footer = '';
+      } else {
+        var web = '';
+        if (p.website) {
+          var broken = !truthyStr(p.websiteOk);
+          web = '<a class="proj-d-web' + (broken ? ' broken' : '') + '" href="' + esc(p.website) + '" target="_blank" rel="noopener">' +
+            (broken ? '<i class="fa-solid fa-triangle-exclamation" title="This link looked broken when last saved"></i>' : '<i class="fa-solid fa-globe"></i>') +
+            '<span>' + esc(prettyUrl(p.website)) + '</span></a>';
+        }
+        inner = vtabs +
+          '<h2 class="proj-d-title">' + esc(p.title) + '</h2>' +
+          '<p class="proj-d-desc">' + esc(p.description) + '</p>' +
+          (p.fullDescription ? '<p class="proj-d-full">' + esc(p.fullDescription).replace(/\n/g, '<br>') + '</p>' : '');
+        // website on the left of the footer, edit as an icon on the right. On your
+        // OWN project a shareable "business card" wallet button sits between them.
+        var mineProj = signedIn() && slot === myTeamSlot();
+        var walletBtn = mineProj
+          ? '<button class="btn btn-outline btn-sm proj-wallet-btn" type="button" data-action="pcard-show" data-slot="' + slot + '"><i class="fa-solid fa-wallet"></i>Add to wallet</button>'
+          : '';
+        footer = web + walletBtn + (canEdit
+          ? '<button class="proj-edit-btn" type="button" data-action="proj-edit-inline" data-slot="' + slot + '" title="Edit project" aria-label="Edit project"><i class="fa-solid fa-pen"></i></button>'
+          : '');
+      }
     }
-    var videoBg = projShowVideo(slot)
-      ? '<video class="proj-d-video" autoplay muted loop playsinline preload="auto">' + projVideoSourcesHtml(p.video) + '</video>' +
-        '<div class="proj-d-scrim"></div>' +
-        '<button class="proj-video-audio" type="button" data-action="proj-video-mute" title="Unmute"><i class="fa-solid fa-volume-xmark"></i></button>'
-      : '';
+    var videoBg = ''; // the clip now lives in the Demo tab, not as an ambient backdrop
     var footerCls = 'proj-d-footer' + (editing ? '' : ' proj-d-footer-view');
     return videoBg +
       '<button class="proj-close" type="button" data-action="proj-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
@@ -3606,6 +3643,7 @@
     var cards = Array.prototype.slice.call(grid.querySelectorAll('.project-card'));
     if (!cards.length) return;
     projSel = slot;
+    projViewTab = 'details'; // always open on Details, not a stale Demo tab
     if (edit) startProjectEdit(slot); else { projEdit = false; projEditColor = ''; }
     projStack = [slot].concat(teamProjectsData().map(function (p) { return p.slot; }).filter(function (s) { return s !== slot; }));
     grid.classList.add('pp-open'); // enable the transition BEFORE moving cards
@@ -3771,25 +3809,31 @@
   // to Drive. Shares the same rules as the profile intro video.
   function pickProjectVideo(slot, btn) {
     var status = $('#projVideoStatus');
-    function setStatus(msg, isErr) { if (status) { status.textContent = msg; status.className = 'proj-vid-status' + (isErr ? ' err' : ''); } if (isErr) toast(msg, true); }
+    function setStatus(msg, isErr) { if (status) { status.textContent = msg; status.className = 'vid-status' + (isErr ? ' err' : ''); } if (isErr) toast(msg, true); }
     pickVideoFile(setStatus, function (file) { uploadProjectVideo(slot, file, btn, setStatus); });
   }
+  // Same UX as the profile upload: indeterminate bar in the footer, action
+  // buttons hidden while the single (upload + server-process) request runs.
+  function projVideoBusy(on) {
+    var pr = $('#projVideoProgress'); if (pr) { pr.hidden = !on; pr.classList.toggle('indet', on); }
+    var acts = $('#projVideoActions'); if (acts) acts.hidden = on;
+  }
   function uploadProjectVideo(slot, file, btn, setStatus) {
-    busy(btn, true);
-    setStatus('Uploading… large clips can take a moment.', false);
+    videoActionPending = true;
+    projVideoBusy(true);
+    setStatus('Uploading your clip… keep this panel open (this can take up to a minute).', false);
     var reader = new FileReader();
     reader.onload = function () {
       A.api('upload_project_video', { slot: slot, data: reader.result, filename: file.name.replace(/\.[^.]+$/, '') })
         .then(function (r) {
+          videoActionPending = false;
           if (r && r.teamProjects) { state.data.teamProjects = r.teamProjects; A.writeCache(state.data); }
-          busy(btn, false);
-          setStatus('', false);
-          renderProjectDetail(); // reflect "Video added" + it will loop once you save/close
+          renderProjectDetail(); // reflect "added" + the Demo tab now has a clip
           toast('Video uploaded');
         })
-        .catch(function (err) { busy(btn, false); setStatus(err.message || 'Upload failed', true); });
+        .catch(function (err) { videoActionPending = false; projVideoBusy(false); setStatus(err.message || 'Upload failed', true); });
     };
-    reader.onerror = function () { busy(btn, false); setStatus('Could not read the file.', true); };
+    reader.onerror = function () { videoActionPending = false; projVideoBusy(false); setStatus('Could not read the file.', true); };
     reader.readAsDataURL(file);
   }
 
@@ -5249,6 +5293,21 @@
         captureProjectDraft(); // keep in-flight edits before swapping tabs
         projEditTab = t.getAttribute('data-tab') || 'details';
         renderProjectDetail();
+        break;
+      }
+      case 'proj-view-tab': {
+        projViewTab = t.getAttribute('data-tab') || 'details';
+        renderProjectDetail();
+        break;
+      }
+      case 'proj-demo-fullscreen': {
+        var dv = $('#projDemoVideo');
+        if (dv) {
+          if (dv.requestFullscreen) dv.requestFullscreen();
+          else if (dv.webkitEnterFullscreen) dv.webkitEnterFullscreen(); // iOS Safari
+          else if (dv.webkitRequestFullscreen) dv.webkitRequestFullscreen();
+          var dp = dv.play && dv.play(); if (dp && dp.catch) dp.catch(function () {});
+        }
         break;
       }
       case 'proj-remove-video': {

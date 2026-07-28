@@ -1866,6 +1866,20 @@ body.hive-full .nav a { pointer-events: auto; }
 .proj-vid-ok { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--color-accent); }
 .proj-vid-status { font-size: 12.5px; color: var(--text-muted); min-height: 15px; margin-top: 6px; }
 .proj-vid-status.err { color: #d23; }
+/* video tab: footer holds all its controls (status + progress over a row of
+   upload/remove + save), so it spans the full width of the panel footer */
+.proj-vid-foot { flex: 1 1 100%; display: flex; flex-direction: column; gap: 10px; }
+.proj-vid-footrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.proj-vid-footrow .vid-actions { margin-right: auto; }
+/* view card Demo tab: a manual-playback player + explicit full-screen button */
+.proj-demo { position: relative; width: 100%; }
+.proj-demo-video { width: 100%; max-height: 62vh; aspect-ratio: 16 / 9; border-radius: 12px; background: #000; display: block; object-fit: contain; }
+.proj-demo-fs {
+  position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 8px; cursor: pointer;
+  border: none; background: rgba(10,11,14,0.6); color: #fff; font-size: 13px;
+  display: flex; align-items: center; justify-content: center; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.proj-demo-fs:hover { background: rgba(10,11,14,0.85); }
 /* team member circles below the stacked card (left column) */
 .proj-members-strip {
   position: absolute; z-index: 34; /* left/top/width set inline from geometry */
