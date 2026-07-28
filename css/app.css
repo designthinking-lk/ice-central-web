@@ -1069,6 +1069,18 @@ body.profile-bg-on .panel {
 }
 .profile-bg-btn:hover { background: rgba(14,15,17,0.92); }
 
+/* ------------------------------------------- public (signed-out) gate + teaser */
+.pub-gate { max-width: 640px; margin: 56px auto; display: flex; flex-direction: column; gap: 22px; }
+.pub-gate-card { padding: 26px 28px; border-radius: 16px; background: var(--gradient-brand); color: #fff; box-shadow: 0 18px 40px rgba(97,0,255,0.22); }
+.pub-gate-kicker { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
+.pub-gate-card h1 { font-size: 27px; letter-spacing: -0.02em; margin: 8px 0 6px; }
+.pub-gate-card p { margin: 0; opacity: 0.94; line-height: 1.5; }
+.pub-gate-cta { text-align: center; padding: 14px 20px 26px; }
+.pub-gate-cta > i { font-size: 24px; color: var(--color-accent); }
+.pub-gate-cta h2 { font-size: 20px; margin: 12px 0 6px; }
+.pub-gate-cta p { color: var(--text-muted); margin: 0 auto 18px; max-width: 440px; line-height: 1.55; }
+.pub-invite h3 i { color: var(--color-accent); }
+
 /* ----------------------------------------------------------- announcements */
 .ann { padding: 20px 22px; margin-bottom: 14px; }
 .ann-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }

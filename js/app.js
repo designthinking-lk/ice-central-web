@@ -204,6 +204,11 @@
   function eventName() { return shortName(fullTitle()); }
   function eventTagline() { return proj().tagline || C.EVENT_TAGLINE; }
   function siteUrl() { return proj().siteUrl || location.host; }
+  // Shareable social-card permalink (served by the card.designthinking.lk Worker,
+  // which renders per-member/project OG tags then bounces into the app).
+  function shareCardUrl(kind, id) {
+    return 'https://card.designthinking.lk/' + kind + '/' + encodeURIComponent(id) + '?project=' + encodeURIComponent(A.getProject());
+  }
 
   // Where the current workshop sits in time — 'before' | 'during' | 'after' —
   // read off the project's start/end dates (local wall-clock, so it flips at
@@ -1476,6 +1481,7 @@
             : (signedIn() && me()
                 ? (workEmailOf(u) ? '<button class="btn btn-primary btn-sm" data-action="chat-dm" data-person="' + esc(u.id) + '"><i class="fa-regular fa-message"></i><span class="label">Message</span><span class="spin"></span></button>' : '')
                 : '<button class="btn btn-primary btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in to message</button>'))) +
+      ' <button class="btn btn-outline btn-sm" type="button" data-action="card-share" data-kind="u" data-id="' + esc(u.id) + '"><i class="fa-solid fa-share-nodes"></i>Share</button>' +
       '</div></div></div>' +
       '<div class="detail-grid"><div>' +
       (u.bio ? '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-regular fa-id-badge"></i>About</h3><p style="white-space:pre-wrap;color:var(--text-body);margin:0">' + esc(u.bio) + '</p></div>' : '') +
@@ -3382,8 +3388,23 @@
       '</article>';
   }
 
-  function viewProjects() {
+  function viewProjects(slot) {
     projSel = null; projEdit = false; projEditColor = ''; // always render the grid state
+    // Projects are community-only. A signed-out visitor (e.g. opening a shared
+    // project link) sees a teaser for that project + an invite prompt instead.
+    if (!signedIn()) {
+      var pp = (slot !== undefined && slot !== '') ? projectBySlot(Number(slot)) : null;
+      return '<div class="pub-gate">' +
+        (pp && pp.title
+          ? '<div class="pub-gate-card"><span class="pub-gate-kicker">' + esc(eventName()) + ' &middot; Project</span>' +
+              '<h1>' + esc(pp.title) + '</h1>' + (pp.description ? '<p>' + esc(pp.description) + '</p>' : '') + '</div>'
+          : '') +
+        '<div class="pub-gate-cta"><i class="fa-solid fa-lock"></i>' +
+          '<h2>Projects are for the ' + esc(eventName()) + ' community</h2>' +
+          '<p>Sign in to explore every team’s project and demo — or request an invite to join the community.</p>' +
+          '<button class="btn btn-gradient" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in</button>' +
+        '</div></div>';
+    }
     return '<div class="projects-wrap"><div class="projects-grid" id="projectsGrid">' +
       teamProjectsData().map(projectCardHtml).join('') +
       '<div class="proj-members-strip" id="projMembersStrip" hidden></div>' +
@@ -3566,7 +3587,8 @@
         var walletBtn = mineProj
           ? '<button class="btn btn-outline btn-sm proj-wallet-btn" type="button" data-action="pcard-show" data-slot="' + slot + '"><i class="fa-solid fa-wallet"></i>Add to wallet</button>'
           : '';
-        footer = web + walletBtn + (canEdit
+        var shareBtn = '<button class="btn btn-outline btn-sm proj-share-btn" type="button" data-action="card-share" data-kind="p" data-id="' + slot + '"><i class="fa-solid fa-share-nodes"></i>Share</button>';
+        footer = web + shareBtn + walletBtn + (canEdit
           ? '<button class="proj-edit-btn" type="button" data-action="proj-edit-inline" data-slot="' + slot + '" title="Edit project" aria-label="Edit project"><i class="fa-solid fa-pen"></i></button>'
           : '');
       }
@@ -5171,7 +5193,7 @@
     // team detail pages remain reachable from profiles
     { re: /^#\/teams$/, view: function () { location.hash = '#/people'; return ''; } },
     { re: /^#\/team\/([\w-]+)$/, view: viewTeam },
-    { re: /^#\/projects$/, view: viewProjects },
+    { re: /^#\/projects(?:\/(\d+))?$/, view: viewProjects },
     { re: /^#\/skills$/, view: viewSkills },
     { re: /^#\/program$/, view: viewProgram },
     { re: /^#\/tools$/, view: viewTools },
@@ -5246,6 +5268,12 @@
     if ($('#pcardView')) initProjectCardHandoff();
     // projects: draw the QR on any card with a valid website
     if ($('#projectsGrid')) renderProjectCardQRs();
+    // shared project deep-link (#/projects/<slot>): auto-open that project card
+    var projDeep = hash.match(/^#\/projects\/(\d+)$/);
+    if (projDeep && $('#projectsGrid') && projSel == null) {
+      var dslot = Number(projDeep[1]);
+      requestAnimationFrame(function () { if (projSel == null) openProject(dslot, false); });
+    }
     // skill tag input
     var skillInput = $('#skillInput');
     if (skillInput) {
@@ -5360,6 +5388,14 @@
 
     switch (action) {
       case 'sign-in': A.signIn(); break;
+      case 'card-share': {
+        var shareUrl = shareCardUrl(t.getAttribute('data-kind'), t.getAttribute('data-id'));
+        if (navigator.share) { navigator.share({ url: shareUrl }).catch(function () {}); }
+        else if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(shareUrl).then(function () { toast('Share link copied'); }).catch(function () { window.prompt('Copy this link:', shareUrl); });
+        } else { window.prompt('Copy this link:', shareUrl); }
+        break;
+      }
       case 'sign-out': e.preventDefault(); closeMenu(); A.signOut(); break;
       case 'user-menu': e.preventDefault(); openMenu('user'); break;
       case 'guest-menu': e.preventDefault(); openMenu('guest'); break;

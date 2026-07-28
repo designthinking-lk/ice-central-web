@@ -16,6 +16,7 @@
  * When the ice.designthinking.lk cutover happens, update CANONICAL_ORIGIN. */
 
 const CANONICAL_ORIGIN = 'https://ice2026.designthinking.lk';
+const API_URL = 'https://script.google.com/macros/s/AKfycbz0THh0OrmG8umv5ZomVvv1kQu7Ogs1jYp2tKqJFOe6gAMWGnL5Y5_Ww5hZOFVeNSA/exec';
 
 export default {
   async fetch(request) {
@@ -28,6 +29,16 @@ export default {
     // support + permissive CORS, so uploaded intro/pitch clips actually play.
     const vm = url.pathname.match(/^\/vid\/([A-Za-z0-9_-]+)$/);
     if (vm) return proxyDriveVideo(vm[1], request);
+
+    // --- Social share cards: card.designthinking.lk/u|p/<id> --------------
+    // Hash-routed SPA + static host = no per-page OG. This edge route fetches
+    // the public card fields and returns a page with dynamic OG tags for social
+    // crawlers; real browsers are bounced into the app.
+    if (url.hostname.startsWith('card.')) {
+      const cm = url.pathname.match(/^\/(u|p)\/([\w-]+)\/?$/);
+      if (cm) return renderShareCard(cm[1], cm[2], url);
+      return Response.redirect(CANONICAL_ORIGIN + '/', 302);
+    }
 
     const subdomain = extractSubdomain(url.hostname);
 
@@ -62,6 +73,65 @@ export default {
     }
   },
 };
+
+// Render an OG-tagged share page for a member (u) or project (p). Fetches the
+// public card fields from the API; on any failure falls back to the generic
+// site card so the link never breaks.
+async function renderShareCard(kind, id, url) {
+  const project = url.searchParams.get('project') || 'ice2026';
+  let card = null;
+  try {
+    // Apps Script /exec answers a POST with a 302 to a googleusercontent URL that
+    // serves the JSON — but that second hop must be a GET (auto-follow keeps POST
+    // and errors), so follow the redirect manually.
+    let r = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'og_card', kind, id, project }),
+      redirect: 'manual',
+    });
+    if (r.status >= 300 && r.status < 400) {
+      const loc = r.headers.get('location');
+      if (loc) r = await fetch(loc); // GET the content response
+    }
+    const data = await r.json();
+    card = data && data.card;
+  } catch (e) { /* generic fallback below */ }
+
+  const appUrl = (card && card.appUrl) || (CANONICAL_ORIGIN + '/');
+  const title  = (card && card.title) || 'ICE — Design Thinking Workshops';
+  const desc   = (card && card.description) || 'Meet the mentors and participants, form teams, and build together.';
+  const image  = (card && card.image) || (CANONICAL_ORIGIN + '/assets/og-image-v3.jpg');
+  const twCard = (card && card.square) ? 'summary' : 'summary_large_image';
+  const e = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const html =
+`<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${e(title)}</title>
+<meta name="description" content="${e(desc)}">
+<meta property="og:type" content="profile">
+<meta property="og:site_name" content="ICE — Design Thinking Workshops">
+<meta property="og:title" content="${e(title)}">
+<meta property="og:description" content="${e(desc)}">
+<meta property="og:image" content="${e(image)}">
+<meta property="og:url" content="${e(appUrl)}">
+<meta name="twitter:card" content="${e(twCard)}">
+<meta name="twitter:title" content="${e(title)}">
+<meta name="twitter:description" content="${e(desc)}">
+<meta name="twitter:image" content="${e(image)}">
+<link rel="canonical" href="${e(appUrl)}">
+<meta http-equiv="refresh" content="0; url=${e(appUrl)}">
+<style>body{font:15px/1.5 system-ui,sans-serif;margin:40px;color:#222}</style>
+</head><body>
+<p>Opening <a href="${e(appUrl)}">${e(title)}</a>…</p>
+<script>location.replace(${JSON.stringify(appUrl)})</script>
+</body></html>`;
+  return new Response(html, { status: 200, headers: {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'public, max-age=300',
+    'X-Ice-Card': kind + ':' + id,
+  } });
+}
 
 // Stream a public Drive file through the Worker. `confirm=t` skips the
 // large-file scan interstitial; Range is forwarded so <video> can seek/loop.
