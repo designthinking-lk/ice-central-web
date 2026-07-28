@@ -2205,6 +2205,10 @@
   // start with sound on; renderCardVideo falls back to muted only if the browser
   // blocks an unmuted autoplay (no user gesture yet)
   var cardVideoMuted = false;
+  // whether the user themselves chose mute (via the speaker button) — distinct
+  // from a mute the browser's autoplay policy forced on a cold page load
+  var cardUserMuted = false;
+  var cardAudioUnlockArmed = false;
 
   // no `autoplay` attribute — we start playback ourselves once the clip has
   // buffered enough, so the opening (its most important notes) isn't clipped by
@@ -2245,9 +2249,13 @@
         v.muted = cardVideoMuted; // respect a mute toggle made during the warm-up
         var pu = v.play();
         if (pu && pu.catch) pu.catch(function () {
+          // unmuted autoplay blocked (cold load, no gesture) — play muted for
+          // now, then unmute on the very first user interaction so sound still
+          // comes on effectively immediately.
           v.muted = true; cardVideoMuted = true; setCardMuteIcon();
           try { v.currentTime = 0; } catch (e) { /* ignore */ }
           v.play().catch(function () {});
+          armCardAudioUnlock();
         });
         setCardMuteIcon();
       }, CARD_AUDIO_PRIME_MS);
@@ -2255,6 +2263,29 @@
     if (v.readyState >= 4) { begin(); return; }     // HAVE_ENOUGH_DATA already
     v.addEventListener('canplaythrough', begin, { once: true });
     setTimeout(begin, 2500);                         // safety cap on the buffer wait
+  }
+
+  // The browser only allows unmuted playback after a user gesture. When a cold
+  // load forced the card video muted, unmute it on the first click/tap/key —
+  // unless the user has since chosen mute themselves. One-shot.
+  function armCardAudioUnlock() {
+    if (cardAudioUnlockArmed) return;
+    cardAudioUnlockArmed = true;
+    function unlock() {
+      document.removeEventListener('pointerdown', unlock, true);
+      document.removeEventListener('keydown', unlock, true);
+      document.removeEventListener('touchstart', unlock, true);
+      cardAudioUnlockArmed = false;
+      var v = $('#cardVideoEl');
+      if (!v || cardUserMuted || !cardVideoMuted) return; // gone, or mute is intended
+      cardVideoMuted = false; v.muted = false;
+      var p = v.play(); if (p && p.catch) p.catch(function () {});
+      setCardMuteIcon();
+    }
+    // capture phase so it runs before the card's own click handlers
+    document.addEventListener('pointerdown', unlock, true);
+    document.addEventListener('keydown', unlock, true);
+    document.addEventListener('touchstart', unlock, true);
   }
 
   function renderCardVideo() {
@@ -5405,6 +5436,7 @@
       case 'close-video': closeVideoOverlay(); break;
       case 'card-video-mute': {
         cardVideoMuted = !cardVideoMuted;
+        cardUserMuted = cardVideoMuted; // explicit choice — suppresses auto-unmute
         var cv = $('#cardVideoEl');
         if (cv) {
           cv.muted = cardVideoMuted;
