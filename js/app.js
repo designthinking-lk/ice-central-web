@@ -2123,15 +2123,17 @@
           '<span class="vid-now-label">Playing on your card</span>' +
           '<span class="vid-now-name" title="' + esc(name) + '">' + esc(name) + '</span></div></div>'
       : videoReqHtml();
-    // Footer pinned to the bottom of the card: progress + status + actions.
+    // Footer pinned to the bottom of the card: the action buttons (hidden while a
+    // transfer runs), then the status line, then the progress bar sitting on the
+    // card's very bottom edge.
     var foot =
       '<div class="vid-foot">' +
-        '<div class="vid-progress" id="profileVideoProgress" hidden><div class="vid-progress-bar" id="profileVideoBar"></div></div>' +
-        '<div class="vid-status" id="profileVideoStatus"></div>' +
-        '<div class="vid-actions">' +
+        '<div class="vid-actions" id="profileVideoActions">' +
           '<button type="button" class="btn btn-outline btn-sm" data-action="profile-video-pick"><i class="fa-solid fa-upload"></i>' + (has ? 'Replace video' : 'Upload video') + '</button>' +
           (has ? '<button type="button" class="btn btn-ghost btn-sm" data-action="profile-video-remove"><i class="fa-regular fa-trash-can"></i>Remove</button>' : '') +
         '</div>' +
+        '<div class="vid-status" id="profileVideoStatus"></div>' +
+        '<div class="vid-progress" id="profileVideoProgress" hidden><div class="vid-progress-bar" id="profileVideoBar"></div></div>' +
       '</div>';
     return top + foot;
   }
@@ -2153,10 +2155,12 @@
     wrap.hidden = false;
     wrap.classList.toggle('indet', !!indeterminate);
     bar.style.width = indeterminate ? '' : (Math.max(0, Math.min(100, pct)) + '%');
+    var acts = $('#profileVideoActions'); if (acts) acts.hidden = true; // hide buttons mid-transfer
   }
   function hideVideoProgress() {
     var wrap = $('#profileVideoProgress');
     if (wrap) { wrap.hidden = true; wrap.classList.remove('indet'); }
+    var acts = $('#profileVideoActions'); if (acts) acts.hidden = false;
   }
 
   function pickProfileVideo() {

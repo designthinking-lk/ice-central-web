@@ -985,6 +985,7 @@ textarea.input { resize: vertical; min-height: 90px; }
 .vid-req i { color: #cf8f00; margin-top: 1px; flex: none; font-size: 13px; }
 .vid-req b { color: var(--text); font-weight: 700; }
 .vid-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.vid-actions[hidden] { display: none; }
 .vid-ok { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #2e9e5b; }
 .vid-status { font-size: 12.5px; min-height: 15px; color: var(--text-muted); }
 .vid-status.err { color: #d23; }
@@ -1016,48 +1017,50 @@ textarea.input { resize: vertical; min-height: 90px; }
 
 /* ------------------------------------------ profile page: video as backdrop */
 /* The member's intro clip plays full-screen behind the profile content (lives in
-   .main, a non-scrolling relative parent, so it survives #view repaints). A dark
-   canvas sits under it; the video is semi-transparent with radially-feathered
-   edges that dissolve into that canvas, and fades in on play. The content is
-   restyled light + glass so it reads directly on the video — the home-screen
-   treatment. Works the same in light and dark theme. */
-.profile-bg-video { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #0a0b0e; }
+   .main, a non-scrolling relative parent, so it survives #view repaints). It
+   adapts to the active theme (like the home-screen video): the canvas under it
+   is the theme background, so the radially-feathered edges dissolve into whatever
+   the page colour is, and the footage blends toward it. Text keeps its normal
+   theme colour but gains a theme-coloured halo so it stays legible over both
+   bright and dark video frames; the content panels become theme-appropriate
+   glass. Video fades in on play. */
+.profile-bg-video { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: var(--bg); }
 .profile-bg-video video {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
   opacity: 0; transition: opacity 1.2s ease;
   -webkit-mask-image: radial-gradient(ellipse 80% 84% at 50% 42%, #000 48%, transparent 100%);
           mask-image: radial-gradient(ellipse 80% 84% at 50% 42%, #000 48%, transparent 100%);
 }
-.profile-bg-video.show video { opacity: 0.6; }
-.profile-bg-scrim { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(10,11,14,0.35) 0%, rgba(10,11,14,0.6) 100%); }
+.profile-bg-video.show video { opacity: 0.7; }
+/* soft theme-tinted vignette reinforcing the feather (lighter in day, darker at night) */
+.profile-bg-scrim { position: absolute; inset: 0; background: radial-gradient(ellipse 75% 80% at 50% 42%, transparent 45%, var(--bg) 125%); opacity: 0.55; }
 body.profile-bg-on .view { position: relative; z-index: 1; }
-/* header text → light */
+/* header text keeps its theme colour but gets a theme-coloured halo so it reads
+   over any video frame in either theme */
 body.profile-bg-on .page-head h1,
-body.profile-bg-on .page-head .meta-row span,
-body.profile-bg-on .person-name .role-tag { color: #fff !important; }
-body.profile-bg-on .page-head .meta-row i { color: rgba(255,255,255,0.7) !important; }
-body.profile-bg-on .page-head .btn-outline { border-color: rgba(255,255,255,0.35); color: #fff; background: rgba(255,255,255,0.08); }
-/* content panels → translucent glass so the video shows through, text stays legible */
-body.profile-bg-on .panel {
-  background: rgba(16,18,26,0.5) !important;
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-  border: 1px solid rgba(255,255,255,0.13) !important;
+body.profile-bg-on .page-head .person-name,
+body.profile-bg-on .page-head .meta-row,
+body.profile-bg-on .page-head .meta-row span {
+  text-shadow: 0 1px 2px var(--bg), 0 0 10px var(--bg), 0 0 20px var(--bg);
 }
-body.profile-bg-on .panel h3,
-body.profile-bg-on .panel h3 i { color: #fff !important; }
-body.profile-bg-on .panel p { color: rgba(255,255,255,0.9) !important; }
-body.profile-bg-on .link-list a { color: #9fd4ff !important; }
-body.profile-bg-on .link-list i { color: rgba(255,255,255,0.55) !important; }
-body.profile-bg-on .panel .skills .chip {
-  background: rgba(255,255,255,0.12) !important; color: #fff !important; border-color: rgba(255,255,255,0.22) !important;
+/* content panels → theme-appropriate translucent glass so the video shows through
+   while the (theme-default) text stays legible */
+body.profile-bg-on .panel {
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+:root[data-theme="light"] body.profile-bg-on .panel {
+  background: rgba(255,255,255,0.62) !important; border: 1px solid rgba(0,0,0,0.08) !important;
+}
+:root[data-theme="dark"] body.profile-bg-on .panel {
+  background: rgba(18,20,28,0.5) !important; border: 1px solid rgba(255,255,255,0.13) !important;
 }
 .profile-bg-btn {
   position: fixed; right: 20px; bottom: 20px; z-index: 60; pointer-events: auto;
   width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer;
-  background: rgba(14,15,17,0.62); color: #fff; font-size: 15px;
+  background: rgba(14,15,17,0.55); color: #fff; font-size: 15px;
   display: flex; align-items: center; justify-content: center; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
 }
-.profile-bg-btn:hover { background: rgba(14,15,17,0.85); }
+.profile-bg-btn:hover { background: rgba(14,15,17,0.82); }
 
 /* ----------------------------------------------------------- announcements */
 .ann { padding: 20px 22px; margin-bottom: 14px; }
