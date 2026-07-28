@@ -2218,47 +2218,63 @@
       (cardVideoMuted ? ' muted' : '') + '>' + videoSourcesHtml(src) + '</video>';
   }
 
-  // Start playback so the opening (its most important notes) is never clipped:
-  //  1) wait until the clip has buffered enough to play through (canplaythrough),
-  //     capped so a slow network still starts within a couple of seconds;
-  //  2) when sound is wanted, "prime" the audio decoder by playing muted for a
-  //     beat, then seek back to 0 and unmute — a cold decoder drops its first
-  //     samples, so the warm-up keeps the very first notes intact.
-  // Unmuted playback the browser blocks (no user gesture) falls back to muted,
-  // still restarted from 0, so nothing is skipped either way.
-  var CARD_AUDIO_PRIME_MS = 250;
+  // Audio fade-in: browsers can drop the first fraction of a second of audio on
+  // a cold start (and again after the loop wraps). Rather than fight it, ramp
+  // volume 0→1 over ~1.6s so those opening samples land during near-silence and
+  // the "cut" is inaudible. Applied on first play and on every loop restart.
+  var CARD_AUDIO_FADE_MS = 1600;
+  function fadeCardAudioIn(v) {
+    if (!v) return;
+    clearInterval(v.__volTimer);
+    var steps = 32, i = 0;
+    try { v.volume = 0; } catch (e) { /* ignore */ }
+    v.__volTimer = setInterval(function () {
+      i++;
+      try { v.volume = Math.min(1, i / steps); } catch (e) { /* ignore */ }
+      if (i >= steps) { clearInterval(v.__volTimer); v.__volTimer = null; }
+    }, CARD_AUDIO_FADE_MS / steps);
+  }
+  // Re-run the fade each time the loop wraps back to the start (currentTime jumps
+  // backwards), so the opening cut is masked on every repeat, not just the first.
+  function wireCardLoopFade(v) {
+    if (v.__loopWired) return;
+    v.__loopWired = true;
+    var last = 0;
+    v.addEventListener('timeupdate', function () {
+      var t = v.currentTime;
+      if (t + 0.1 < last && !v.muted) fadeCardAudioIn(v);
+      last = t;
+    });
+  }
+  // Play the card video unmuted with the audio fade-in. If the browser blocks
+  // unmuted playback (cold load, no gesture) fall back to muted and unmute on
+  // the first user interaction.
+  function playCardUnmuted(v) {
+    v.muted = false;
+    fadeCardAudioIn(v);
+    var p = v.play();
+    if (p && p.catch) p.catch(function () {
+      clearInterval(v.__volTimer); v.__volTimer = null; try { v.volume = 1; } catch (e) {}
+      v.muted = true; cardVideoMuted = true; setCardMuteIcon();
+      v.play().catch(function () {});
+      armCardAudioUnlock();
+    });
+  }
+  // Wait until enough is buffered to play through (canplaythrough, capped so a
+  // slow network still starts within ~2.5s), then play from the beginning.
   function startCardVideo(v) {
     var started = false;
     function begin() {
       if (started || !v.isConnected) return;
       started = true;
-      // No sound wanted — just play muted from the top, nothing to prime.
+      try { v.currentTime = 0; } catch (e) { /* plays from 0 anyway */ }
+      wireCardLoopFade(v);
       if (cardVideoMuted) {
-        try { v.currentTime = 0; } catch (e) { /* plays from 0 anyway */ }
         v.muted = true;
         var pm = v.play(); if (pm && pm.catch) pm.catch(function () {});
         return;
       }
-      // Warm-up pass (muted), then restart from 0 with the intended mute state.
-      v.muted = true;
-      try { v.currentTime = 0; } catch (e) { /* ignore */ }
-      var pw = v.play(); if (pw && pw.catch) pw.catch(function () { /* even muted blocked */ });
-      setTimeout(function () {
-        if (!v.isConnected) return;
-        try { v.currentTime = 0; } catch (e) { /* ignore */ }
-        v.muted = cardVideoMuted; // respect a mute toggle made during the warm-up
-        var pu = v.play();
-        if (pu && pu.catch) pu.catch(function () {
-          // unmuted autoplay blocked (cold load, no gesture) — play muted for
-          // now, then unmute on the very first user interaction so sound still
-          // comes on effectively immediately.
-          v.muted = true; cardVideoMuted = true; setCardMuteIcon();
-          try { v.currentTime = 0; } catch (e) { /* ignore */ }
-          v.play().catch(function () {});
-          armCardAudioUnlock();
-        });
-        setCardMuteIcon();
-      }, CARD_AUDIO_PRIME_MS);
+      playCardUnmuted(v);
     }
     if (v.readyState >= 4) { begin(); return; }     // HAVE_ENOUGH_DATA already
     v.addEventListener('canplaythrough', begin, { once: true });
@@ -2278,8 +2294,8 @@
       cardAudioUnlockArmed = false;
       var v = $('#cardVideoEl');
       if (!v || cardUserMuted || !cardVideoMuted) return; // gone, or mute is intended
-      cardVideoMuted = false; v.muted = false;
-      var p = v.play(); if (p && p.catch) p.catch(function () {});
+      cardVideoMuted = false;
+      playCardUnmuted(v); // unmute + fade the audio in
       setCardMuteIcon();
     }
     // capture phase so it runs before the card's own click handlers
@@ -5439,8 +5455,8 @@
         cardUserMuted = cardVideoMuted; // explicit choice — suppresses auto-unmute
         var cv = $('#cardVideoEl');
         if (cv) {
-          cv.muted = cardVideoMuted;
-          if (!cardVideoMuted) { var pr = cv.play(); if (pr && pr.catch) pr.catch(function () {}); }
+          if (!cardVideoMuted) { playCardUnmuted(cv); }
+          else { clearInterval(cv.__volTimer); cv.__volTimer = null; cv.muted = true; }
         }
         setCardMuteIcon();
         break;
