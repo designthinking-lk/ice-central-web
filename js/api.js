@@ -97,6 +97,41 @@
     return data;
   }
 
+  /** Like api(), but over XMLHttpRequest so uploads report byte progress.
+   * onProgress(loaded, total, sent) — `sent` is true once the whole body has
+   * left the browser (the server is now processing). Same text/plain simple
+   * request; XHR follows the Apps Script 302 to the content response. */
+  function apiUpload(action, params, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var body = Object.assign({ action: action }, params || {});
+      if (!body.project) body.project = getProject();
+      var token = getToken();
+      if (token && !body.token) body.token = token;
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', C.API_URL, true);
+      xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+      xhr.timeout = 180000;
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = function (e) { if (e.lengthComputable) onProgress(e.loaded, e.total, false); };
+        xhr.upload.onload = function () { onProgress(1, 1, true); }; // body sent → server processing
+      }
+      xhr.onload = function () {
+        var data;
+        try { data = JSON.parse(xhr.responseText); }
+        catch (e) { reject(new Error('The server sent an unexpected response.')); return; }
+        if (data && data.ok === false) {
+          if (data.error === 'auth') setToken(null);
+          var err = new Error(data.message || data.error || 'Request failed');
+          err.code = data.error; reject(err); return;
+        }
+        resolve(data);
+      };
+      xhr.onerror = function () { reject(new Error('Could not reach the server — check your connection and try again.')); };
+      xhr.ontimeout = function () { reject(new Error('Upload timed out — try a shorter or smaller clip.')); };
+      xhr.send(JSON.stringify(body));
+    });
+  }
+
   /** Capture #icetoken=... handed back by the auth broker. */
   function absorbLoginToken() {
     var h = location.hash || '';
@@ -155,6 +190,7 @@
 
   window.IceApi = {
     api: api,
+    apiUpload: apiUpload,
     getToken: getToken,
     setToken: setToken,
     getProject: getProject,

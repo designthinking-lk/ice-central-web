@@ -2045,15 +2045,20 @@
       'Portrait or higher-resolution videos aren’t accepted.</span></div>';
   }
 
-  // Build <source> tags for a stored video: a public Drive URL gets two Drive
-  // endpoints (lh3 + uc fallback); a bundled asset path is used as-is.
+  // Build <source> tags for a stored video. A Drive file id must stream from
+  // drive.usercontent.google.com/download — that endpoint serves the real MP4
+  // with byte-range support. (The lh3.googleusercontent.com/d/ID form we store
+  // only ever returns a JPEG poster frame, which a <video> can't play.) A
+  // bundled asset path is used as-is.
+  function driveVideoStreamUrl(id) {
+    return 'https://drive.usercontent.google.com/download?id=' + id + '&export=download';
+  }
   function videoSourcesHtml(url) {
     var m = String(url).match(/\/d\/([^/?]+)/) || String(url).match(/[?&]id=([^&]+)/);
     var id = m ? m[1] : '';
-    var list = id
-      ? ['https://lh3.googleusercontent.com/d/' + id, 'https://drive.google.com/uc?export=download&id=' + id]
-      : [url];
-    return list.map(function (s) { return '<source src="' + esc(s) + '">'; }).join('');
+    // no type= hint: the endpoint returns the real Content-Type, so the browser
+    // sniffs it (works for mp4 and webm uploads alike)
+    return '<source src="' + esc(id ? driveVideoStreamUrl(id) : url) + '">';
   }
 
   // Validate a picked File against the rules; report progress/errors through
@@ -2091,6 +2096,10 @@
 
   // ---- profile intro video: upload panel (inside the card overlay) ----
 
+  // display name of the currently-shown intro clip (the file the member just
+  // picked). '' when nothing uploaded this session; reset when the form rebuilds.
+  var profileVideoName = '';
+
   function profileVideoUrl() {
     var hid = $('#profileForm [name="video"]');
     return (hid && hid.value) || '';
@@ -2098,12 +2107,18 @@
 
   function videoPanelHtml() {
     var has = !!profileVideoUrl();
+    var name = profileVideoName || (has ? 'Your intro clip' : '');
     return videoReqHtml() +
+      (has
+        ? '<div class="vid-now"><i class="fa-solid fa-circle-play"></i><div class="vid-now-txt">' +
+            '<span class="vid-now-label">Playing on your card</span>' +
+            '<span class="vid-now-name" title="' + esc(name) + '">' + esc(name) + '</span></div></div>'
+        : '') +
       '<div class="vid-actions">' +
         '<button type="button" class="btn btn-outline btn-sm" data-action="profile-video-pick"><i class="fa-solid fa-upload"></i>' + (has ? 'Replace video' : 'Upload video') + '</button>' +
         (has ? '<button type="button" class="btn btn-ghost btn-sm" data-action="profile-video-remove"><i class="fa-regular fa-trash-can"></i>Remove</button>' : '') +
       '</div>' +
-      (has ? '<div class="vid-ok"><i class="fa-solid fa-circle-check"></i>Video added — it loops as your card backdrop.</div>' : '') +
+      '<div class="vid-progress" id="profileVideoProgress" hidden><div class="vid-progress-bar" id="profileVideoBar"></div></div>' +
       '<div class="vid-status" id="profileVideoStatus"></div>';
   }
 
@@ -2118,18 +2133,38 @@
     if (isErr) toast(msg, true);
   }
 
+  function setVideoProgress(pct, indeterminate) {
+    var wrap = $('#profileVideoProgress'), bar = $('#profileVideoBar');
+    if (!wrap || !bar) return;
+    wrap.hidden = false;
+    wrap.classList.toggle('indet', !!indeterminate);
+    bar.style.width = indeterminate ? '' : (Math.max(0, Math.min(100, pct)) + '%');
+  }
+  function hideVideoProgress() {
+    var wrap = $('#profileVideoProgress');
+    if (wrap) { wrap.hidden = true; wrap.classList.remove('indet'); }
+  }
+
   function pickProfileVideo() {
     pickVideoFile(profileVideoStatus, uploadProfileVideo);
   }
 
   function uploadProfileVideo(file) {
-    profileVideoStatus('Uploading… this can take a moment.', false);
+    profileVideoStatus('Preparing…', false);
     var reader = new FileReader();
     reader.onload = function () {
-      A.api('upload_profile_video', { data: reader.result, filename: file.name.replace(/\.[^.]+$/, '') })
+      setVideoProgress(0, false);
+      profileVideoStatus('Uploading… 0%', false);
+      A.apiUpload('upload_profile_video', { data: reader.result, filename: file.name.replace(/\.[^.]+$/, '') },
+        function (loaded, total, sent) {
+          if (sent) { setVideoProgress(100, true); profileVideoStatus('Processing on our server…', false); }
+          else { var pct = Math.round(loaded / total * 100); setVideoProgress(pct, false); profileVideoStatus('Uploading… ' + pct + '%', false); }
+        })
         .then(function (r) {
           var hid = $('#profileForm [name="video"]');
           if (hid && r && r.url) hid.value = r.url;
+          profileVideoName = file.name;
+          hideVideoProgress();
           profileVideoStatus('', false);
           renderVideoPanel();
           renderCardVideo(); // the card backdrop follows the picked video live
@@ -2137,19 +2172,40 @@
           saveRegDraft();
           toast('Video uploaded');
         })
-        .catch(function (err) { profileVideoStatus(err.message || 'Upload failed', true); });
+        .catch(function (err) { hideVideoProgress(); profileVideoStatus(err.message || 'Upload failed', true); });
     };
     reader.onerror = function () { profileVideoStatus('Could not read the file.', true); };
     reader.readAsDataURL(file);
   }
 
+  // Remove the intro clip: delete it from Drive on the server, clear the field,
+  // and revert the card to the default backdrop.
   function removeProfileVideo() {
     var hid = $('#profileForm [name="video"]');
-    if (hid) hid.value = '';
-    renderVideoPanel();
-    renderCardVideo();
-    updateJoinState();
-    saveRegDraft();
+    var url = hid && hid.value;
+    if (!url) { profileVideoName = ''; renderVideoPanel(); renderCardVideo(); return; }
+    profileVideoStatus('Removing…', false);
+    A.api('remove_profile_video', { url: url })
+      .then(function (r) {
+        if (hid) hid.value = '';
+        profileVideoName = '';
+        // reflect the cleared video in cached state so the card + profile page
+        // both fall back to the default straight away
+        if (r && r.user && state.data) {
+          if (state.data.me && state.data.me.id === r.user.id) state.data.me = r.user;
+          if (state.data.users) state.data.users = state.data.users.map(function (u) {
+            return u.id === r.user.id ? Object.assign({}, u, { video: '' }) : u;
+          });
+          A.writeCache(state.data);
+        }
+        renderVideoPanel();
+        renderCardVideo(); // default backdrop plays
+        updateJoinState();
+        saveRegDraft();
+        profileVideoStatus('', false);
+        toast('Video removed');
+      })
+      .catch(function (err) { profileVideoStatus(err.message || 'Could not remove the video', true); });
   }
 
   // ---- profile page: play the member's intro clip as the page backdrop ----
@@ -2435,6 +2491,7 @@
     // only a Drive-hosted clip is carried into the editor; legacy YouTube links
     // are dropped (the member re-uploads), so the default backdrop shows instead
     var vid = /^https:\/\/(lh3\.googleusercontent\.com|drive\.(google|usercontent\.google)\.com)\//.test(u.video || '') ? u.video : '';
+    profileVideoName = ''; // no original filename known for a saved clip until re-uploaded
     // The card edits first + last separately; they recombine into the stored `name`.
     var nameParts = String(u.name || '').trim().split(/\s+/).filter(Boolean);
     var firstName = nameParts.shift() || '';
@@ -3268,14 +3325,9 @@
   }
 
   // A Drive video plays from more than one host form; offer both as <source>s.
-  function projVideoSourcesHtml(url) {
-    var m = url.match(/\/d\/([^/?]+)/) || url.match(/[?&]id=([^&]+)/);
-    var id = m ? m[1] : '';
-    var list = id
-      ? ['https://lh3.googleusercontent.com/d/' + id, 'https://drive.google.com/uc?export=download&id=' + id]
-      : [url];
-    return list.map(function (s) { return '<source src="' + esc(s) + '">'; }).join('');
-  }
+  // Same streaming fix as videoSourcesHtml — Drive videos must come from the
+  // usercontent download endpoint, not the lh3 poster-frame URL.
+  function projVideoSourcesHtml(url) { return videoSourcesHtml(url); }
   function projShowVideo(slot) {
     var p = projectBySlot(slot);
     return !!(p && p.video) && !(projEdit && canEditProject(slot));
