@@ -1187,7 +1187,7 @@
       '<div class="feature-video">' +
       '<video class="feature-video-el" autoplay muted loop playsinline preload="auto" ' +
       'title="ICE workshop highlights" tabindex="-1">' +
-      '<source src="assets/video/ice2025-landing.mp4" type="video/mp4"></video>' +
+      '<source src="assets/video/ice2025-landing.mp4?v=2" type="video/mp4"></video>' +
       '</div>' +
       // loading veil: drifts a subtle gradient over the video slot until the
       // playback handshake reveals the footage (initLandingVideo crossfades it)
