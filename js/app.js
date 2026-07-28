@@ -1470,7 +1470,6 @@
             : (signedIn() && me()
                 ? (workEmailOf(u) ? '<button class="btn btn-primary btn-sm" data-action="chat-dm" data-person="' + esc(u.id) + '"><i class="fa-regular fa-message"></i><span class="label">Message</span><span class="spin"></span></button>' : '')
                 : '<button class="btn btn-primary btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in to message</button>'))) +
-      (u.video ? ' <button class="btn btn-ghost btn-sm" type="button" data-action="profile-video-play" data-src="' + esc(u.video) + '"><i class="fa-solid fa-play"></i><span class="label">Play intro</span></button>' : '') +
       '</div></div></div>' +
       '<div class="detail-grid"><div>' +
       (u.bio ? '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-regular fa-id-badge"></i>About</h3><p style="white-space:pre-wrap;color:var(--text-body);margin:0">' + esc(u.bio) + '</p></div>' : '') +
@@ -2247,10 +2246,12 @@
       });
   }
 
-  // ---- profile page: play the member's intro clip as the page backdrop ----
-  // A member who uploaded a clip gets a Play button on their profile; it drops a
-  // looping video layer behind the page content (in .main, so it survives the
-  // #view repaint on data refreshes) until they stop it or leave the page.
+  // ---- profile page: the member's intro clip as a full-screen backdrop ----
+  // When a member has uploaded a clip, it auto-plays (muted, so autoplay is
+  // always allowed) as a feathered, faded, full-screen backdrop behind the
+  // profile content — the same treatment as the home-screen video. Lives in
+  // .main so it survives the #view repaint on data refreshes; a floating button
+  // unmutes it. Left when navigating away (see route()).
   var profileBg = null, profileBgHash = '';
   function playProfileBg(src) {
     stopProfileBg();
@@ -2259,21 +2260,21 @@
     var layer = document.createElement('div');
     layer.className = 'profile-bg-video';
     layer.innerHTML =
-      '<video id="profileBgEl" autoplay loop playsinline preload="auto">' + videoSourcesHtml(src) + '</video>' +
+      '<video id="profileBgEl" autoplay loop muted playsinline preload="auto">' + videoSourcesHtml(src) + '</video>' +
       '<div class="profile-bg-scrim"></div>' +
-      '<div class="profile-bg-ctrls">' +
-        '<button type="button" class="profile-bg-btn" data-action="profile-bg-mute" title="Mute"><i class="fa-solid fa-volume-high"></i></button>' +
-        '<button type="button" class="profile-bg-btn" data-action="profile-bg-stop" title="Stop"><i class="fa-solid fa-xmark"></i></button>' +
-      '</div>';
+      '<button type="button" class="profile-bg-btn" data-action="profile-bg-mute" title="Unmute"><i class="fa-solid fa-volume-xmark"></i></button>';
     main.insertBefore(layer, main.firstChild);
     document.body.classList.add('profile-bg-on');
     profileBg = layer;
     profileBgHash = location.hash || '';
     var v = $('#profileBgEl');
     if (v) {
-      v.muted = false;
-      var p = v.play();
-      if (p && p.catch) p.catch(function () { v.muted = true; setProfileBgMuteIcon(); v.play().catch(function () {}); });
+      v.muted = true; // page backdrop — muted guarantees autoplay; button unmutes
+      var reveal = function () { if (layer.parentNode) layer.classList.add('show'); };
+      v.addEventListener('playing', reveal, { once: true });
+      v.addEventListener('loadeddata', reveal, { once: true });
+      setTimeout(reveal, 1600); // safety net so it never stays hidden
+      var p = v.play(); if (p && p.catch) p.catch(function () {});
     }
     setProfileBgMuteIcon();
   }
@@ -5088,6 +5089,15 @@
     // landing video: fade in on actual playback
     var fv = $('.feature-video');
     if (fv) initLandingVideo(fv);
+    // profile page: auto-play the member's own clip as a full-screen backdrop
+    // (skip a needless restart when a data refresh re-routes to the same profile)
+    var pmatch = hash.match(/^#\/profile\/([\w-]+)$/);
+    if (pmatch) {
+      var pu = userById(pmatch[1]);
+      var pvid = pu && pu.video;
+      if (pvid) { if (!(profileBg && profileBgHash === hash)) playProfileBg(pvid); }
+      else stopProfileBg();
+    }
     // program: swap the skeleton for live calendar events when configured
     if ($('.program-grid')) initProgram();
     // wallet: profile QR panel + the phone's #/wallet handoff page

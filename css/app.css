@@ -1015,23 +1015,47 @@ textarea.input { resize: vertical; min-height: 90px; }
 .video-overlay .vid-now-name { color: #fff; }
 
 /* ------------------------------------------ profile page: video as backdrop */
-/* A member's intro clip plays fixed behind the profile content (lives in .main,
-   a non-scrolling relative parent, so it survives #view repaints). A scrim keeps
-   the header text legible; content panels paint opaque on top. */
-.profile-bg-video { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
-.profile-bg-video video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.profile-bg-scrim { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(10,11,13,0.5) 0%, rgba(10,11,13,0.72) 100%); }
+/* The member's intro clip plays full-screen behind the profile content (lives in
+   .main, a non-scrolling relative parent, so it survives #view repaints). A dark
+   canvas sits under it; the video is semi-transparent with radially-feathered
+   edges that dissolve into that canvas, and fades in on play. The content is
+   restyled light + glass so it reads directly on the video — the home-screen
+   treatment. Works the same in light and dark theme. */
+.profile-bg-video { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #0a0b0e; }
+.profile-bg-video video {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; transition: opacity 1.2s ease;
+  -webkit-mask-image: radial-gradient(ellipse 80% 84% at 50% 42%, #000 48%, transparent 100%);
+          mask-image: radial-gradient(ellipse 80% 84% at 50% 42%, #000 48%, transparent 100%);
+}
+.profile-bg-video.show video { opacity: 0.6; }
+.profile-bg-scrim { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(10,11,14,0.35) 0%, rgba(10,11,14,0.6) 100%); }
 body.profile-bg-on .view { position: relative; z-index: 1; }
-/* force header text light so it reads over the (dark-scrimmed) video in both themes */
+/* header text → light */
 body.profile-bg-on .page-head h1,
-body.profile-bg-on .page-head .meta-row span { color: #fff !important; }
-body.profile-bg-on .page-head .meta-row i,
-body.profile-bg-on .page-head .meta-row { color: rgba(255,255,255,0.72) !important; }
-.profile-bg-ctrls { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: flex; gap: 8px; pointer-events: auto; }
+body.profile-bg-on .page-head .meta-row span,
+body.profile-bg-on .person-name .role-tag { color: #fff !important; }
+body.profile-bg-on .page-head .meta-row i { color: rgba(255,255,255,0.7) !important; }
+body.profile-bg-on .page-head .btn-outline { border-color: rgba(255,255,255,0.35); color: #fff; background: rgba(255,255,255,0.08); }
+/* content panels → translucent glass so the video shows through, text stays legible */
+body.profile-bg-on .panel {
+  background: rgba(16,18,26,0.5) !important;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.13) !important;
+}
+body.profile-bg-on .panel h3,
+body.profile-bg-on .panel h3 i { color: #fff !important; }
+body.profile-bg-on .panel p { color: rgba(255,255,255,0.9) !important; }
+body.profile-bg-on .link-list a { color: #9fd4ff !important; }
+body.profile-bg-on .link-list i { color: rgba(255,255,255,0.55) !important; }
+body.profile-bg-on .panel .skills .chip {
+  background: rgba(255,255,255,0.12) !important; color: #fff !important; border-color: rgba(255,255,255,0.22) !important;
+}
 .profile-bg-btn {
+  position: fixed; right: 20px; bottom: 20px; z-index: 60; pointer-events: auto;
   width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer;
   background: rgba(14,15,17,0.62); color: #fff; font-size: 15px;
-  display: flex; align-items: center; justify-content: center; backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
 }
 .profile-bg-btn:hover { background: rgba(14,15,17,0.85); }
 
