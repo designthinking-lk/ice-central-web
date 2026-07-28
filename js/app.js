@@ -1453,7 +1453,10 @@
     }).join('');
     var myTeams = (state.data.teams || []).filter(function (t) { return (t.members || []).indexOf(u.id) !== -1; });
 
-    return '<div class="page-head">' + avatar(u, 'avatar-lg') +
+    return '<div class="page-head">' +
+      '<div class="pv-avatar">' + avatar(u, 'avatar-lg') +
+      (u.video ? '<button type="button" class="profile-bg-btn pv-mute" data-action="profile-bg-mute" title="Unmute"><i class="fa-solid fa-volume-xmark"></i></button>' : '') +
+      '</div>' +
       '<div class="info"><h1>' + esc(u.name) + '</h1>' +
       '<div class="person-name">' +
       (hasRoleU(u, 'mentor') ? '<span class="role-tag mentor"><i class="fa-solid fa-star"></i>Mentor</span>' : '') +
@@ -2263,10 +2266,11 @@
     if (!main || !src) return;
     var layer = document.createElement('div');
     layer.className = 'profile-bg-video';
+    // the unmute control lives in the profile header (rendered by viewProfile,
+    // anchored to the avatar), not in this pointer-events:none backdrop layer
     layer.innerHTML =
       '<video id="profileBgEl" autoplay loop muted playsinline preload="auto">' + videoSourcesHtml(src) + '</video>' +
-      '<div class="profile-bg-scrim"></div>' +
-      '<button type="button" class="profile-bg-btn" data-action="profile-bg-mute" title="Unmute"><i class="fa-solid fa-volume-xmark"></i></button>';
+      '<div class="profile-bg-scrim"></div>';
     main.insertBefore(layer, main.firstChild);
     document.body.classList.add('profile-bg-on');
     profileBg = layer;
@@ -2289,7 +2293,7 @@
   }
   function setProfileBgMuteIcon() {
     var v = $('#profileBgEl');
-    var btn = profileBg && profileBg.querySelector('[data-action="profile-bg-mute"]');
+    var btn = $('[data-action="profile-bg-mute"]'); // in the profile header
     if (!v || !btn) return;
     btn.innerHTML = '<i class="fa-solid ' + (v.muted ? 'fa-volume-xmark' : 'fa-volume-high') + '"></i>';
     btn.title = v.muted ? 'Unmute' : 'Mute';
@@ -5099,8 +5103,10 @@
     if (pmatch) {
       var pu = userById(pmatch[1]);
       var pvid = pu && pu.video;
-      if (pvid) { if (!(profileBg && profileBgHash === hash)) playProfileBg(pvid); }
-      else stopProfileBg();
+      if (pvid) {
+        if (!(profileBg && profileBgHash === hash)) playProfileBg(pvid);
+        else setProfileBgMuteIcon(); // re-sync the header button after a repaint
+      } else stopProfileBg();
     }
     // program: swap the skeleton for live calendar events when configured
     if ($('.program-grid')) initProgram();
