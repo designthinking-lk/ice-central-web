@@ -2126,16 +2126,17 @@
           '<span class="vid-now-label">Playing on your card</span>' +
           '<span class="vid-now-name" title="' + esc(name) + '">' + esc(name) + '</span></div></div>'
       : videoReqHtml();
-    // Footer pinned to the bottom of the card: the action buttons (hidden while a
-    // transfer runs), then the status line, then the progress bar sitting on the
-    // card's very bottom edge.
+    // Footer pinned to the card's bottom edge (the "virtual footer", level with
+    // the card's own footer row). The status sits on top; the action buttons and
+    // the progress bar share the very bottom line — buttons when idle, the bar
+    // during a transfer (they're never shown at once).
     var foot =
       '<div class="vid-foot">' +
+        '<div class="vid-status" id="profileVideoStatus"></div>' +
         '<div class="vid-actions" id="profileVideoActions">' +
           '<button type="button" class="btn btn-outline btn-sm" data-action="profile-video-pick"><i class="fa-solid fa-upload"></i>' + (has ? 'Replace video' : 'Upload video') + '</button>' +
           (has ? '<button type="button" class="btn btn-ghost btn-sm" data-action="profile-video-remove"><i class="fa-regular fa-trash-can"></i>Remove</button>' : '') +
         '</div>' +
-        '<div class="vid-status" id="profileVideoStatus"></div>' +
         '<div class="vid-progress" id="profileVideoProgress" hidden><div class="vid-progress-bar" id="profileVideoBar"></div></div>' +
       '</div>';
     return top + foot;
