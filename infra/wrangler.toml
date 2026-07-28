@@ -7,6 +7,9 @@
 name = "ice-central-web-proxy"
 main = "worker.js"
 compatibility_date = "2025-01-01"
+# expose the workers.dev URL too — it serves the /vid/<id> Drive-video proxy
+# (ice-central-web-proxy.sankha-9a1.workers.dev/vid/<id>)
+workers_dev = true
 
 routes = [
   { pattern = "*.designthinking.lk/*", zone_name = "designthinking.lk" }

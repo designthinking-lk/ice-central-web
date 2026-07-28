@@ -20,6 +20,15 @@ const CANONICAL_ORIGIN = 'https://ice2026.designthinking.lk';
 export default {
   async fetch(request) {
     const url = new URL(request.url);
+
+    // --- Drive video proxy: /vid/<fileId> ---------------------------------
+    // Google Drive refuses to serve a video to a browser <video> element
+    // (works server-side only). This Worker fetches the file server-side — where
+    // Drive DOES serve it — and relays the bytes to the browser with byte-range
+    // support + permissive CORS, so uploaded intro/pitch clips actually play.
+    const vm = url.pathname.match(/^\/vid\/([A-Za-z0-9_-]+)$/);
+    if (vm) return proxyDriveVideo(vm[1], request);
+
     const subdomain = extractSubdomain(url.hostname);
 
     // Preserve the full path AND query string — the SPA cache-busts assets with
@@ -53,6 +62,43 @@ export default {
     }
   },
 };
+
+// Stream a public Drive file through the Worker. `confirm=t` skips the
+// large-file scan interstitial; Range is forwarded so <video> can seek/loop.
+async function proxyDriveVideo(id, request) {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      'Access-Control-Allow-Headers': 'Range',
+    }});
+  }
+  const driveUrl = 'https://drive.usercontent.google.com/download?id=' + id + '&export=download&confirm=t';
+  // Always send a Range (default the whole file) — a plain no-range fetch to the
+  // Drive endpoint intermittently trips a Worker subrequest error, whereas the
+  // range path is reliable, and <video> always range-requests anyway.
+  const range = request.headers.get('Range') || 'bytes=0-';
+  const upstream = await fetch(driveUrl, {
+    method: 'GET',
+    headers: { 'Range': range },
+    redirect: 'follow',
+  });
+  const ct = upstream.headers.get('Content-Type') || '';
+  // A non-video content type means Drive returned an interstitial/HTML — surface
+  // it as an error rather than feeding garbage to the <video>.
+  const okType = /^(video\/|application\/octet-stream|application\/binary)/i.test(ct);
+  const headers = new Headers({
+    'Content-Type': okType ? (ct || 'video/mp4') : 'video/mp4',
+    'Accept-Ranges': 'bytes',
+    'Access-Control-Allow-Origin': '*',
+    'Cache-Control': 'public, max-age=86400',
+    'X-Ice-Media': 'drive-proxy',
+  });
+  ['Content-Length', 'Content-Range'].forEach(function (k) {
+    var v = upstream.headers.get(k); if (v) headers.set(k, v);
+  });
+  return new Response(upstream.body, { status: upstream.status, headers: headers });
+}
 
 // Any {sub}.designthinking.lk except www.
 function extractSubdomain(hostname) {

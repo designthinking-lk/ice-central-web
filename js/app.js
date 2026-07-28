@@ -2045,14 +2045,13 @@
       'Portrait or higher-resolution videos aren’t accepted.</span></div>';
   }
 
-  // Build <source> tags for a stored video. A Drive file id must stream from
-  // drive.usercontent.google.com/download — that endpoint serves the real MP4
-  // with byte-range support. (The lh3.googleusercontent.com/d/ID form we store
-  // only ever returns a JPEG poster frame, which a <video> can't play.) A
-  // bundled asset path is used as-is.
-  function driveVideoStreamUrl(id) {
-    return 'https://drive.usercontent.google.com/download?id=' + id + '&export=download';
-  }
+  // Build <source> tags for a stored video. Google Drive refuses to serve a
+  // video to a browser <video> (the lh3 URL returns a JPEG poster; the direct
+  // download URL is blocked cross-origin), so Drive clips stream through our
+  // Cloudflare Worker proxy (/vid/<id>), which fetches the file server-side and
+  // relays it with byte-range support. A bundled asset path is used as-is.
+  var MEDIA_PROXY = 'https://ice-central-web-proxy.sankha-9a1.workers.dev/vid/';
+  function driveVideoStreamUrl(id) { return MEDIA_PROXY + id; }
   function videoSourcesHtml(url) {
     var m = String(url).match(/\/d\/([^/?]+)/) || String(url).match(/[?&]id=([^&]+)/);
     var id = m ? m[1] : '';
@@ -2149,17 +2148,17 @@
     pickVideoFile(profileVideoStatus, uploadProfileVideo);
   }
 
+  // Apps Script requires a "simple" CORS request (no preflight), which rules out
+  // XHR upload-progress events (registering one forces an OPTIONS preflight that
+  // Apps Script can't answer). So we send with fetch and show an indeterminate
+  // "working" bar for the whole upload+process window rather than a byte %.
   function uploadProfileVideo(file) {
     profileVideoStatus('Preparing…', false);
     var reader = new FileReader();
     reader.onload = function () {
-      setVideoProgress(0, false);
-      profileVideoStatus('Uploading… 0%', false);
-      A.apiUpload('upload_profile_video', { data: reader.result, filename: file.name.replace(/\.[^.]+$/, '') },
-        function (loaded, total, sent) {
-          if (sent) { setVideoProgress(100, true); profileVideoStatus('Processing on our server…', false); }
-          else { var pct = Math.round(loaded / total * 100); setVideoProgress(pct, false); profileVideoStatus('Uploading… ' + pct + '%', false); }
-        })
+      setVideoProgress(0, true); // indeterminate — the request covers upload + server processing
+      profileVideoStatus('Uploading your clip… this can take up to a minute.', false);
+      A.api('upload_profile_video', { data: reader.result, filename: file.name.replace(/\.[^.]+$/, '') })
         .then(function (r) {
           var hid = $('#profileForm [name="video"]');
           if (hid && r && r.url) hid.value = r.url;
@@ -2491,7 +2490,7 @@
     // only a Drive-hosted clip is carried into the editor; legacy YouTube links
     // are dropped (the member re-uploads), so the default backdrop shows instead
     var vid = /^https:\/\/(lh3\.googleusercontent\.com|drive\.(google|usercontent\.google)\.com)\//.test(u.video || '') ? u.video : '';
-    profileVideoName = ''; // no original filename known for a saved clip until re-uploaded
+    profileVideoName = vid ? (u.videoName || '') : ''; // stored clip name, if any
     // The card edits first + last separately; they recombine into the stored `name`.
     var nameParts = String(u.name || '').trim().split(/\s+/).filter(Boolean);
     var firstName = nameParts.shift() || '';
@@ -5105,6 +5104,7 @@
       skills: getTagValues(),
       links: links,
       video: video,
+      videoName: video ? profileVideoName : '',
       // no role: it's pre-assigned by the invite (register) and admin-managed
       // via the role chips (update_profile ignores it anyway)
     };
