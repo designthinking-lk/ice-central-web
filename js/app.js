@@ -1327,12 +1327,16 @@
       word.appendChild(el);
     });
 
-    // preview parked in the C's hollow (regular octagon)
+    // preview parked in the C's hollow (regular octagon), but nudged right so its
+    // right edge lines up with the C letter's right-most edge (letter index 1)
     var pw = w * 2.9, ph = pw;
+    var cRight = -1e9;
+    cells.forEach(function (cell) { if (cell.letter === 1) cRight = Math.max(cRight, cell.c * w + w); });
+    var pvCenterX = (cRight > -1e9) ? (cRight - pw / 2) : ((built.hollow.col + 0.5) * w);
     var preview = document.createElement('div');
     preview.className = 'oct-preview';
     preview.style.width = pw + 'px'; preview.style.height = ph + 'px';
-    preview.style.left = ((built.hollow.col + 0.5) * w - minX - pw / 2) + 'px';
+    preview.style.left = (pvCenterX - minX - pw / 2) + 'px';
     preview.style.top = ((built.hollow.row + 0.5) * w - minY - ph / 2) + 'px';
     // the caption sits inside the empty preview octagon (the C's cavity);
     // it fades out when a hovered member's photo fills the slot
@@ -1340,18 +1344,16 @@
     ((state.data && state.data.teams) || []).forEach(function (x) { if (x.id === state.teamFilter) activeTeam = x; });
     preview.innerHTML = '<span class="hive-caption">' + hiveCaptionText(users, activeTeam) + '</span>' +
       '<div class="oct-pin"><img id="hivePvImg" alt="">' +
-      '<span class="oct-pvname"><span id="hivePvNm"></span><span class="oct-pvrole" id="hivePvRole"></span></span></div>';
+      '<span class="oct-pvname"><span id="hivePvNm"></span><span class="oct-pvrole" id="hivePvRole"></span>' +
+      '<a class="oct-pv-view" id="hivePvView" href="#/">View profile<i class="fa-solid fa-arrow-right"></i></a></span></div>';
     // the C-hollow preview/caption reveals just after the last letter (E)
     preview.style.animationDelay = '0.95s';
     word.appendChild(preview);
     word.__preview = preview;
-    // hollow centre in natural coords — fitWordmark re-sizes the preview from it
-    word.__hollowX = (built.hollow.col + 0.5) * w - minX;
+    // hollow centre in natural coords — fitWordmark re-sizes the preview from it.
+    // Keep it aligned with the right-nudged position so fitWordmark doesn't undo it.
+    word.__hollowX = pvCenterX - minX;
     word.__hollowY = (built.hollow.row + 0.5) * w - minY;
-    // the filled preview links to the shown person's profile
-    preview.addEventListener('click', function () {
-      if (preview.classList.contains('on') && word.__pvUid) location.hash = '#/profile/' + word.__pvUid;
-    });
 
     fitWordmark();
     applyTeamFilter(); // re-assert an active team highlight after any rebuild
@@ -1379,10 +1381,11 @@
     word.__pvUid = u.id;
     if (word.__active) word.__active.classList.remove('active');
     el.classList.add('active'); word.__active = el;
-    var img = $('#hivePvImg'), nm = $('#hivePvNm'), role = $('#hivePvRole');
+    var img = $('#hivePvImg'), nm = $('#hivePvNm'), role = $('#hivePvRole'), view = $('#hivePvView');
     if (img) img.src = u.image || '';
     if (nm) nm.textContent = u.name;
     if (role) role.textContent = mentor ? 'Mentor' : 'Participant';
+    if (view) view.href = '#/profile/' + u.id; // explicit "View profile" link
     var p = word.__preview;
     if (p) { p.classList.remove('m', 'p', 'fadeout'); p.classList.add(mentor ? 'm' : 'p', 'on'); }
   }
@@ -1481,8 +1484,14 @@
       ((u.skills || []).length ? '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-solid fa-wand-magic-sparkles"></i>Skills</h3><div class="skills">' +
         u.skills.map(function (s) { return skillChip(s); }).join('') + '</div></div>' : '') +
       (links ? '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-solid fa-link"></i>Links</h3><ul class="link-list">' + links + '</ul></div>' : '') +
-      (myTeams.length ? '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-solid fa-people-group"></i>Teams</h3><ul class="link-list">' +
-        myTeams.map(function (t) { return '<li><i class="fa-solid fa-people-group"></i><a href="#/team/' + esc(t.id) + '">' + esc(t.name) + '</a></li>'; }).join('') + '</ul></div>' : '') +
+      // Team/project associations are community-only. A public (signed-out)
+      // visitor sees an invite prompt instead — the profile itself stays public.
+      (signedIn()
+        ? (myTeams.length ? '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-solid fa-people-group"></i>Teams</h3><ul class="link-list">' +
+            myTeams.map(function (t) { return '<li><i class="fa-solid fa-people-group"></i><a href="#/team/' + esc(t.id) + '">' + esc(t.name) + '</a></li>'; }).join('') + '</ul></div>' : '')
+        : '<div class="panel pub-invite" style="margin-bottom:20px"><h3><i class="fa-solid fa-people-group"></i>Teams &amp; projects</h3>' +
+            '<p style="color:var(--text-muted);margin:0 0 12px">Sign in to see this member’s team and project, or request an invite to join the ' + esc(eventName()) + ' community.</p>' +
+            '<button class="btn btn-gradient btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in</button></div>') +
       '</div></div>';
   }
 
