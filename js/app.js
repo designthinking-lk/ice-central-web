@@ -2098,6 +2098,16 @@
   // display name of the currently-shown intro clip (the file the member just
   // picked). '' when nothing uploaded this session; reset when the form rebuilds.
   var profileVideoName = '';
+  // true while an upload/removal request is in flight — warns before a reload
+  // (the server request runs to completion regardless, so a refresh never leaves
+  // a half-done state; it just abandons the client's view of the result).
+  var videoActionPending = false;
+  window.addEventListener('beforeunload', function (e) {
+    if (!videoActionPending) return;
+    e.preventDefault();
+    e.returnValue = 'A video upload or removal is still finishing. If you leave now the change may not complete.';
+    return e.returnValue;
+  });
 
   function profileVideoUrl() {
     var hid = $('#profileForm [name="video"]');
@@ -2156,10 +2166,12 @@
     profileVideoStatus('Preparing…', false);
     var reader = new FileReader();
     reader.onload = function () {
+      videoActionPending = true;
       setVideoProgress(0, true); // indeterminate — the request covers upload + server processing
-      profileVideoStatus('Uploading your clip… this can take up to a minute.', false);
+      profileVideoStatus('Uploading your clip… keep this page open (this can take up to a minute).', false);
       A.api('upload_profile_video', { data: reader.result, filename: file.name.replace(/\.[^.]+$/, '') })
         .then(function (r) {
+          videoActionPending = false;
           var hid = $('#profileForm [name="video"]');
           if (hid && r && r.url) hid.value = r.url;
           profileVideoName = file.name;
@@ -2171,21 +2183,26 @@
           saveRegDraft();
           toast('Video uploaded');
         })
-        .catch(function (err) { hideVideoProgress(); profileVideoStatus(err.message || 'Upload failed', true); });
+        .catch(function (err) { videoActionPending = false; hideVideoProgress(); profileVideoStatus(err.message || 'Upload failed', true); });
     };
     reader.onerror = function () { profileVideoStatus('Could not read the file.', true); };
     reader.readAsDataURL(file);
   }
 
   // Remove the intro clip: delete it from Drive on the server, clear the field,
-  // and revert the card to the default backdrop.
+  // and revert the card to the default backdrop. Shows the same progress/status
+  // treatment as upload. The server clears the row before deleting the blob, so
+  // a failed/aborted call never leaves a row pointing at a missing file.
   function removeProfileVideo() {
     var hid = $('#profileForm [name="video"]');
     var url = hid && hid.value;
     if (!url) { profileVideoName = ''; renderVideoPanel(); renderCardVideo(); return; }
-    profileVideoStatus('Removing…', false);
+    videoActionPending = true;
+    setVideoProgress(0, true);
+    profileVideoStatus('Removing your clip from the server… keep this page open.', false);
     A.api('remove_profile_video', { url: url })
       .then(function (r) {
+        videoActionPending = false;
         if (hid) hid.value = '';
         profileVideoName = '';
         // reflect the cleared video in cached state so the card + profile page
@@ -2193,18 +2210,25 @@
         if (r && r.user && state.data) {
           if (state.data.me && state.data.me.id === r.user.id) state.data.me = r.user;
           if (state.data.users) state.data.users = state.data.users.map(function (u) {
-            return u.id === r.user.id ? Object.assign({}, u, { video: '' }) : u;
+            return u.id === r.user.id ? Object.assign({}, u, { video: '', videoName: '' }) : u;
           });
           A.writeCache(state.data);
         }
+        hideVideoProgress();
         renderVideoPanel();
         renderCardVideo(); // default backdrop plays
         updateJoinState();
         saveRegDraft();
         profileVideoStatus('', false);
-        toast('Video removed');
+        toast('Video removed — default backdrop restored');
       })
-      .catch(function (err) { profileVideoStatus(err.message || 'Could not remove the video', true); });
+      .catch(function (err) {
+        videoActionPending = false;
+        hideVideoProgress();
+        // the removal may actually have completed server-side even if the reply
+        // didn't reach us — tell the user how to confirm rather than guessing
+        profileVideoStatus('Couldn’t confirm removal (' + (err.message || 'network error') + '). Reload the page to check whether it was removed.', true);
+      });
   }
 
   // ---- profile page: play the member's intro clip as the page backdrop ----
