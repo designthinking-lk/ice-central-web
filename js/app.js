@@ -3334,6 +3334,7 @@
   var projViewTab = 'details';         // active VIEW tab: 'details' | 'demo'
   var projWebStatus = 'ok';            // website reachability: 'empty'|'checking'|'ok'|'bad'
   var projEditDraft = { title: '', description: '', fullDescription: '', website: '' }; // unsaved edits
+  var projEditBaseline = null; // loaded values — Save enables only when the draft differs
 
   function teamProjectsData() {
     var tp = state.data && state.data.teamProjects;
@@ -3722,9 +3723,9 @@
     var h3 = card && card.querySelector('.pc-text h3');
     var pp = card && card.querySelector('.pc-text p');
     var ti = $('#projTitleIn'), de = $('#projDescIn'), fu = $('#projFullIn'), we = $('#projWebIn');
-    if (ti) ti.oninput = function () { projEditDraft.title = ti.value; if (h3) h3.textContent = ti.value || 'Untitled project'; };
-    if (de) de.oninput = function () { projEditDraft.description = de.value; if (pp) pp.textContent = de.value; };
-    if (fu) fu.oninput = function () { projEditDraft.fullDescription = fu.value; };
+    if (ti) ti.oninput = function () { projEditDraft.title = ti.value; if (h3) h3.textContent = ti.value || 'Untitled project'; updateProjSaveState(); };
+    if (de) de.oninput = function () { projEditDraft.description = de.value; if (pp) pp.textContent = de.value; updateProjSaveState(); };
+    if (fu) fu.oninput = function () { projEditDraft.fullDescription = fu.value; updateProjSaveState(); };
     if (we) {
       var qp = $('#projQrPreview');
       var webTimer = null, webSeq = 0;
@@ -3758,19 +3759,31 @@
       };
       we.oninput = function () {
         projEditDraft.website = we.value;
+        updateProjSaveState();          // reflect dirtiness immediately
         clearTimeout(webTimer);
-        webTimer = setTimeout(checkWeb, 500);
+        webTimer = setTimeout(checkWeb, 500); // reachability check refines the gate
       };
       checkWeb(); // validate the loaded value immediately
     }
   }
-  // Disable "Save changes" while the website is unreachable (bad).
+  // Enable "Save changes" only when the draft differs from what was loaded — and
+  // never while the website is unreachable. The pitch video is excluded (it
+  // persists immediately on upload/remove, like the profile clip).
+  function projEditDirty() {
+    var b = projEditBaseline; if (!b) return false;
+    var colorNow = projEditColor || b.color;
+    return projEditDraft.title !== b.title ||
+      projEditDraft.description !== b.description ||
+      projEditDraft.fullDescription !== b.fullDescription ||
+      projEditDraft.website !== b.website ||
+      colorNow !== b.color;
+  }
   function updateProjSaveState() {
     var btn = $('#projDetail [data-action="proj-save"]');
     if (!btn) return;
-    var bad = projWebStatus === 'bad';
-    btn.disabled = bad;
-    btn.classList.toggle('btn-disabled', bad);
+    var disable = projWebStatus === 'bad' || !projEditDirty();
+    btn.disabled = disable;
+    btn.classList.toggle('btn-disabled', disable);
   }
   function captureProjectDraft() {
     var ti = $('#projTitleIn'); if (ti) projEditDraft.title = ti.value;
@@ -3785,6 +3798,7 @@
     // is opened; the live check refines it once the website field is on screen
     projWebStatus = (p.website && !truthyStr(p.websiteOk)) ? 'bad' : 'ok';
     projEditDraft = { title: p.title || '', description: p.description || '', fullDescription: p.fullDescription || '', website: p.website || '' };
+    projEditBaseline = { title: projEditDraft.title, description: projEditDraft.description, fullDescription: projEditDraft.fullDescription, website: projEditDraft.website, color: projColorClass(p, slot) };
   }
   function closeProject() {
     var grid = $('#projectsGrid'), detail = $('#projDetail');
@@ -5379,6 +5393,7 @@
         if (fc) fc.className = fc.className.replace(/pc-[1-6]/, projEditColor);
         var sw = $('#projDetail') ? $('#projDetail').querySelectorAll('.proj-swatch') : [];
         Array.prototype.forEach.call(sw, function (s) { s.classList.toggle('on', s.getAttribute('data-color') === projEditColor); });
+        updateProjSaveState(); // a colour change is an edit
         break;
       }
       case 'proj-cancel': projEdit = false; projEditColor = ''; renderProjectDetail(); break;
