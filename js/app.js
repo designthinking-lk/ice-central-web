@@ -2206,9 +2206,34 @@
   // blocks an unmuted autoplay (no user gesture yet)
   var cardVideoMuted = false;
 
+  // no `autoplay` attribute — we start playback ourselves once the clip has
+  // buffered enough, so the opening (its most important notes) isn't clipped by
+  // a mid-buffer start. See startCardVideo.
   function cardVideoTag(src) {
-    return '<video id="cardVideoEl" autoplay loop playsinline preload="auto"' +
+    return '<video id="cardVideoEl" loop playsinline preload="auto"' +
       (cardVideoMuted ? ' muted' : '') + '>' + videoSourcesHtml(src) + '</video>';
+  }
+
+  // Wait until the browser can play the opening through without stalling, then
+  // start from the very beginning. Capped so a slow network still starts within
+  // a couple of seconds. Unmuted playback that the browser blocks falls back to
+  // muted (and still restarts from 0, so no notes are skipped either way).
+  function startCardVideo(v) {
+    var started = false;
+    function go() {
+      if (started || !v.isConnected) return;
+      started = true;
+      try { v.currentTime = 0; } catch (e) { /* not seekable yet — plays from 0 anyway */ }
+      var p = v.play();
+      if (p && p.catch) p.catch(function () {
+        v.muted = true; cardVideoMuted = true; setCardMuteIcon();
+        try { v.currentTime = 0; } catch (e) { /* ignore */ }
+        v.play().catch(function () {});
+      });
+    }
+    if (v.readyState >= 4) { go(); return; }       // HAVE_ENOUGH_DATA already
+    v.addEventListener('canplaythrough', go, { once: true });
+    setTimeout(go, 2500);                           // safety cap on the buffer wait
   }
 
   function renderCardVideo() {
@@ -2228,13 +2253,7 @@
       var v = $('#cardVideoEl');
       if (v) {
         v.muted = cardVideoMuted;
-        var p = v.play();
-        // an unmuted autoplay can be blocked until the user interacts — fall
-        // back to muted playback and reflect it on the speaker button
-        if (p && p.catch) p.catch(function () {
-          v.muted = true; cardVideoMuted = true; setCardMuteIcon();
-          v.play().catch(function () {});
-        });
+        startCardVideo(v); // buffer first, then play from the very beginning
       }
     }
     setCardMuteIcon();
