@@ -2117,18 +2117,24 @@
   function videoPanelHtml() {
     var has = !!profileVideoUrl();
     var name = profileVideoName || (has ? 'Your intro clip' : '');
-    return videoReqHtml() +
-      (has
-        ? '<div class="vid-now"><i class="fa-solid fa-circle-play"></i><div class="vid-now-txt">' +
-            '<span class="vid-now-label">Playing on your card</span>' +
-            '<span class="vid-now-name" title="' + esc(name) + '">' + esc(name) + '</span></div></div>'
-        : '') +
-      '<div class="vid-actions">' +
-        '<button type="button" class="btn btn-outline btn-sm" data-action="profile-video-pick"><i class="fa-solid fa-upload"></i>' + (has ? 'Replace video' : 'Upload video') + '</button>' +
-        (has ? '<button type="button" class="btn btn-ghost btn-sm" data-action="profile-video-remove"><i class="fa-regular fa-trash-can"></i>Remove</button>' : '') +
-      '</div>' +
-      '<div class="vid-progress" id="profileVideoProgress" hidden><div class="vid-progress-bar" id="profileVideoBar"></div></div>' +
-      '<div class="vid-status" id="profileVideoStatus"></div>';
+    // Top slot: the requirements guide until a valid clip is present, then the
+    // "now playing" clip name takes its exact place.
+    var top = has
+      ? '<div class="vid-now"><i class="fa-solid fa-circle-play"></i><div class="vid-now-txt">' +
+          '<span class="vid-now-label">Playing on your card</span>' +
+          '<span class="vid-now-name" title="' + esc(name) + '">' + esc(name) + '</span></div></div>'
+      : videoReqHtml();
+    // Footer pinned to the bottom of the card: progress + status + actions.
+    var foot =
+      '<div class="vid-foot">' +
+        '<div class="vid-progress" id="profileVideoProgress" hidden><div class="vid-progress-bar" id="profileVideoBar"></div></div>' +
+        '<div class="vid-status" id="profileVideoStatus"></div>' +
+        '<div class="vid-actions">' +
+          '<button type="button" class="btn btn-outline btn-sm" data-action="profile-video-pick"><i class="fa-solid fa-upload"></i>' + (has ? 'Replace video' : 'Upload video') + '</button>' +
+          (has ? '<button type="button" class="btn btn-ghost btn-sm" data-action="profile-video-remove"><i class="fa-regular fa-trash-can"></i>Remove</button>' : '') +
+        '</div>' +
+      '</div>';
+    return top + foot;
   }
 
   function renderVideoPanel() {
@@ -2169,12 +2175,22 @@
       videoActionPending = true;
       setVideoProgress(0, true); // indeterminate — the request covers upload + server processing
       profileVideoStatus('Uploading your clip… keep this page open (this can take up to a minute).', false);
-      A.api('upload_profile_video', { data: reader.result, filename: file.name.replace(/\.[^.]+$/, '') })
+      A.api('upload_profile_video', { data: reader.result, filename: file.name.replace(/\.[^.]+$/, ''), videoName: file.name })
         .then(function (r) {
           videoActionPending = false;
           var hid = $('#profileForm [name="video"]');
           if (hid && r && r.url) hid.value = r.url;
           profileVideoName = file.name;
+          // the server persists the clip immediately (existing member) — mirror
+          // that into cached state so the card + profile page reflect it now and
+          // it needs no separate Save
+          if (r && r.user && state.data) {
+            if (state.data.me && state.data.me.id === r.user.id) state.data.me = r.user;
+            if (state.data.users) state.data.users = state.data.users.map(function (u) {
+              return u.id === r.user.id ? Object.assign({}, u, { video: r.url, videoName: file.name }) : u;
+            });
+            A.writeCache(state.data);
+          }
           hideVideoProgress();
           profileVideoStatus('', false);
           renderVideoPanel();
@@ -3033,9 +3049,39 @@
     mark(form.querySelector('.idfront [data-action="flip-card"]'), backGap);
   }
 
+  // A stable fingerprint of the Save-tracked card content. Excludes the intro
+  // video on purpose: uploading/removing a clip persists immediately (like the
+  // photo does not — but the video does), so it must not drive the Save button.
+  var profileBaselineSig = '';
+  function profileSignature() {
+    var form = $('#profileForm');
+    if (!form) return '';
+    var fd = new FormData(form);
+    var g = function (n) { return String(fd.get(n) || '').trim(); };
+    return JSON.stringify({
+      name: (g('firstName') + ' ' + g('lastName')).trim(),
+      affiliation: g('affiliation'), expertise: g('expertise'), bio: g('bio'), gender: g('gender'),
+      lg: g('linkGithub'), lw: g('linkWebsite'), ll: g('linkLinkedin'),
+      skills: getTagValues(), image: g('image'), photoEdited: !!photoEd,
+    });
+  }
+  // Edit form: enable "Save changes" only when the tracked content actually
+  // differs from what was loaded — an unchanged card shows a disabled button so
+  // it never looks like there's something to save.
+  function updateEditSaveState() {
+    var form = $('#profileForm');
+    if (!form || form.getAttribute('data-new') === '1') return; // new form uses the Join gate
+    var btn = form.querySelector('button[type="submit"]');
+    if (!btn) return;
+    var dirty = profileSignature() !== profileBaselineSig;
+    btn.disabled = !dirty;
+    btn.classList.toggle('btn-disabled', !dirty);
+  }
+
   // Enable Join only when the whole card is complete (new registrations only).
   function updateJoinState() {
     updateFieldHints();
+    updateEditSaveState();
     var form = $('#profileForm');
     if (!form || form.getAttribute('data-new') !== '1') return;
     var btn = form.querySelector('button[type="submit"]');
@@ -3202,6 +3248,14 @@
       pform.addEventListener('input', saveRegDraft);
       pform.addEventListener('change', saveRegDraft);
       var isNew = pform.getAttribute('data-new') === '1';
+      if (!isNew) {
+        // Edit form: snapshot the loaded content, then gate "Save changes" on it
+        // changing. Skill/photo/video paths all run through updateJoinState too.
+        profileBaselineSig = profileSignature();
+        pform.addEventListener('input', updateEditSaveState);
+        pform.addEventListener('change', updateEditSaveState);
+        updateEditSaveState(); // start disabled — nothing changed yet
+      }
       if (isNew) {
         // Re-evaluate the Join gate as the fresh-registration form changes.
         var onEdit = function () { updateJoinState(); };

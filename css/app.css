@@ -973,6 +973,10 @@ textarea.input { resize: vertical; min-height: 90px; }
    tab (light). Base styles suit the light surface; the .video-overlay overrides
    flip them for the dark card overlay. */
 .vid-panel { display: flex; flex-direction: column; gap: 10px; }
+/* in the card overlay the panel fills the height so the footer pins to the
+   bottom of the card (the "virtual footer") */
+.video-overlay .vid-panel { flex: 1 1 auto; min-height: 0; }
+.vid-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
 .vid-req {
   display: flex; gap: 9px; align-items: flex-start; margin: 0 0 12px;
   font-size: 12.5px; line-height: 1.5; padding: 9px 12px; border-radius: 8px;
