@@ -2201,7 +2201,7 @@
   // no intro video, a bundled default loop plays instead — display-only, never
   // written into the form's video field. The backdrop starts muted so autoplay
   // is always allowed; the footer speaker button toggles the <video> directly.
-  var DEFAULT_CARD_VIDEO = 'assets/video/default-card-bg.mp4';
+  var DEFAULT_CARD_VIDEO = 'assets/video/default-card-bg.mp4?v=2';
   // start with sound on; renderCardVideo falls back to muted only if the browser
   // blocks an unmuted autoplay (no user gesture yet)
   var cardVideoMuted = false;
