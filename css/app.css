@@ -1382,6 +1382,8 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
   width: max-content; padding: 8px 16px; border-radius: 999px;
   background: rgba(255,255,255,0.96); color: #14151a; font-weight: 700; font-size: 12.5px;
   letter-spacing: 0; text-transform: none; text-decoration: none;
+  pointer-events: auto; /* re-enable clicks (the preview octagon is pointer-events:none) */
+  position: relative; z-index: 2;
 }
 .oct-pv-view i { font-size: 11px; }
 .oct-pv-view:hover { background: #fff; transform: translateY(-1px); }
