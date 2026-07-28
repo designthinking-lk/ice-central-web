@@ -74,7 +74,10 @@ ${desc ? `<text x="80" y="410" font-family="Inter" font-weight="700" font-size="
 function memberCardSvg(c, photo) {
   const name = clip(c.name || 'Member', 24);
   const nSize = name.length <= 13 ? 76 : name.length <= 19 ? 60 : 48;
-  const sub = clip(c.subtitle || '', 34);
+  // role goes in the kicker; the subtitle line shows the programme tagline
+  const kicker = (c.event || 'ICE') + (c.role ? ' · ' + String(c.role).toUpperCase() : '');
+  const sub = clip(c.tagline || c.subtitle || '', 46);
+  const sSize = sub.length <= 40 ? 28 : 25;
   return `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
 <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00D7EE"/><stop offset="1" stop-color="#6100FF"/></linearGradient>
 <clipPath id="pc"><circle cx="290" cy="315" r="196"/></clipPath></defs>
@@ -82,9 +85,9 @@ function memberCardSvg(c, photo) {
 <rect width="1200" height="630" fill="rgba(10,8,24,0.28)"/>
 ${photo ? `<image href="${photo}" x="94" y="119" width="392" height="392" preserveAspectRatio="xMidYMid slice" clip-path="url(#pc)"/>` : `<circle cx="290" cy="315" r="196" fill="rgba(255,255,255,0.14)"/>`}
 <circle cx="290" cy="315" r="196" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="5"/>
-<text x="558" y="216" font-family="Inter" font-weight="700" font-size="24" letter-spacing="4" fill="rgba(255,255,255,0.85)">${xml(c.event || 'ICE')}</text>
+<text x="558" y="216" font-family="Inter" font-weight="700" font-size="24" letter-spacing="4" fill="rgba(255,255,255,0.85)">${xml(kicker)}</text>
 <text x="558" y="312" font-family="Inter" font-weight="700" font-size="${nSize}" fill="#ffffff">${xml(name)}</text>
-${sub ? `<text x="558" y="374" font-family="Inter" font-weight="700" font-size="28" fill="rgba(255,255,255,0.9)">${xml(sub)}</text>` : ''}
+${sub ? `<text x="558" y="374" font-family="Inter" font-weight="700" font-size="${sSize}" fill="rgba(255,255,255,0.9)">${xml(sub)}</text>` : ''}
 <text x="558" y="540" font-family="Inter" font-weight="700" font-size="24" letter-spacing="1" fill="rgba(255,255,255,0.72)">DT@SL · designthinking.lk</text>
 </svg>`;
 }
