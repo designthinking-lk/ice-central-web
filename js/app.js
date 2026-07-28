@@ -1185,9 +1185,9 @@
   function viewLanding() {
     return '<div class="landing">' +
       '<div class="feature-video">' +
-      '<iframe src="https://www.youtube.com/embed/x8rehfnwRv4?start=12&autoplay=1&mute=1&rel=0&controls=0&iv_load_policy=3&playsinline=1&loop=1&playlist=x8rehfnwRv4&enablejsapi=1" ' +
-      'title="ICE workshop highlights" frameborder="0" ' +
-      'allow="autoplay; encrypted-media" tabindex="-1"></iframe>' +
+      '<video class="feature-video-el" autoplay muted loop playsinline preload="auto" ' +
+      'title="ICE workshop highlights" tabindex="-1">' +
+      '<source src="assets/video/ice2025-landing.mp4" type="video/mp4"></video>' +
       '</div>' +
       // loading veil: drifts a subtle gradient over the video slot until the
       // playback handshake reveals the footage (initLandingVideo crossfades it)
@@ -1203,14 +1203,14 @@
       '</div></div>';
   }
 
-  // Fade the feature video in only once YouTube reports PLAYING (+ a beat, so
-  // its own start-of-playback control flash has retired). Falls back to a
-  // plain timer if the postMessage handshake never yields events.
+  // Fade the feature video in once it actually starts playing, so the loading
+  // veil crossfades onto real footage rather than a black frame. Falls back to
+  // a plain timer if the media events never fire (e.g. autoplay blocked).
   function initLandingVideo(fv) {
     if (fv.__wired) return;
     fv.__wired = true;
-    var iframe = fv.querySelector('iframe');
-    var shown = false, pings = 0;
+    var vid = fv.querySelector('video');
+    var shown = false;
     function show(delay) {
       if (shown) return;
       shown = true;
@@ -1221,24 +1221,13 @@
         if (veil) veil.classList.add('done');
       }, delay);
     }
-    function onMsg(e) {
-      if (String(e.origin).indexOf('youtube.com') === -1) return;
-      var d; try { d = JSON.parse(e.data); } catch (err) { return; }
-      // YouTube flashes its center controls for ~3 s whenever playback starts;
-      // reveal once ~1 s of footage has actually played (start=12).
-      if (d && d.event === 'infoDelivery' && d.info &&
-          d.info.playerState === 1 && d.info.currentTime >= 13) {
-        window.removeEventListener('message', onMsg);
-        show(0);
-      }
+    if (vid) {
+      vid.addEventListener('playing', function () { show(0); });
+      // some browsers fire 'canplay'/'loadeddata' without 'playing' when muted
+      vid.addEventListener('loadeddata', function () { if (vid.currentTime > 0 || !vid.paused) show(0); });
+      var p = vid.play();
+      if (p && p.catch) p.catch(function () { /* autoplay blocked — safety net reveals it */ });
     }
-    window.addEventListener('message', onMsg);
-    var ping = setInterval(function () {
-      if (shown || ++pings > 20 || !iframe.isConnected) { clearInterval(ping); return; }
-      try {
-        iframe.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 'icefv', channel: 'widget' }), '*');
-      } catch (err) { /* not ready yet */ }
-    }, 500);
     setTimeout(function () { show(0); }, 5000); // safety net — cap the wait at 5s
   }
 
@@ -2213,7 +2202,9 @@
   // written into the form's video field. The backdrop starts muted so autoplay
   // is always allowed; the footer speaker button toggles the <video> directly.
   var DEFAULT_CARD_VIDEO = 'assets/video/default-card-bg.mp4';
-  var cardVideoMuted = true;
+  // start with sound on; renderCardVideo falls back to muted only if the browser
+  // blocks an unmuted autoplay (no user gesture yet)
+  var cardVideoMuted = false;
 
   function cardVideoTag(src) {
     return '<video id="cardVideoEl" autoplay loop playsinline preload="auto"' +

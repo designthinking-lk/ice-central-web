@@ -321,12 +321,12 @@ button { font-family: inherit; }
   mask-composite: intersect;
 }
 /* 16:9 iframe sized to COVER the viewport, centered (object-fit for iframes) */
-.feature-video iframe {
+.feature-video video {
   position: absolute; top: 50%; left: 50%;
   width: max(100vw, calc(100vh * 16 / 9));
   height: max(100vh, calc(100vw * 9 / 16));
   transform: translate(-50%, -50%);
-  border: 0;
+  object-fit: cover; border: 0;
 }
 /* settles at 0.8: the page background (white by day, near-black at night)
    washes through, keeping the footage soft behind the UI */
