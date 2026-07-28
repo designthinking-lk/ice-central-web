@@ -15,8 +15,104 @@
  *
  * When the ice.designthinking.lk cutover happens, update CANONICAL_ORIGIN. */
 
+import { initWasm, Resvg } from '@resvg/resvg-wasm';
+import resvgWasm from '@resvg/resvg-wasm/index_bg.wasm';
+import { INTER_BOLD_B64 } from './font-inter-bold.js';
+
 const CANONICAL_ORIGIN = 'https://ice2026.designthinking.lk';
 const API_URL = 'https://script.google.com/macros/s/AKfycbz0THh0OrmG8umv5ZomVvv1kQu7Ogs1jYp2tKqJFOe6gAMWGnL5Y5_Ww5hZOFVeNSA/exec';
+
+// resvg wasm is initialised once per isolate; the bold font is decoded once.
+let _resvgReady = null;
+function ensureResvg() { if (!_resvgReady) _resvgReady = initWasm(resvgWasm); return _resvgReady; }
+let _font = null;
+function fontBytes() {
+  if (!_font) { const b = atob(INTER_BOLD_B64); _font = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) _font[i] = b.charCodeAt(i); }
+  return _font;
+}
+
+// pc-1..6 gradient stops (mirror the app's project card palette); default = brand.
+const PC_GRADIENTS = {
+  'pc-1': ['#00D7EE', '#6100FF'], 'pc-2': ['#00C9A7', '#005F73'], 'pc-3': ['#FF9966', '#FF3D77'],
+  'pc-4': ['#4E65FF', '#1B2A78'], 'pc-5': ['#F953C6', '#B91D73'], 'pc-6': ['#232A34', '#0F766E'],
+};
+const xml = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const clip = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
+
+// Fetch the member photo and inline it as a data URI so resvg can draw it.
+async function photoDataUri(urlOrId) {
+  try {
+    let src = urlOrId;
+    const m = String(src).match(/\/d\/([^/?]+)/);
+    if (m) src = 'https://lh3.googleusercontent.com/d/' + m[1]; // lh3 serves the JPEG
+    const r = await fetch(src, { cf: { cacheTtl: 86400, cacheEverything: true } });
+    if (!r.ok) return '';
+    const ct = r.headers.get('content-type') || 'image/jpeg';
+    const buf = new Uint8Array(await r.arrayBuffer());
+    let bin = ''; for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+    return 'data:' + ct + ';base64,' + btoa(bin);
+  } catch (e) { return ''; }
+}
+
+function projectCardSvg(c) {
+  const g = PC_GRADIENTS[c.color] || ['#00D7EE', '#6100FF'];
+  const title = clip(c.name || 'Project', 30);
+  const tSize = title.length <= 13 ? 92 : title.length <= 20 ? 74 : 58;
+  const desc = clip(c.subtitle || '', 64);
+  return `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="${g[0]}"/><stop offset="1" stop-color="${g[1]}"/></linearGradient></defs>
+<rect width="1200" height="630" fill="url(#g)"/>
+<circle cx="1120" cy="70" r="220" fill="rgba(255,255,255,0.08)"/>
+<text x="80" y="140" font-family="Inter" font-weight="700" font-size="26" letter-spacing="4" fill="rgba(255,255,255,0.85)">${xml((c.event || 'ICE') + ' · PROJECT')}</text>
+<text x="80" y="330" font-family="Inter" font-weight="700" font-size="${tSize}" fill="#ffffff">${xml(title)}</text>
+${desc ? `<text x="80" y="410" font-family="Inter" font-weight="700" font-size="31" fill="rgba(255,255,255,0.92)">${xml(desc)}</text>` : ''}
+<text x="80" y="562" font-family="Inter" font-weight="700" font-size="24" letter-spacing="1" fill="rgba(255,255,255,0.72)">DT@SL · designthinking.lk</text>
+</svg>`;
+}
+
+function memberCardSvg(c, photo) {
+  const name = clip(c.name || 'Member', 24);
+  const nSize = name.length <= 13 ? 76 : name.length <= 19 ? 60 : 48;
+  const sub = clip(c.subtitle || '', 34);
+  return `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00D7EE"/><stop offset="1" stop-color="#6100FF"/></linearGradient>
+<clipPath id="pc"><circle cx="290" cy="315" r="196"/></clipPath></defs>
+<rect width="1200" height="630" fill="url(#g)"/>
+<rect width="1200" height="630" fill="rgba(10,8,24,0.28)"/>
+${photo ? `<image href="${photo}" x="94" y="119" width="392" height="392" preserveAspectRatio="xMidYMid slice" clip-path="url(#pc)"/>` : `<circle cx="290" cy="315" r="196" fill="rgba(255,255,255,0.14)"/>`}
+<circle cx="290" cy="315" r="196" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="5"/>
+<text x="558" y="216" font-family="Inter" font-weight="700" font-size="24" letter-spacing="4" fill="rgba(255,255,255,0.85)">${xml(c.event || 'ICE')}</text>
+<text x="558" y="312" font-family="Inter" font-weight="700" font-size="${nSize}" fill="#ffffff">${xml(name)}</text>
+${sub ? `<text x="558" y="374" font-family="Inter" font-weight="700" font-size="28" fill="rgba(255,255,255,0.9)">${xml(sub)}</text>` : ''}
+<text x="558" y="540" font-family="Inter" font-weight="700" font-size="24" letter-spacing="1" fill="rgba(255,255,255,0.72)">DT@SL · designthinking.lk</text>
+</svg>`;
+}
+
+async function renderCardImage(kind, id, url) {
+  const project = url.searchParams.get('project') || 'ice2026';
+  let card = null;
+  try {
+    let r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'og_card', kind, id, project }), redirect: 'manual' });
+    if (r.status >= 300 && r.status < 400) { const loc = r.headers.get('location'); if (loc) r = await fetch(loc); }
+    const d = await r.json(); card = d && d.card;
+  } catch (e) { /* fall through */ }
+  if (!card) return new Response('not found', { status: 404 });
+
+  let svg;
+  if (kind === 'p') svg = projectCardSvg(card);
+  else svg = memberCardSvg(card, card.photo ? await photoDataUri(card.photo) : '');
+
+  await ensureResvg();
+  const png = new Resvg(svg, {
+    fitTo: { mode: 'width', value: 1200 },
+    font: { fontBuffers: [fontBytes()], defaultFontFamily: 'Inter', loadSystemFonts: false },
+  }).render().asPng();
+  return new Response(png, { status: 200, headers: {
+    'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=600', 'X-Ice-Card-Img': kind + ':' + id,
+  } });
+}
 
 export default {
   async fetch(request) {
@@ -35,6 +131,8 @@ export default {
     // the public card fields and returns a page with dynamic OG tags for social
     // crawlers; real browsers are bounced into the app.
     if (url.hostname.startsWith('card.')) {
+      const im = url.pathname.match(/^\/img\/(u|p)\/([\w-]+)\/?$/);
+      if (im) return renderCardImage(im[1], im[2], url);       // generated OG PNG
       const cm = url.pathname.match(/^\/(u|p)\/([\w-]+)\/?$/);
       if (cm) return renderShareCard(cm[1], cm[2], url);
       return Response.redirect(CANONICAL_ORIGIN + '/', 302);
@@ -101,8 +199,11 @@ async function renderShareCard(kind, id, url) {
   const appUrl = (card && card.appUrl) || (CANONICAL_ORIGIN + '/');
   const title  = (card && card.title) || 'ICE — Design Thinking Workshops';
   const desc   = (card && card.description) || 'Meet the mentors and participants, form teams, and build together.';
-  const image  = (card && card.image) || (CANONICAL_ORIGIN + '/assets/og-image-v3.jpg');
-  const twCard = (card && card.square) ? 'summary' : 'summary_large_image';
+  // Prefer the generated branded card image on our own domain; the API's plain
+  // image (photo/default) is only a fallback if we couldn't resolve the card.
+  const image  = card ? (url.origin + '/img/' + kind + '/' + id + '?project=' + encodeURIComponent(project))
+                      : (CANONICAL_ORIGIN + '/assets/og-image-v3.jpg');
+  const twCard = 'summary_large_image';
   const e = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const html =
 `<!doctype html><html lang="en"><head><meta charset="utf-8">
