@@ -3872,6 +3872,7 @@
         .then(function (r) {
           videoActionPending = false;
           if (r && r.teamProjects) { state.data.teamProjects = r.teamProjects; A.writeCache(state.data); }
+          projVideoBusy(false); // lift the freeze before repainting
           renderProjectDetail(); // reflect "added" + the Demo tab now has a clip
           toast('Video uploaded');
         })
@@ -3879,6 +3880,23 @@
     };
     reader.onerror = function () { videoActionPending = false; projVideoBusy(false); setStatus('Could not read the file.', true); };
     reader.readAsDataURL(file);
+  }
+  // Remove the pitch clip — same busy/progress treatment as the upload.
+  function removeProjectVideo(slot) {
+    var status = $('#projVideoStatus');
+    function setStatus(msg, isErr) { if (status) { status.textContent = msg; status.className = 'vid-status' + (isErr ? ' err' : ''); } if (isErr) toast(msg, true); }
+    videoActionPending = true;
+    projVideoBusy(true);
+    setStatus('Removing your clip… keep this panel open.', false);
+    A.api('team_project_update', { slot: slot, video: '' })
+      .then(function (r) {
+        videoActionPending = false;
+        if (r && r.teamProjects) { state.data.teamProjects = r.teamProjects; A.writeCache(state.data); }
+        projVideoBusy(false);
+        renderProjectDetail();
+        toast('Video removed');
+      })
+      .catch(function (err) { videoActionPending = false; projVideoBusy(false); setStatus(err.message || 'Could not remove the video', true); });
   }
 
   function viewTools() {
@@ -5354,15 +5372,7 @@
         }
         break;
       }
-      case 'proj-remove-video': {
-        var rvSlot = Number(t.getAttribute('data-slot'));
-        A.api('team_project_update', { slot: rvSlot, video: '' }).then(function (r) {
-          if (r && r.teamProjects) { state.data.teamProjects = r.teamProjects; A.writeCache(state.data); }
-          renderProjectDetail();
-          toast('Video removed');
-        }).catch(function (err) { toast(err.message, true); });
-        break;
-      }
+      case 'proj-remove-video': removeProjectVideo(Number(t.getAttribute('data-slot'))); break;
       case 'proj-color': {
         projEditColor = t.getAttribute('data-color');
         var fc = $('#projectsGrid .pc-front'); // live-preview on the stacked hero card
