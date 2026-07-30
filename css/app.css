@@ -1522,7 +1522,8 @@ body.chat-open .chat-toggle { background: var(--color-accent-light); border-colo
 .mine-toggle.is-on .mine-on-l { display: inline; }
 .mine-toggle.is-on {
   border-color: var(--mine); color: var(--mine); background: var(--mine-soft);
-  box-shadow: 0 0 0 3px var(--mine-soft);
+  /* no outer ring — it made the pill read taller than the theme toggle/avatar
+     beside it; the amber fill + border already mark the active state */
 }
 .mine-toggle.is-on .mine-dot { background: var(--mine); box-shadow: 0 0 8px var(--mine); }
 
