@@ -134,15 +134,13 @@ button { font-family: inherit; }
 }
 /* real content paints above the octagon */
 .nav { position: relative; z-index: 1; }
-/* sidebar-top holds the fixed animated brand; its z-index is the stacking
-   context the brand lives in, so it must clear the frosted app-bar band (z 4)
-   and topbar (z 10) — otherwise the ICE letters paint behind the glass. */
-.sidebar-top { position: relative; z-index: 71; }
-
-.sidebar-top { display: flex; align-items: center; padding: 0 6px; flex: none; }
-/* The brand escapes the sidebar's overflow clip (position: fixed, no
-   transformed ancestor) so the animated title can expand across the topbar. */
-.sidebar-top { min-height: 30px; }
+/* empty top spacer in the sidebar (the animated brand moved out to .shell so it
+   can escape the sidebar's overflow:hidden — Safari clips fixed descendants of
+   an overflow-hidden ancestor). Keeps the sidebar's original top gap. */
+.sidebar-top { display: flex; align-items: center; padding: 0 6px; flex: none; min-height: 30px; }
+/* The animated brand is fixed and a direct child of .shell, so it can expand
+   across the top bar uncropped. z-index clears the frosted app-bar band (z 4)
+   and topbar (z 10) so the ICE letters never paint behind the glass. */
 .brand { display: flex; align-items: center; gap: 9px; position: fixed; top: 15px; left: 20px; z-index: 70; }
 /* circle button that opens the workshop switcher, just before the title */
 .brand-switch {

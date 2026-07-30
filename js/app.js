@@ -209,6 +209,17 @@
   function shareCardUrl(kind, id) {
     return 'https://card.designthinking.lk/' + kind + '/' + encodeURIComponent(id) + '?project=' + encodeURIComponent(A.getProject());
   }
+  // Copy a share link to the clipboard and confirm with a toast; falls back to a
+  // prompt where the async clipboard API is unavailable/blocked.
+  function copyShareLink(url) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url)
+        .then(function () { toast('Link copied'); })
+        .catch(function () { window.prompt('Copy this link:', url); });
+    } else {
+      window.prompt('Copy this link:', url);
+    }
+  }
 
   // Where the current workshop sits in time — 'before' | 'during' | 'after' —
   // read off the project's start/end dates (local wall-clock, so it flips at
@@ -5502,14 +5513,15 @@
       }
       case 'card-share': {
         var shareUrl = shareCardUrl(t.getAttribute('data-kind'), t.getAttribute('data-id'));
-        // Safari's share sheet drops a bare { url } for several targets, showing
-        // no link at all — carry the URL in `text` too (with a title) so it
-        // always makes it across. Fall back to copy when share is unavailable.
+        // Always copy the clean URL to the clipboard first (during the click
+        // gesture) and toast it — some Safari share sheets omit a Copy action,
+        // so this guarantees the link is always grabbable. Then offer the native
+        // share sheet where available. We pass ONLY `url` (no `text`): putting the
+        // URL in both fields made Safari's Copy paste it twice.
+        copyShareLink(shareUrl);
         if (navigator.share) {
-          navigator.share({ title: eventName(), text: eventName() + ' — ' + shareUrl, url: shareUrl }).catch(function () {});
-        } else if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(shareUrl).then(function () { toast('Share link copied'); }).catch(function () { window.prompt('Copy this link:', shareUrl); });
-        } else { window.prompt('Copy this link:', shareUrl); }
+          navigator.share({ title: eventName(), url: shareUrl }).catch(function () {});
+        }
         break;
       }
       case 'sign-out': e.preventDefault(); closeMenu(); A.signOut(); break;
