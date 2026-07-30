@@ -13,6 +13,10 @@ window.ICE_CONFIG = {
   // the profile "Message" buttons — all the code stays in place (js/chat.js and
   // the chat-* handlers). To restore: flip to true (CHAT_CLIENT_ID must be set).
   CHAT_ENABLED: false,
+  // Access code that lets an un-invited person bypass the invite-only gate and
+  // register anyway (kept in sync with the backend's ACCESS_CODE). Case-
+  // insensitive; empty string disables the bypass.
+  ACCESS_CODE: 'ice2026',
   // Google Chat handoff — OAuth web client ID from the ahlab.org GCP project.
   // Empty = chat buttons show a "not set up yet" message. See docs/google-chat-setup.md.
   CHAT_CLIENT_ID: '664996878590-6chfseq2fn94ir8fg2tj53oncl2ebh74.apps.googleusercontent.com',

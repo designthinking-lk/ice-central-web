@@ -436,8 +436,12 @@
     } else if (signedIn()) {
       // Until the first fresh bootstrap confirms this person is NOT registered,
       // show no CTA — a registered member must never see it flash at boot.
+      // The CTA is redundant while they're already on the registration card, so
+      // it's hidden there; on every other view it stays (gently pulsing to draw
+      // the eye) until the profile is complete.
+      var onRegister = /^#\/register\b/.test(location.hash || '');
       actions.innerHTML =
-        (state.loaded ? '<a class="btn btn-gradient btn-sm" href="#/register"><i class="fa-regular fa-id-card"></i>Complete registration</a>' : '') +
+        (state.loaded && !onRegister ? '<a class="btn btn-gradient btn-sm cta-pulse" href="#/register"><i class="fa-regular fa-id-card"></i>Complete registration</a>' : '') +
         '<button class="avatar-circle-btn" data-action="guest-menu" aria-label="Account" title="Account">' +
         '<span class="avatar-guest"><i class="fa-solid fa-user"></i></span></button>';
     } else {
@@ -1070,7 +1074,6 @@
       (u.affiliation ? '<div class="person-affil">' + esc(u.affiliation) + '</div>' : '') +
       '</div></div>' +
       (u.bio ? '<div class="person-bio">' + esc(u.bio) + '</div>' : '') +
-      (u.expertise ? '<div class="person-expertise">' + esc(u.expertise) + '</div>' : '') +
       '<div class="skills">' + skills + more + '</div></a>';
   }
 
@@ -1483,9 +1486,12 @@
                 : '<button class="btn btn-primary btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in to message</button>'))) +
       ' <button class="btn btn-outline btn-sm" type="button" data-action="card-share" data-kind="u" data-id="' + esc(u.id) + '"><i class="fa-solid fa-share-nodes"></i>Share</button>' +
       '</div></div></div>' +
+      // AI persona — how the community first meets this person. Written by Claude
+      // from the public card fields; filled in async by initProfilePersona().
+      '<div class="pv-persona" id="pvPersona" hidden><i class="fa-solid fa-wand-magic-sparkles"></i>' +
+      '<p class="pv-persona-text" id="pvPersonaText"></p></div>' +
       '<div class="detail-grid"><div>' +
       (u.bio ? '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-regular fa-id-badge"></i>About</h3><p style="white-space:pre-wrap;color:var(--text-body);margin:0">' + esc(u.bio) + '</p></div>' : '') +
-      (u.expertise ? '<div class="panel"><h3><i class="fa-solid fa-lightbulb"></i>Expertise</h3><p style="color:var(--text-body);margin:0">' + esc(u.expertise) + '</p></div>' : '') +
       '</div><div>' +
       ((u.skills || []).length ? '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-solid fa-wand-magic-sparkles"></i>Skills</h3><div class="skills">' +
         u.skills.map(function (s) { return skillChip(s); }).join('') + '</div></div>' : '') +
@@ -2599,7 +2605,6 @@
       '<span class="cemail-addr" id="cemailAddr">' + esc(!isNew && u.workEmail ? u.workEmail : '') + '</span>' +
       '<span class="cemail-status" id="cemailStatus" data-status=""></span></div>' +
       '<label class="cfield"><i class="fa-solid fa-building"></i><input class="cinput" name="affiliation" maxlength="45" placeholder="Affiliation — university, company" value="' + esc(u.affiliation || '') + '"></label>' +
-      '<label class="cfield"><i class="fa-solid fa-lightbulb"></i><input class="cinput" name="expertise" maxlength="90" placeholder="Expertise — comma separated topics" value="' + esc(u.expertise || '') + '"></label>' +
       '</div></div>' + // close .idcard-fields + .idcard-main
       // skills attach directly on the card front (max 3, one line)
       '<div class="idcard-skills">' +
@@ -2678,6 +2683,7 @@
       (isNew
         ? '<label class="consent"><input type="checkbox" id="consentBox" disabled> I agree that this information is stored by the organizers and that my profile is shown publicly to the workshop’s mentors and participants.</label>'
         : '') +
+      (isNew ? '<p class="change-later-note">You can change all content later from your profile page.</p>' : '') +
       '<div class="form-actions">' +
       '<div class="fa-buttons" id="faButtons">' +
       (isNew ? '' : '<button class="btn btn-outline" type="button" data-action="wallet-show"><i class="fa-solid fa-wallet"></i>Add to wallet</button>') +
@@ -2714,7 +2720,6 @@
       name: (first + ' ' + last).trim(),
       role: form.getAttribute('data-role') === 'mentor' ? 'mentor' : 'participant',
       affiliation: String(fd.get('affiliation') || '').trim(),
-      expertise: String(fd.get('expertise') || '').trim(),
       bio: String(fd.get('bio') || '').trim(),
       skills: getTagValues(),
     };
@@ -2740,7 +2745,7 @@
     if (personaDisabled) return;
     var f = personaFields();
     if (!f) return;
-    if (!f.name && !f.affiliation && !f.expertise && !f.bio && !f.skills.length) return;
+    if (!f.name && !f.affiliation && !f.bio && !f.skills.length) return;
     var payload = JSON.stringify(f);
     if (payload === personaLastPayload) return;
     personaLastPayload = payload;
@@ -2769,6 +2774,33 @@
       var done = $('#personaText');
       if (done) done.classList.remove('thinking');
     }
+  }
+
+  // Public profile: show the same AI persona the person saw while building their
+  // card, so visitors meet them the way they were introduced. Generated from the
+  // public card fields via the same `persona` action (server-side cached by
+  // content hash, so repeat views are cheap). Decorative — fails silently.
+  function initProfilePersona(u) {
+    var el = $('#pvPersona');
+    if (!el || !u) return;
+    // The persona endpoint is auth-gated (it bills an LLM), so only fetch it for
+    // signed-in members — the people who actually browse each other's profiles.
+    if (!signedIn()) return;
+    var f = {
+      name: u.name || '',
+      role: hasRoleU(u, 'mentor') ? 'mentor' : 'participant',
+      affiliation: u.affiliation || '',
+      bio: u.bio || '',
+      skills: u.skills || [],
+    };
+    if (!f.name && !f.affiliation && !f.bio && !f.skills.length) return;
+    A.api('persona', f).then(function (r) {
+      if (!r || r.disabled || !r.text) return;
+      var box = $('#pvPersona'), txt = $('#pvPersonaText');
+      if (!box || !txt) return; // view changed while the request was in flight
+      txt.textContent = r.text;
+      box.hidden = false;
+    }).catch(function () { /* persona is decorative */ });
   }
 
   var MAX_SKILLS = 3;
@@ -2813,8 +2845,17 @@
     }).join('');
   }
 
+  // Title-case a typed skill on the way in so chips read consistently
+  // ("web development" → "Web Development") — words already in all-caps
+  // (acronyms like UX, AI, 3D) are left untouched.
+  function capitalizeSkill(s) {
+    return String(s || '').trim().replace(/\S+/g, function (w) {
+      return w === w.toUpperCase() ? w : w.charAt(0).toUpperCase() + w.slice(1);
+    });
+  }
+
   function addTag(s) {
-    s = String(s || '').trim();
+    s = capitalizeSkill(s);
     if (!s) return;
     var values = getTagValues();
     if (values.length >= MAX_SKILLS) { toast('You can add up to ' + MAX_SKILLS + ' skills.', true); return; }
@@ -2865,7 +2906,7 @@
     var fd = new FormData(form);
     return {
       firstName: fd.get('firstName') || '', lastName: fd.get('lastName') || '',
-      affiliation: fd.get('affiliation') || '', expertise: fd.get('expertise') || '',
+      affiliation: fd.get('affiliation') || '',
       bio: fd.get('bio') || '', gender: fd.get('gender') || '',
       // links stored complete (bare handle → github.com/name) so re-bucketing by
       // hostname works on reload; the field re-derives the bare handle to display
@@ -2909,10 +2950,23 @@
     if (!d) return null;
     return {
       name: ((d.firstName || '') + ' ' + (d.lastName || '')).trim(),
-      affiliation: d.affiliation, expertise: d.expertise, bio: d.bio, gender: d.gender,
+      affiliation: d.affiliation, bio: d.bio, gender: d.gender,
       image: d.image, video: d.video, skills: d.skills || [],
       links: [d.linkGithub, d.linkWebsite, d.linkLinkedin].filter(Boolean),
     };
+  }
+
+  // ---- access-code bypass of the invite-only gate ----
+  // A person who enters the shared access code (C.ACCESS_CODE, e.g. "ice2026")
+  // may register without a personal invite. The code is remembered per project
+  // for the session and sent with `register`, where the backend re-checks it.
+  function accessCodeKey() { return 'ice.access.' + A.getProject(); }
+  function storedAccessCode() {
+    try { return sessionStorage.getItem(accessCodeKey()) || ''; } catch (e) { return ''; }
+  }
+  function accessBypass() {
+    var code = storedAccessCode(), want = String(C.ACCESS_CODE || '');
+    return !!want && code.toLowerCase() === want.toLowerCase();
   }
 
   function viewRegister() {
@@ -2927,7 +2981,7 @@
     // Invite-only: mirror the backend's register gate with an explanation
     // instead of a dead form. Only freshly loaded data decides — a cached
     // pre-invite bootstrap lacks the invite field.
-    if (state.loaded && state.data && !state.data.invite && !state.data.isAdmin) {
+    if (state.loaded && state.data && !state.data.invite && !state.data.isAdmin && !accessBypass()) {
       var isWorkAddr = /@designthinking\.lk$/i.test(state.data.email || '');
       return '<div class="empty" style="margin-top:40px"><i class="fa-regular fa-envelope"></i>' +
         esc(eventName()) + ' is invite-only.' +
@@ -2937,6 +2991,9 @@
               ? 'This workshop account isn’t linked to a registration yet — sign in with the personal Google account your invitation was sent to, then this account will work too.'
               : 'If your invitation went to a different address, sign out and use that Google account — otherwise ask the organizers to invite you.')
           : '<br>Ask the organizers for an invitation, then sign in with the invited Google account.') +
+        // Have an access code? Enter it to register without a personal invite.
+        '<div class="access-code"><input id="accessCodeInput" placeholder="Have an access code?" autocomplete="off" spellcheck="false">' +
+        '<button class="btn btn-gradient btn-sm" data-action="access-code-submit">Continue</button></div>' +
         '</div>';
     }
     if (!formReady()) return profileScaffold('', '', formLoading());
@@ -3059,8 +3116,8 @@
     };
     var mark = function (el, need) { if (el) el.classList.toggle('needs-fill', !!need); };
 
-    // text fields on the card (names, affiliation, expertise, bio, links)
-    ['firstName', 'lastName', 'affiliation', 'expertise', 'bio',
+    // text fields on the card (names, affiliation, bio, links)
+    ['firstName', 'lastName', 'affiliation', 'bio',
      'linkGithub', 'linkWebsite', 'linkLinkedin'].forEach(function (n) {
       var el = form.querySelector('[name="' + n + '"]');
       if (el) mark(el, !el.value.trim());
@@ -3085,7 +3142,7 @@
     var g = function (n) { return String(fd.get(n) || '').trim(); };
     return JSON.stringify({
       name: (g('firstName') + ' ' + g('lastName')).trim(),
-      affiliation: g('affiliation'), expertise: g('expertise'), bio: g('bio'), gender: g('gender'),
+      affiliation: g('affiliation'), bio: g('bio'), gender: g('gender'),
       lg: g('linkGithub'), lw: g('linkWebsite'), ll: g('linkLinkedin'),
       skills: getTagValues(), image: g('image'), photoEdited: !!photoEd,
     });
@@ -3114,7 +3171,7 @@
     var fd = new FormData(form);
     var has = function (n) { return String(fd.get(n) || '').trim().length > 0; };
     var photoOk = !!photoEd || has('image');
-    var textOk = has('firstName') && has('lastName') && has('affiliation') && has('expertise') && has('bio');
+    var textOk = has('firstName') && has('lastName') && has('affiliation') && has('bio');
     var skillsOk = getTagValues().length > 0;
     // Intro video is optional — a member can join without one (the default
     // card backdrop plays in its place), so it's not part of the gate.
@@ -3159,7 +3216,10 @@
     var cs = getComputedStyle(input);
     var chrome = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) +
       (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0) +
-      3; // caret room on focus
+      // caret room on focus — generous so the field never scrolls (and crops the
+      // start of the name) while you're mid-word; the measure span can also run a
+      // hair narrow than the input's own text rendering.
+      10;
     // Each name may grow to half the row (minus the leading icon slot) so
     // first + last always fit side by side; past that the text shrinks.
     var row = input.closest('.cname-row');
@@ -4114,16 +4174,13 @@
           if (dayKeys.indexOf(k) === -1 && dayKeys.length < 3) dayKeys.push(k);
         });
       }
-      function ampm(hhmm) {
-        var h = +hhmm.slice(0, 2), m = hhmm.slice(3, 5);
-        return ((h % 12) || 12) + ':' + m + (h < 12 ? ' AM' : ' PM');
-      }
       function toMin(t) { return +t.slice(11, 13) * 60 + +t.slice(14, 16); }
       function card(ev, grow) {
+        // Timings are intentionally hidden — the agenda shows event names only
+        // (location still helps people find the room, so it stays).
         return '<div class="pg-event pg-real"' + (grow ? ' style="flex-grow:' + grow + '"' : '') + '>' +
           '<div class="pg-ev-title">' + esc(ev.title) + '</div>' +
-          '<div class="pg-ev-meta">' + ampm(ev.startLocal.slice(11, 16)) +
-          (ev.location ? ' · ' + esc(ev.location) : '') + '</div></div>';
+          (ev.location ? '<div class="pg-ev-meta">' + esc(ev.location) + '</div>' : '') + '</div>';
       }
       $all('.pg-day-body').forEach(function (body) {
         var di = Number(body.getAttribute('data-di'));
@@ -5259,6 +5316,17 @@
         if (!(profileBg && profileBgHash === hash)) playProfileBg(pvid);
         else setProfileBgMuteIcon(); // re-sync the header button after a repaint
       } else stopProfileBg();
+      if (pu) initProfilePersona(pu);
+    }
+    // invite-only gate: submit the access code on Enter
+    var acInput = $('#accessCodeInput');
+    if (acInput) {
+      acInput.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        var b = $('[data-action="access-code-submit"]');
+        if (b) b.click();
+      });
     }
     // program: swap the skeleton for live calendar events when configured
     if ($('.program-grid')) initProgram();
@@ -5356,11 +5424,12 @@
       affiliation: fd.get('affiliation'),
       gender: fd.get('gender'),
       bio: fd.get('bio'),
-      expertise: fd.get('expertise'),
       skills: getTagValues(),
       links: links,
       video: video,
       videoName: video ? profileVideoName : '',
+      // access-code bypass of the invite-only gate (ignored by update_profile)
+      accessCode: storedAccessCode(),
       // no role: it's pre-assigned by the invite (register) and admin-managed
       // via the role chips (update_profile ignores it anyway)
     };
@@ -5388,10 +5457,28 @@
 
     switch (action) {
       case 'sign-in': A.signIn(); break;
+      case 'access-code-submit': {
+        var acInp = $('#accessCodeInput');
+        var acCode = acInp ? String(acInp.value || '').trim() : '';
+        var acWant = String(C.ACCESS_CODE || '');
+        if (acCode && acWant && acCode.toLowerCase() === acWant.toLowerCase()) {
+          try { sessionStorage.setItem(accessCodeKey(), acCode); } catch (e) { /* private mode */ }
+          toast('Access granted — complete your card to join.');
+          route(); // re-render #/register: the bypass now opens the form
+        } else {
+          toast('That access code isn’t right.', true);
+          if (acInp) { acInp.focus(); acInp.select(); }
+        }
+        break;
+      }
       case 'card-share': {
         var shareUrl = shareCardUrl(t.getAttribute('data-kind'), t.getAttribute('data-id'));
-        if (navigator.share) { navigator.share({ url: shareUrl }).catch(function () {}); }
-        else if (navigator.clipboard && navigator.clipboard.writeText) {
+        // Safari's share sheet drops a bare { url } for several targets, showing
+        // no link at all — carry the URL in `text` too (with a title) so it
+        // always makes it across. Fall back to copy when share is unavailable.
+        if (navigator.share) {
+          navigator.share({ title: eventName(), text: eventName() + ' — ' + shareUrl, url: shareUrl }).catch(function () {});
+        } else if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(shareUrl).then(function () { toast('Share link copied'); }).catch(function () { window.prompt('Copy this link:', shareUrl); });
         } else { window.prompt('Copy this link:', shareUrl); }
         break;

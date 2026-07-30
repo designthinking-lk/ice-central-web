@@ -200,7 +200,10 @@ button { font-family: inherit; }
   transform: translateY(0.5em);
   transition: max-width 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
 }
-.brand-name .bl.on { max-width: 0.9em; opacity: 1; transform: none; }
+/* Once a letter has landed, drop the clip — Safari clips glyph descenders/
+   ascenders (the p in "Entrepreneurship") against the inline box, cropping the
+   settled title. max-width already gates the horizontal reveal. */
+.brand-name .bl.on { max-width: 0.9em; opacity: 1; transform: none; clip-path: none; }
 .brand-name .bw { transition: margin-right 0.3s ease; }
 .brand-name.open .bw { margin-right: 0.26em; }
 .nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
@@ -278,6 +281,14 @@ button { font-family: inherit; }
 .btn-primary:hover { background: var(--color-accent-dark); color: #fff; }
 .btn-gradient { background: linear-gradient(90deg, #00D7EE 0%, #2E6BF6 55%, #6100FF 100%); color: #fff; box-shadow: 0 4px 16px -4px rgba(97, 0, 255, 0.45); }
 .btn-gradient:hover { filter: brightness(1.06); color: #fff; }
+/* gentle attention pulse for the app-bar "Complete registration" CTA */
+@keyframes cta-pulse {
+  0%, 100% { box-shadow: 0 4px 16px -4px rgba(97, 0, 255, 0.45); }
+  50% { box-shadow: 0 4px 22px 0 rgba(97, 0, 255, 0.75); transform: scale(1.035); }
+}
+.cta-pulse { animation: cta-pulse 2.2s ease-in-out infinite; }
+.cta-pulse:hover { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .cta-pulse { animation: none; } }
 .btn-outline { background: var(--surface); border-color: var(--border-strong); color: var(--text); }
 .btn-outline:hover { border-color: var(--color-accent); color: var(--color-accent); }
 .btn-ghost { background: transparent; color: var(--text-body); }
@@ -515,7 +526,6 @@ a.card { color: inherit; display: block; }
 }
 .person-affil { color: var(--text-muted); font-size: 13px; }
 .person-bio { color: var(--text-body); font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 10px; }
-.person-expertise { color: var(--color-accent-dark); font-size: 13px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 10px; }
 .skills { display: flex; gap: 6px; flex-wrap: wrap; }
 .skills .more { color: var(--text-faint); font-size: 12.5px; align-self: center; }
 
@@ -543,6 +553,28 @@ a.card { color: inherit; display: block; }
 .page-head h1 { font-size: 32px; letter-spacing: -0.02em; margin-bottom: 4px; }
 .meta-row { display: flex; gap: 18px; flex-wrap: wrap; color: var(--text-muted); font-size: 14px; margin: 6px 0 12px; }
 .meta-row i { margin-right: 6px; color: var(--text-faint); }
+/* AI persona lead on the public profile — a single introducing line above the
+   detail grid, set apart with the brand gradient accent */
+.pv-persona {
+  display: flex; gap: 12px; align-items: flex-start;
+  max-width: 1280px; margin: 0 auto 22px; padding: 16px 20px;
+  border-radius: var(--radius-lg); border: 1px solid var(--border);
+  background: var(--surface);
+  border-left: 3px solid transparent;
+  border-image: linear-gradient(180deg, #00D7EE, #6100FF) 1;
+}
+.pv-persona[hidden] { display: none; }
+.pv-persona > i { color: var(--color-accent); font-size: 16px; margin-top: 3px; flex: none; }
+.pv-persona-text { margin: 0; color: var(--text-body); font-size: 16px; line-height: 1.6; }
+body.profile-bg-on .pv-persona {
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+:root[data-theme="light"] body.profile-bg-on .pv-persona {
+  background: rgba(255,255,255,0.62);
+}
+:root[data-theme="dark"] body.profile-bg-on .pv-persona {
+  background: rgba(18,20,28,0.5);
+}
 .detail-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start; max-width: 1280px; margin: 0 auto; }
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; }
 .panel h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
@@ -590,6 +622,19 @@ a.card { color: inherit; display: block; }
 .link-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .link-list li { display: flex; gap: 10px; align-items: baseline; }
 .link-list i { color: var(--text-faint); font-size: 13px; }
+
+/* access-code entry on the invite-only gate (bypass for un-invited people) */
+.access-code {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  margin: 22px auto 0; max-width: 360px;
+}
+.access-code input {
+  flex: 1; min-width: 160px; padding: 9px 13px; font-size: 14px;
+  border-radius: 10px; border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--text); outline: none;
+  transition: border-color 0.15s;
+}
+.access-code input:focus { border-color: var(--color-accent); }
 
 /* ------------------------------------------------------------------- forms */
 .form { display: flex; flex-direction: column; gap: 18px; max-width: 640px; }
@@ -661,6 +706,8 @@ textarea.input { resize: vertical; min-height: 90px; }
 /* inactive until the card is complete */
 .consent:has(input:disabled) { opacity: 0.5; cursor: default; }
 .consent input:disabled { cursor: default; }
+/* small reassurance under the consent row, just above the join button */
+.change-later-note { margin: -4px 0 0; font-size: 12px; color: var(--text-muted); line-height: 1.4; }
 .pf-right .form-actions { flex: none; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 /* the action row swaps between the default buttons and the Google/Apple
    wallet buttons in the same space (no extra page) */
@@ -673,7 +720,7 @@ textarea.input { resize: vertical; min-height: 90px; }
 .form-loading .spin { width: 18px; height: 18px; color: var(--color-accent); }
 
 /* --------------------------------------------------------------- ID card */
-.idcard-scene { perspective: 1600px; margin: 22px 0 26px; position: relative; }
+.idcard-scene { -webkit-perspective: 1600px; perspective: 1600px; margin: 22px 0 26px; position: relative; }
 /* submit overlay: freezes the card (no clicks, no drag) until register/save
    returns; sits above both faces and the flip animation */
 .card-busy {
@@ -689,9 +736,13 @@ textarea.input { resize: vertical; min-height: 90px; }
 }
 .idcard {
   position: relative; width: 100%; aspect-ratio: 1.586 / 1; /* ISO credit-card */
-  transform-style: preserve-3d; transition: transform 0.7s cubic-bezier(.2,.7,.2,1);
+  /* -webkit- prefixes are required for Safari: without -webkit-transform-style
+     it flattens the 3D scene and the front face bleeds through onto the back. */
+  -webkit-transform-style: preserve-3d; transform-style: preserve-3d;
+  -webkit-transition: -webkit-transform 0.7s cubic-bezier(.2,.7,.2,1);
+  transition: transform 0.7s cubic-bezier(.2,.7,.2,1);
 }
-.idcard.flipped { transform: rotateY(180deg); }
+.idcard.flipped { -webkit-transform: rotateY(180deg); transform: rotateY(180deg); }
 /* the hidden face must never eat clicks meant for the visible one
    (fixes the unclickable "Front" button on the back face) */
 .idcard.flipped .idfront { pointer-events: none; }
@@ -709,7 +760,7 @@ textarea.input { resize: vertical; min-height: 90px; }
   color: #fff;
 }
 .idback {
-  transform: rotateY(180deg);
+  -webkit-transform: rotateY(180deg); transform: rotateY(180deg);
   background: linear-gradient(160deg, #1a1030, #0E0F11);
   color: #fff;
 }
@@ -2432,8 +2483,10 @@ body:has(.site-credit:not([hidden])) .view { padding-bottom: 84px; }
 /* SHA Foundation has no logo yet — a wordmark stands in beside the images */
 .credit-sha {
   font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em;
-  font-size: 15px; color: var(--text); opacity: 0.8;
+  font-size: 15px; color: var(--text); opacity: 0.8; text-decoration: none;
+  transition: color 0.15s, opacity 0.15s;
 }
+.credit-sha:hover { color: var(--color-accent); opacity: 1; }
 /* ahlab svg is black artwork; the nus png is WHITE artwork (made for dark
    backgrounds) — each inverts on the theme where it would vanish */
 .credit-logos img.nus { filter: invert(1); }
