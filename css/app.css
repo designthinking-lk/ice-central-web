@@ -551,44 +551,36 @@ a.card { color: inherit; display: block; }
 .page-head { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; margin: 0 auto 28px; max-width: 1280px; }
 .page-head .info { flex: 1; min-width: 260px; }
 .page-head h1 { font-size: 32px; letter-spacing: -0.02em; margin-bottom: 4px; }
-/* profile links: brand-icon buttons pinned to the top-right of the header */
-.pv-links { display: flex; gap: 10px; align-self: flex-start; margin-left: auto; flex-wrap: wrap; }
+/* octagon profile avatar — same rounded shape as the People hive tiles */
+.pv-oct { clip-path: url(#octr); border-radius: 0; border: none; }
+/* right-hand actions box: brand-icon links + the profile action buttons,
+   pinned to the top-right of the header inside its own panel */
+.pv-actions {
+  align-self: flex-start; margin-left: auto;
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 16px; min-width: 190px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+}
+.pv-links { display: flex; gap: 10px; flex-wrap: wrap; }
+.pv-btns { display: flex; gap: 10px; flex-wrap: wrap; }
 .pv-link {
   width: 40px; height: 40px; border-radius: 12px;
   display: inline-flex; align-items: center; justify-content: center;
-  background: var(--surface); border: 1px solid var(--border-strong);
+  background: var(--bg-subtle); border: 1px solid var(--border-strong);
   color: var(--text); font-size: 17px; text-decoration: none;
   transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
 }
 .pv-link:hover { border-color: var(--color-accent); color: var(--color-accent); transform: translateY(-1px); }
 /* legible as solid glass over a playing profile-background video */
-body.profile-bg-on .pv-link { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
-:root[data-theme="light"] body.profile-bg-on .pv-link { background: rgba(255,255,255,0.7); border-color: rgba(0,0,0,0.1); }
-:root[data-theme="dark"] body.profile-bg-on .pv-link { background: rgba(18,20,28,0.55); border-color: rgba(255,255,255,0.16); }
+body.profile-bg-on .pv-actions { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+:root[data-theme="light"] body.profile-bg-on .pv-actions { background: rgba(255,255,255,0.66); border-color: rgba(0,0,0,0.08); }
+:root[data-theme="dark"] body.profile-bg-on .pv-actions { background: rgba(18,20,28,0.5); border-color: rgba(255,255,255,0.13); }
 .meta-row { display: flex; gap: 18px; flex-wrap: wrap; color: var(--text-muted); font-size: 14px; margin: 6px 0 12px; }
 .meta-row i { margin-right: 6px; color: var(--text-faint); }
-/* AI persona lead on the public profile — a single introducing line above the
-   detail grid, set apart with the brand gradient accent */
-.pv-persona {
-  display: flex; gap: 12px; align-items: flex-start;
-  max-width: 1280px; margin: 0 auto 22px; padding: 16px 20px;
-  border-radius: var(--radius-lg); border: 1px solid var(--border);
-  background: var(--surface);
-  border-left: 3px solid transparent;
-  border-image: linear-gradient(180deg, #00D7EE, #6100FF) 1;
-}
+/* AI persona panel — reads like any other box (no gradient outline) */
+.pv-persona { max-width: 1280px; margin: 0 auto 22px; }
 .pv-persona[hidden] { display: none; }
-.pv-persona > i { color: var(--color-accent); font-size: 16px; margin-top: 3px; flex: none; }
 .pv-persona-text { margin: 0; color: var(--text-body); font-size: 16px; line-height: 1.6; }
-body.profile-bg-on .pv-persona {
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-}
-:root[data-theme="light"] body.profile-bg-on .pv-persona {
-  background: rgba(255,255,255,0.62);
-}
-:root[data-theme="dark"] body.profile-bg-on .pv-persona {
-  background: rgba(18,20,28,0.5);
-}
 .detail-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start; max-width: 1280px; margin: 0 auto; }
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; }
 .panel h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
@@ -1136,7 +1128,10 @@ body.profile-bg-on .panel {
 /* unmute control: a badge on the avatar's lower-right edge */
 .pv-avatar { position: relative; flex: none; align-self: flex-start; }
 .profile-bg-btn {
-  position: absolute; right: 2px; bottom: 8px; z-index: 3; pointer-events: auto;
+  /* centred on the octagon's flat bottom edge (its corners are cut, so a
+     bottom-right badge would float outside the shape) */
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: -8px;
+  z-index: 3; pointer-events: auto;
   width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
   border: 2px solid var(--bg); background: rgba(14,15,17,0.72); color: #fff; font-size: 13px;
   display: flex; align-items: center; justify-content: center; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);

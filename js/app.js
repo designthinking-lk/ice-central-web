@@ -1481,8 +1481,18 @@
     var pvLinks = linkIcons ? '<div class="pv-links">' + linkIcons + '</div>' : '';
     var myTeams = (state.data.teams || []).filter(function (t) { return (t.members || []).indexOf(u.id) !== -1; });
 
+    // Action buttons (Edit / Message / Sign-in, plus Share) now live in the
+    // right-hand actions box alongside the link icons.
+    var actionBtns =
+      (isMe ? '<a class="btn btn-outline btn-sm" href="#/me"><i class="fa-solid fa-pen"></i>Edit profile</a>'
+            : (!chatEnabled() ? ''            // messaging temporarily disabled — no Message CTA
+            : (signedIn() && me()
+                ? (workEmailOf(u) ? '<button class="btn btn-primary btn-sm" data-action="chat-dm" data-person="' + esc(u.id) + '"><i class="fa-regular fa-message"></i><span class="label">Message</span><span class="spin"></span></button>' : '')
+                : '<button class="btn btn-primary btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in to message</button>'))) +
+      '<button class="btn btn-outline btn-sm" type="button" data-action="card-share" data-kind="u" data-id="' + esc(u.id) + '"><i class="fa-solid fa-share-nodes"></i>Share</button>';
+
     return '<div class="page-head">' +
-      '<div class="pv-avatar">' + avatar(u, 'avatar-lg') +
+      '<div class="pv-avatar">' + avatar(u, 'avatar-lg pv-oct') +
       (u.video ? '<button type="button" class="profile-bg-btn pv-mute" data-action="profile-bg-mute" title="Unmute"><i class="fa-solid fa-volume-xmark"></i></button>' : '') +
       '</div>' +
       '<div class="info"><h1>' + esc(u.name) + '</h1>' +
@@ -1495,23 +1505,22 @@
       '</div>' +
       // the minted @designthinking.lk address, on its own line under the personal email
       (u.workEmail ? '<div class="meta-row"><span title="Workshop @designthinking.lk account"><i class="fa-regular fa-comment-dots"></i>' + esc(u.workEmail) + '</span></div>' : '') +
-      '<div>' +
-      (isMe ? '<a class="btn btn-outline btn-sm" href="#/me"><i class="fa-solid fa-pen"></i>Edit profile</a>'
-            : (!chatEnabled() ? ''            // messaging temporarily disabled — no Message CTA
-            : (signedIn() && me()
-                ? (workEmailOf(u) ? '<button class="btn btn-primary btn-sm" data-action="chat-dm" data-person="' + esc(u.id) + '"><i class="fa-regular fa-message"></i><span class="label">Message</span><span class="spin"></span></button>' : '')
-                : '<button class="btn btn-primary btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in to message</button>'))) +
-      ' <button class="btn btn-outline btn-sm" type="button" data-action="card-share" data-kind="u" data-id="' + esc(u.id) + '"><i class="fa-solid fa-share-nodes"></i>Share</button>' +
-      '</div></div>' + pvLinks + '</div>' +
+      '</div>' + // close .info
+      // right-hand box: link icons + the profile actions
+      '<div class="pv-actions">' + pvLinks +
+      '<div class="pv-btns">' + actionBtns + '</div>' +
+      '</div>' +
+      '</div>' + // close .page-head
       // AI persona — how the community first meets this person. Written by Claude
-      // from the public card fields; filled in async by initProfilePersona().
-      '<div class="pv-persona" id="pvPersona" hidden><i class="fa-solid fa-wand-magic-sparkles"></i>' +
+      // from the public card fields; filled in async by initProfilePersona(). It
+      // stands in for a manual "About", so no separate bio panel is shown.
+      '<div class="panel pv-persona" id="pvPersona" hidden>' +
+      '<h3><i class="fa-solid fa-wand-magic-sparkles"></i>Persona</h3>' +
       '<p class="pv-persona-text" id="pvPersonaText"></p></div>' +
       '<div class="detail-grid"><div>' +
-      (u.bio ? '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-regular fa-id-badge"></i>About</h3><p style="white-space:pre-wrap;color:var(--text-body);margin:0">' + esc(u.bio) + '</p></div>' : '') +
-      '</div><div>' +
-      ((u.skills || []).length ? '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-solid fa-wand-magic-sparkles"></i>Skills</h3><div class="skills">' +
+      ((u.skills || []).length ? '<div class="panel"><h3><i class="fa-solid fa-wand-magic-sparkles"></i>Skills</h3><div class="skills">' +
         u.skills.map(function (s) { return skillChip(s); }).join('') + '</div></div>' : '') +
+      '</div><div>' +
       // Team/project associations are community-only. A public (signed-out)
       // visitor sees an invite prompt instead — the profile itself stays public.
       (signedIn()
