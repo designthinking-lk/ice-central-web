@@ -1453,15 +1453,32 @@
       new Array(8).join('<div class="skeleton"></div>') + '</div>';
   }
 
+  // Map a profile link to a brand icon + a short label (used for the header's
+  // icon-only link buttons). Unknown hosts fall back to a globe + bare domain.
+  function profileLinkMeta(url) {
+    var u = String(url || '');
+    if (/github\.com/i.test(u)) return { icon: 'fa-brands fa-github', label: 'GitHub' };
+    if (/linkedin\.com/i.test(u)) return { icon: 'fa-brands fa-linkedin-in', label: 'LinkedIn' };
+    if (/(?:twitter\.com|x\.com)/i.test(u)) return { icon: 'fa-brands fa-x-twitter', label: 'X' };
+    if (/instagram\.com/i.test(u)) return { icon: 'fa-brands fa-instagram', label: 'Instagram' };
+    if (/facebook\.com/i.test(u)) return { icon: 'fa-brands fa-facebook-f', label: 'Facebook' };
+    if (/youtube\.com|youtu\.be/i.test(u)) return { icon: 'fa-brands fa-youtube', label: 'YouTube' };
+    return { icon: 'fa-solid fa-globe', label: u.replace(/^https?:\/\//, '').replace(/\/$/, '') };
+  }
+
   function viewProfile(id) {
     var u = userById(id);
     if (!u) return state.loaded
       ? '<div class="empty"><i class="fa-regular fa-user"></i>Profile not found.</div>'
       : skeletons();
     var isMe = me() && me().id === id;
-    var links = (u.links || []).map(function (l) {
-      return '<li><i class="fa-solid fa-link"></i><a href="' + esc(l) + '" target="_blank" rel="noopener">' + esc(l.replace(/^https?:\/\//, '')) + '</a></li>';
+    // Links show as brand-icon buttons in the header (top-right), not a text list.
+    var linkIcons = (u.links || []).map(function (l) {
+      var m = profileLinkMeta(l);
+      return '<a class="pv-link" href="' + esc(l) + '" target="_blank" rel="noopener" title="' +
+        esc(m.label) + '" aria-label="' + esc(m.label) + '"><i class="' + m.icon + '"></i></a>';
     }).join('');
+    var pvLinks = linkIcons ? '<div class="pv-links">' + linkIcons + '</div>' : '';
     var myTeams = (state.data.teams || []).filter(function (t) { return (t.members || []).indexOf(u.id) !== -1; });
 
     return '<div class="page-head">' +
@@ -1485,7 +1502,7 @@
                 ? (workEmailOf(u) ? '<button class="btn btn-primary btn-sm" data-action="chat-dm" data-person="' + esc(u.id) + '"><i class="fa-regular fa-message"></i><span class="label">Message</span><span class="spin"></span></button>' : '')
                 : '<button class="btn btn-primary btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in to message</button>'))) +
       ' <button class="btn btn-outline btn-sm" type="button" data-action="card-share" data-kind="u" data-id="' + esc(u.id) + '"><i class="fa-solid fa-share-nodes"></i>Share</button>' +
-      '</div></div></div>' +
+      '</div></div>' + pvLinks + '</div>' +
       // AI persona — how the community first meets this person. Written by Claude
       // from the public card fields; filled in async by initProfilePersona().
       '<div class="pv-persona" id="pvPersona" hidden><i class="fa-solid fa-wand-magic-sparkles"></i>' +
@@ -1495,7 +1512,6 @@
       '</div><div>' +
       ((u.skills || []).length ? '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-solid fa-wand-magic-sparkles"></i>Skills</h3><div class="skills">' +
         u.skills.map(function (s) { return skillChip(s); }).join('') + '</div></div>' : '') +
-      (links ? '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-solid fa-link"></i>Links</h3><ul class="link-list">' + links + '</ul></div>' : '') +
       // Team/project associations are community-only. A public (signed-out)
       // visitor sees an invite prompt instead — the profile itself stays public.
       (signedIn()
