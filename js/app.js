@@ -4926,23 +4926,15 @@
       return head + '<div class="empty"><i class="fa-solid fa-users"></i>Nobody has registered yet.</div>';
     }
     var rows = users.map(function (u) {
-      // Inline delete confirm: the row's cells are replaced by a confirm strip.
+      // Inline delete confirm: the whole row becomes one full-width confirm
+      // strip (a single colspan cell). We AVOID an absolute overlay anchored to
+      // the <tr>: Safari/WebKit won't let a table row be a positioning context,
+      // so the overlay escaped and covered the entire screen.
       if (deletingUserId === u.id) {
-        // Zero column shift: render the row's REAL cells unchanged (so every
-        // column keeps its exact width) and float the confirm UI as an absolute
-        // overlay on top (the <tr> is the positioning context).
-        return '<tr class="confirm-row">' +
-          '<td style="display:flex;align-items:center;gap:10px">' + avatar(u, 'avatar-sm') +
-          '<a href="#/profile/' + esc(u.id) + '">' + esc(u.name) + '</a></td>' +
-          '<td>' + esc(u.email || '') +
-          (u.workEmail ? '<div class="dt-mail"><i class="fa-regular fa-comment-dots"></i>' + esc(u.workEmail) + '</div>' : '') + '</td>' +
-          '<td>' + projChips(u) + '</td>' +
-          '<td>' + roleChipsHtml(u) + '</td>' +
-          '<td><span class="ob-tag registered"><i class="fa-solid fa-circle-check"></i>Registered</span></td>' +
-          '<td><button class="btn btn-ghost btn-sm" style="visibility:hidden" tabindex="-1"><i class="fa-regular fa-trash-can"></i></button>' +
-          // overlay starts at the Email column so the real Name cell stays visible
-          '<div class="row-confirm-ov">' +
-          '<span class="row-confirm-text"><i class="fa-solid fa-triangle-exclamation"></i><span>Remove from this project? Profile, skills, teams, messages &amp; photo here are deleted — their @designthinking.lk account and any other projects are kept.</span></span>' +
+        return '<tr class="confirm-row"><td colspan="6">' +
+          '<div class="row-confirm">' +
+          '<span class="row-confirm-text"><i class="fa-solid fa-triangle-exclamation"></i>' +
+          '<span>Remove <b>' + esc(u.name) + '</b> from this project? Profile, skills, teams, messages &amp; photo here are deleted — their @designthinking.lk account and any other projects are kept.</span></span>' +
           '<span class="row-confirm-actions">' +
           '<button class="btn btn-danger btn-sm" data-action="del-user-confirm" data-id="' + esc(u.id) + '"><span class="label">Delete</span><span class="spin"></span></button>' +
           '<button class="btn btn-ghost btn-sm" data-action="del-user-cancel">Cancel</button>' +
@@ -5817,8 +5809,10 @@
         if (cancelBtn) cancelBtn.disabled = true;
         try {
           await A.api('admin_delete_user', { userId: id });
-          deletingUserId = null; userProjects = null;
-          toast('User removed'); refresh();
+          userProjects = null;
+          await refresh();          // re-render with the row gone (keeps the spinner up until then)
+          deletingUserId = null;
+          toast('User removed');
         } catch (err) {
           toast(err.message, true); busy(t, false);
           if (cancelBtn) cancelBtn.disabled = false;

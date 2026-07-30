@@ -78,8 +78,9 @@ button { font-family: inherit; }
   height: 38px; padding: 0 5px; transform: translateY(-50%);
   /* one solid rounded bar so the options fully cover any app-bar text beneath.
      min-width extends the bar leftward (options stay right, empty space fills
-     the rest) so it also hides the tagline/chips behind it */
-  min-width: 460px; border-radius: 999px;
+     the rest) so it also hides the tagline/legend/chips behind it — long enough
+     to reach the People-view "N mentors" legend on the far left */
+  min-width: 760px; border-radius: 999px;
   /* exact app-bar look: same frosted colour as .shell::before, no border/shadow */
   background: rgba(244, 247, 249, 0.55);
   -webkit-backdrop-filter: blur(14px) saturate(120%);
@@ -1215,13 +1216,9 @@ table.admin tr:last-child td { border-bottom: none; }
    shift); the confirm UI floats as an absolute overlay covering the row. */
 /* fixed Name column so the overlay can start exactly at the Email column */
 table.admin.people th:first-child, table.admin.people td:first-child { width: 16rem; }
-.confirm-row { position: relative; }
 .confirm-row td { background: var(--bg-subtle); }
-.row-confirm-ov {
-  position: absolute; left: 16rem; right: 0; top: 0; bottom: 0; z-index: 1;
-  display: flex; align-items: center; gap: 16px; padding: 0 14px;
-  background: var(--bg-subtle);
-}
+/* full-width inline confirm strip (no absolute overlay — see viewAdmin) */
+.row-confirm { display: flex; align-items: center; gap: 16px; padding: 2px 6px; }
 /* white-space:normal overrides the inherited table td nowrap so the message
    wraps (2 lines) inside its flex box instead of running under the buttons */
 .row-confirm-text { flex: 1 1 auto; min-width: 0; white-space: normal; font-size: 13px; line-height: 1.35; color: var(--text); }
