@@ -1539,8 +1539,10 @@
       // Team/project associations are community-only. A public (signed-out)
       // visitor sees an invite prompt instead — the profile itself stays public.
       (signedIn()
+        // Team name shown as plain text — the team page is preserved but not
+        // linked/accessible from the profile for now.
         ? (myTeams.length ? '<div class="panel pv-teams"><h3><i class="fa-solid fa-people-group"></i>Teams</h3><ul class="link-list">' +
-            myTeams.map(function (t) { return '<li><i class="fa-solid fa-people-group"></i><a href="#/team/' + esc(t.id) + '">' + esc(t.name) + '</a></li>'; }).join('') + '</ul></div>' : '')
+            myTeams.map(function (t) { return '<li><i class="fa-solid fa-people-group"></i><span style="color:var(--text-body)">' + esc(t.name) + '</span></li>'; }).join('') + '</ul></div>' : '')
         : '<div class="panel pub-invite pv-teams"><h3><i class="fa-solid fa-people-group"></i>Teams &amp; projects</h3>' +
             '<p style="color:var(--text-muted);margin:0 0 12px">Sign in to see this member’s team and project, or request an invite to join the ' + esc(eventName()) + ' community.</p>' +
             '<button class="btn btn-gradient btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in</button></div>') +
