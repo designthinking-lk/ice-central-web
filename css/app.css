@@ -1370,8 +1370,16 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
   transition: opacity 0.25s;
 }
 .oct-preview.on .hive-caption { opacity: 0; }
-.hive-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-.word { position: relative; }
+.hive-stage {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  /* scroll horizontally when the (fixed-size) wordmark is wider than the window;
+     `safe center` keeps it centred while it fits but avoids clipping the left
+     edge once it overflows (so you can scroll to the start) */
+  justify-content: center;
+  justify-content: safe center;
+  overflow-x: auto; overflow-y: hidden;
+}
+.word { position: relative; flex: none; }
 
 .oct {
   position: absolute; cursor: pointer; padding: 5px; background: transparent;

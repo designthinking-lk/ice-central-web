@@ -1374,6 +1374,9 @@
     word.__hollowX = pvCenterX - minX;
     word.__hollowY = (built.hollow.row + 0.5) * w - minY;
 
+    // Fresh render fits the CURRENT width; the size only locks once the user
+    // narrows the window from there (see fitWordmark).
+    hiveFit.scale = 0; hiveOverflow = false;
     fitWordmark();
     applyTeamFilter(); // re-assert an active team highlight after any rebuild
   }
@@ -1434,13 +1437,30 @@
     if (word.__preview) word.__preview.classList.remove('on');
   }
 
-  // Scale the whole wordmark so it fits the stage with no scrolling.
+  // Wordmark sizing state: `scale`/`w` lock the ICE size so narrowing the window
+  // scrolls instead of shrinking; `hiveOverflow`/`lastHiveToast` gate the nudge.
+  var hiveFit = { scale: 0, w: 0 };
+  var hiveOverflow = false;
+  var lastHiveToast = 0;
+  // Fit the wordmark to the stage; keeps a stable size + scrolls when narrowed.
   function fitWordmark() {
     var stage = $('#hiveStage'), word = $('#word');
     if (!stage || !word || !word.__w) return;
     var ww = word.__w, wh = word.__h;
     var pad = 24; // tight padding — the fixed sidebar shouldn't shrink the ICE
-    var s = Math.min((stage.clientWidth - pad) / ww, (stage.clientHeight - pad) / wh, 1.5);
+    var widthFit = (stage.clientWidth - pad) / ww;
+    var heightFit = (stage.clientHeight - pad) / wh;
+    var s;
+    // Keep the ICE a STABLE size when the window only gets narrower: reuse the
+    // last fitted scale (never shrink/reflow the letters) and let the stage
+    // scroll horizontally instead. Re-fit (grow) when the window widens; still
+    // clamp to the height so the wordmark never overflows vertically.
+    if (hiveFit.scale && stage.clientWidth < hiveFit.w) {
+      s = Math.min(hiveFit.scale, heightFit, 1.5);
+    } else {
+      s = Math.min(widthFit, heightFit, 1.5);
+      hiveFit.scale = s; hiveFit.w = stage.clientWidth;
+    }
     if (!(s > 0) || !isFinite(s)) return;
     // Scale from the top-left and shrink the layout box to the scaled size, so the
     // flexbox-centred stage keeps equal margins whether the sidebar is open or not.
@@ -1448,6 +1468,14 @@
     word.style.transform = 'scale(' + s + ')';
     word.style.width = (ww * s) + 'px';
     word.style.height = (wh * s) + 'px';
+    // Horizontal overflow → the stage shows a scrollbar. Nudge the user once each
+    // time it flips from fitting to overflowing (throttled against wiggle).
+    var overflowing = (ww * s) > (stage.clientWidth - pad + 2);
+    if (overflowing && !hiveOverflow && Date.now() - lastHiveToast > 4000) {
+      toast('Better experience in full screen');
+      lastHiveToast = Date.now();
+    }
+    hiveOverflow = overflowing;
     // preview octagon renders at exactly 280px — the same size as the nav's
     // half octagon (.side-oct) — by compensating for the wordmark scale
     if (word.__preview && word.__hollowX !== undefined) {
