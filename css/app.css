@@ -553,8 +553,9 @@ a.card { color: inherit; display: block; }
 .page-head h1 { font-size: 32px; letter-spacing: -0.02em; margin-bottom: 4px; }
 /* octagon profile avatar — same rounded shape as the People hive tiles */
 .pv-oct { clip-path: url(#octr); border-radius: 0; border: none; }
-/* top-right profile actions — a plain button row (no box) */
-.pv-actions { align-self: flex-start; margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
+/* top-right profile actions — a plain button row (no box), dropped to the
+   bottom of the header so it lines up with the last meta line (work email) */
+.pv-actions { align-self: flex-end; margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
 /* profile body: Skills (left) + Teams (right) as equal-height cards; the link
    icons sit under the Teams card in the right column */
 .pv-body { display: flex; gap: 24px; align-items: stretch; max-width: 1280px; margin: 0 auto; }
