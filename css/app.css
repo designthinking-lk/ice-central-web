@@ -570,7 +570,7 @@ a.card { color: inherit; display: block; }
   color: var(--text); font-size: 17px; text-decoration: none;
   transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
 }
-.pv-link:hover { border-color: var(--color-accent); color: var(--color-accent); transform: translateY(-1px); }
+.pv-link:hover { border-color: var(--color-accent); color: var(--color-accent); }
 /* legible as solid glass over a playing profile-background video */
 body.profile-bg-on .pv-link { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
 :root[data-theme="light"] body.profile-bg-on .pv-link { background: rgba(255,255,255,0.7); border-color: rgba(0,0,0,0.1); }

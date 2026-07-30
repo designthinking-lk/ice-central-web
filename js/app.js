@@ -1066,9 +1066,9 @@
 
   // ---------------------------------------------------------------- views
 
-  function skillChip(s, on, actionable) {
+  function skillChip(s, on, actionable, noMine) {
     return '<span class="chip' + (on ? ' on' : '') + (actionable === false ? ' static' : '') +
-      (isMySkill(s) ? ' is-mine' : '') + '"' +
+      ((!noMine && isMySkill(s)) ? ' is-mine' : '') + '"' +
       (actionable === false ? '' : ' data-action="filter-skill" data-skill="' + esc(s) + '"') + '>' + esc(s) + '</span>';
   }
 
@@ -1530,8 +1530,10 @@
       // sit under the Teams card in the right column.
       '<div class="pv-body">' +
       '<div class="pv-main">' +
+      // No "mine" glow on the profile — on your own profile every chip would
+      // glow (redundant); the highlight stays useful elsewhere (hive, skills map).
       ((u.skills || []).length ? '<div class="panel"><h3><i class="fa-solid fa-wand-magic-sparkles"></i>Skills</h3><div class="skills">' +
-        u.skills.map(function (s) { return skillChip(s); }).join('') + '</div></div>' : '') +
+        u.skills.map(function (s) { return skillChip(s, false, true, true); }).join('') + '</div></div>' : '') +
       '</div>' +
       '<div class="pv-side">' +
       // Team/project associations are community-only. A public (signed-out)
@@ -1809,6 +1811,7 @@
   }
 
   var teamDetailCache = {};
+  var teamEditing = null; // id of the team whose fields are being edited inline
   function viewTeam(id) {
     var t = null;
     (state.data && state.data.teams || []).forEach(function (x) { if (x.id === id) t = x; });
@@ -1823,10 +1826,10 @@
     var members = (t.members || []).map(userById).filter(Boolean);
     var amMember = me() && (t.members || []).indexOf(me().id) !== -1;
     var canManage = me() && (t.creatorId === me().id || state.data.isAdmin);
+    var editing = !!canManage && teamEditing === id; // inline edit mode
 
     var membersHtml = members.map(function (m) {
-      return '<li>' + avatar(m, 'avatar-sm') + '<a href="#/profile/' + esc(m.id) + '" style="margin-left:8px">' + esc(m.name) + '</a>' +
-        (m.id === t.creatorId ? ' <span class="role-tag admin" style="margin-left:6px">Lead</span>' : '') + '</li>';
+      return '<li>' + avatar(m, 'avatar-sm') + '<a href="#/profile/' + esc(m.id) + '" style="margin-left:8px">' + esc(m.name) + '</a></li>';
     }).join('');
 
     var linksHtml = detail ? (detail.links || []).map(function (l) {
@@ -1844,21 +1847,34 @@
     }).join('') : '<div class="skeleton" style="height:70px"></div>';
 
     return '<div class="page-head">' +
-      '<div class="info"><h1>' + esc(t.name) + '</h1>' +
+      '<div class="info">' +
+      (editing
+        ? '<input class="input te-name" value="' + esc(t.name) + '" maxlength="100" placeholder="Team name" style="font-family:var(--font-display);font-size:30px;font-weight:800;letter-spacing:-0.02em;margin-bottom:4px">'
+        : '<h1>' + esc(t.name) + '</h1>') +
       '<div class="meta-row"><span><i class="fa-solid fa-user-group"></i>' + members.length + ' members</span>' +
       '<span><i class="fa-regular fa-calendar"></i>Created ' + esc(fmtDate(t.createdAt)) + '</span></div>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
-      (me() ? (amMember
-          ? '<button class="btn btn-outline btn-sm" data-action="leave-team" data-id="' + esc(id) + '"><i class="fa-solid fa-arrow-right-from-bracket"></i><span class="label">Leave team</span><span class="spin"></span></button>'
-          : '<button class="btn btn-gradient btn-sm" data-action="join-team" data-id="' + esc(id) + '"><i class="fa-solid fa-plus"></i><span class="label">Join team</span><span class="spin"></span></button>')
-        : '<button class="btn btn-primary btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in to join</button>') +
-      (canManage ? '<button class="btn btn-outline btn-sm" data-action="edit-team" data-id="' + esc(id) + '"><i class="fa-solid fa-pen"></i>Edit</button>' +
-                   '<button class="btn btn-danger btn-sm" data-action="del-team" data-id="' + esc(id) + '"><i class="fa-regular fa-trash-can"></i>Delete</button>' : '') +
+      (editing
+        ? '<button class="btn btn-gradient btn-sm" data-action="team-edit-save" data-id="' + esc(id) + '"><span class="label">Save changes</span><span class="spin"></span></button>' +
+          '<button class="btn btn-ghost btn-sm" type="button" data-action="team-edit-cancel"><i class="fa-solid fa-xmark"></i>Cancel</button>'
+        : (me() ? (amMember
+              ? '<button class="btn btn-outline btn-sm" data-action="leave-team" data-id="' + esc(id) + '"><i class="fa-solid fa-arrow-right-from-bracket"></i><span class="label">Leave team</span><span class="spin"></span></button>'
+              : '<button class="btn btn-gradient btn-sm" data-action="join-team" data-id="' + esc(id) + '"><i class="fa-solid fa-plus"></i><span class="label">Join team</span><span class="spin"></span></button>')
+            : '<button class="btn btn-primary btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in to join</button>') +
+          (canManage ? '<button class="btn btn-outline btn-sm" data-action="edit-team" data-id="' + esc(id) + '"><i class="fa-solid fa-pen"></i>Edit</button>' : '')) +
       '</div></div></div>' +
       '<div class="detail-grid"><div>' +
       '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-regular fa-file-lines"></i>About</h3>' +
-      '<p style="white-space:pre-wrap;color:var(--text-body);margin:0">' + (t.description ? esc(t.description) : '<i>No description yet.</i>') + '</p>' +
-      (t.lookingFor ? '<p style="margin:14px 0 0"><b>Looking for:</b> <span style="color:var(--color-accent-dark)">' + esc(t.lookingFor) + '</span></p>' : '') +
+      (editing
+        ? '<textarea class="input te-desc" maxlength="3000" placeholder="Describe your team — what you’re building, your vision" style="min-height:90px">' + esc(t.description || '') + '</textarea>' +
+          '<div class="field" style="margin:14px 0 0"><label>Looking for <span class="hint">skills or roles you need</span></label>' +
+          '<input class="input te-looking" maxlength="500" value="' + esc(t.lookingFor || '') + '"></div>' +
+          '<div class="field" style="margin:14px 0 0"><label>Cover image <span class="hint">optional</span></label>' +
+          '<div class="photo-edit"><input type="hidden" name="coverImage" value="' + esc(t.coverImage || '') + '">' +
+          '<img id="coverPreview" src="' + esc(t.coverImage || '') + '" alt="" style="height:56px;border-radius:8px;' + (t.coverImage ? '' : 'display:none') + '">' +
+          '<button type="button" class="btn btn-outline btn-sm" data-action="pick-image" data-target="coverImage" data-preview="coverPreview"><i class="fa-regular fa-image"></i><span class="label">Upload</span><span class="spin"></span></button></div></div>'
+        : '<p style="white-space:pre-wrap;color:var(--text-body);margin:0">' + (t.description ? esc(t.description) : '<i>No description yet.</i>') + '</p>' +
+          (t.lookingFor ? '<p style="margin:14px 0 0"><b>Looking for:</b> <span style="color:var(--color-accent-dark)">' + esc(t.lookingFor) + '</span></p>' : '')) +
       '</div>' +
       '<div class="panel"><h3><i class="fa-regular fa-comments"></i>Team feed</h3>' +
       '<div class="feed">' + (postsHtml || '<p style="color:var(--text-muted)">Nothing posted yet.</p>') + '</div>' +
@@ -2820,9 +2836,24 @@
   // card, so visitors meet them the way they were introduced. Generated from the
   // public card fields via the same `persona` action (server-side cached by
   // content hash, so repeat views are cheap). Decorative — fails silently.
+  // Per-member persona cache (localStorage) so a revisited profile shows its
+  // blurb instantly, then quietly refreshes when the request returns.
+  function profilePersonaKey(uid) { return 'ice.persona.u.' + A.getProject() + '.' + uid; }
+  function showProfilePersona(text) {
+    var box = $('#pvPersona'), txt = $('#pvPersonaText');
+    if (!box || !txt) return; // view changed while the request was in flight
+    txt.textContent = text;
+    box.hidden = false;
+  }
+
   function initProfilePersona(u) {
     var el = $('#pvPersona');
     if (!el || !u) return;
+    // Serve any cached blurb immediately (even before we know if we can refresh).
+    try {
+      var stored = JSON.parse(localStorage.getItem(profilePersonaKey(u.id)) || 'null');
+      if (stored && stored.t) showProfilePersona(stored.t);
+    } catch (e) { /* ignore */ }
     // The persona endpoint is auth-gated (it bills an LLM), so only fetch it for
     // signed-in members — the people who actually browse each other's profiles.
     if (!signedIn()) return;
@@ -2836,10 +2867,8 @@
     if (!f.name && !f.affiliation && !f.bio && !f.skills.length) return;
     A.api('persona', f).then(function (r) {
       if (!r || r.disabled || !r.text) return;
-      var box = $('#pvPersona'), txt = $('#pvPersonaText');
-      if (!box || !txt) return; // view changed while the request was in flight
-      txt.textContent = r.text;
-      box.hidden = false;
+      showProfilePersona(r.text); // update the UI with the fresh blurb
+      try { localStorage.setItem(profilePersonaKey(u.id), JSON.stringify({ t: r.text })); } catch (e) { /* quota */ }
     }).catch(function () { /* persona is decorative */ });
   }
 
@@ -5318,6 +5347,8 @@
     if (profileBg && hash !== profileBgHash) stopProfileBg();
     // Drop an open announcement draft when leaving the news page.
     if (annDraft.open && !/^#\/announcements$/.test(hash)) annDraft = { open: false, editing: null };
+    // Leave inline team-edit mode when navigating away from that team.
+    if (teamEditing && hash !== '#/team/' + teamEditing) teamEditing = null;
     var view = $('#view');
     for (var i = 0; i < routes.length; i++) {
       var m = hash.match(routes[i].re);
@@ -5680,18 +5711,38 @@
       }
       case 'toggle-mine': setMine(!mineOn()); break;
       case 'new-team': teamForm(); break;
-      case 'edit-team': {
-        var team = null;
-        (state.data.teams || []).forEach(function (x) { if (x.id === id) team = x; });
-        teamForm(team);
+      case 'edit-team':
+        // Inline editing — flip the team view's fields into inputs (no popup).
+        teamEditing = id;
+        route();
         break;
-      }
-      case 'del-team':
-        if (await confirmModal('Delete team?', 'This removes the team, its links and its feed. This cannot be undone.')) {
-          try { await A.api('delete_team', { teamId: id }); toast('Team deleted'); location.hash = '#/teams'; refresh(); }
-          catch (err) { toast(err.message, true); }
+      case 'team-edit-cancel':
+        teamEditing = null;
+        route();
+        break;
+      case 'team-edit-save': {
+        var nameEl = $('.te-name'), descEl = $('.te-desc'), lookEl = $('.te-looking');
+        var coverEl = $('#view input[name="coverImage"]');
+        var name = nameEl ? String(nameEl.value || '').trim() : '';
+        if (!name) { toast('Team name is required.', true); if (nameEl) nameEl.focus(); break; }
+        busy(t, true);
+        try {
+          await A.api('update_team', {
+            teamId: id, name: name,
+            description: descEl ? descEl.value : '',
+            lookingFor: lookEl ? lookEl.value : '',
+            coverImage: coverEl ? coverEl.value : '',
+          });
+          teamEditing = null;
+          delete teamDetailCache[id];
+          await refresh();
+          toast('Team updated');
+        } catch (err) {
+          toast(err.message || 'Could not save.', true);
+          busy(t, false);
         }
         break;
+      }
       case 'join-team':
       case 'leave-team':
         busy(t, true);
