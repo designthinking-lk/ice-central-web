@@ -743,23 +743,32 @@ textarea.input { resize: vertical; min-height: 90px; }
   transition: transform 0.7s cubic-bezier(.2,.7,.2,1);
 }
 .idcard.flipped { -webkit-transform: rotateY(180deg); transform: rotateY(180deg); }
-/* the hidden face must never eat clicks meant for the visible one
-   (fixes the unclickable "Front" button on the back face) */
-.idcard.flipped .idfront { pointer-events: none; }
+/* The turned-away face must never eat clicks meant for the visible one
+   (fixes the unclickable "Front" button on the back face) NOR keep rendering.
+   Safari ignores backface-visibility when a face has composited children (our
+   card has a <video>, a draggable photo and absolute overlays), so the front
+   was bleeding through — mirrored — onto the back. We therefore also hard-hide
+   the hidden face with `visibility`, switched at the flip's mid-point (0.35s =
+   half the 0.7s turn) so the rotation still reads before the face vanishes. */
+.idcard.flipped .idfront { pointer-events: none; visibility: hidden; }
+.idcard.flipped .idback { visibility: visible; }
 .idcard:not(.flipped) .idback { pointer-events: none; }
 .idface {
   position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
   border-radius: 18px; overflow: hidden; padding: 20px 22px;
   display: flex; flex-direction: column;
   box-shadow: 0 18px 44px -14px rgba(68, 0, 179, 0.4), inset 0 0 0 1px rgba(255,255,255,0.12);
+  transition: visibility 0s linear 0.35s; /* flip to the hidden state at mid-turn */
 }
 .idfront {
+  visibility: visible;
   background:
     radial-gradient(120% 140% at 100% 0%, rgba(0,215,238,0.5), transparent 55%),
     var(--gradient-brand);
   color: #fff;
 }
 .idback {
+  visibility: hidden;
   -webkit-transform: rotateY(180deg); transform: rotateY(180deg);
   background: linear-gradient(160deg, #1a1030, #0E0F11);
   color: #fff;
