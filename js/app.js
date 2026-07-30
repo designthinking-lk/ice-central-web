@@ -1506,10 +1506,8 @@
       // the minted @designthinking.lk address, on its own line under the personal email
       (u.workEmail ? '<div class="meta-row"><span title="Workshop @designthinking.lk account"><i class="fa-regular fa-comment-dots"></i>' + esc(u.workEmail) + '</span></div>' : '') +
       '</div>' + // close .info
-      // right-hand box: link icons + the profile actions
-      '<div class="pv-actions">' + pvLinks +
-      '<div class="pv-btns">' + actionBtns + '</div>' +
-      '</div>' +
+      // top-right: just the profile actions (Edit / Message / Share) — no box
+      '<div class="pv-actions">' + actionBtns + '</div>' +
       '</div>' + // close .page-head
       // AI persona — how the community first meets this person. Written by Claude
       // from the public card fields; filled in async by initProfilePersona(). It
@@ -1517,19 +1515,25 @@
       '<div class="panel pv-persona" id="pvPersona" hidden>' +
       '<h3><i class="fa-solid fa-wand-magic-sparkles"></i>Persona</h3>' +
       '<p class="pv-persona-text" id="pvPersonaText"></p></div>' +
-      '<div class="detail-grid"><div>' +
+      // Skills (left) and Teams (right) are equal-height cards; the link icons
+      // sit under the Teams card in the right column.
+      '<div class="pv-body">' +
+      '<div class="pv-main">' +
       ((u.skills || []).length ? '<div class="panel"><h3><i class="fa-solid fa-wand-magic-sparkles"></i>Skills</h3><div class="skills">' +
         u.skills.map(function (s) { return skillChip(s); }).join('') + '</div></div>' : '') +
-      '</div><div>' +
+      '</div>' +
+      '<div class="pv-side">' +
       // Team/project associations are community-only. A public (signed-out)
       // visitor sees an invite prompt instead — the profile itself stays public.
       (signedIn()
-        ? (myTeams.length ? '<div class="panel" style="margin-bottom:20px"><h3><i class="fa-solid fa-people-group"></i>Teams</h3><ul class="link-list">' +
+        ? (myTeams.length ? '<div class="panel pv-teams"><h3><i class="fa-solid fa-people-group"></i>Teams</h3><ul class="link-list">' +
             myTeams.map(function (t) { return '<li><i class="fa-solid fa-people-group"></i><a href="#/team/' + esc(t.id) + '">' + esc(t.name) + '</a></li>'; }).join('') + '</ul></div>' : '')
-        : '<div class="panel pub-invite" style="margin-bottom:20px"><h3><i class="fa-solid fa-people-group"></i>Teams &amp; projects</h3>' +
+        : '<div class="panel pub-invite pv-teams"><h3><i class="fa-solid fa-people-group"></i>Teams &amp; projects</h3>' +
             '<p style="color:var(--text-muted);margin:0 0 12px">Sign in to see this member’s team and project, or request an invite to join the ' + esc(eventName()) + ' community.</p>' +
             '<button class="btn btn-gradient btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in</button></div>') +
-      '</div></div>';
+      pvLinks +
+      '</div>' +
+      '</div>';
   }
 
   // ------------------------------------------------------- wallet pass

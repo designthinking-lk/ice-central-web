@@ -553,28 +553,29 @@ a.card { color: inherit; display: block; }
 .page-head h1 { font-size: 32px; letter-spacing: -0.02em; margin-bottom: 4px; }
 /* octagon profile avatar — same rounded shape as the People hive tiles */
 .pv-oct { clip-path: url(#octr); border-radius: 0; border: none; }
-/* right-hand actions box: brand-icon links + the profile action buttons,
-   pinned to the top-right of the header inside its own panel */
-.pv-actions {
-  align-self: flex-start; margin-left: auto;
-  display: flex; flex-direction: column; gap: 14px;
-  padding: 16px; min-width: 190px;
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-}
+/* top-right profile actions — a plain button row (no box) */
+.pv-actions { align-self: flex-start; margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
+/* profile body: Skills (left) + Teams (right) as equal-height cards; the link
+   icons sit under the Teams card in the right column */
+.pv-body { display: flex; gap: 24px; align-items: stretch; max-width: 1280px; margin: 0 auto; }
+.pv-main { flex: 2 1 0; min-width: 0; display: flex; flex-direction: column; }
+.pv-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.pv-main > .panel { flex: 1; }   /* Skills fills the left column */
+.pv-teams { flex: 1; }           /* Teams stretches to match the Skills height */
+/* link icons row (below Teams) */
 .pv-links { display: flex; gap: 10px; flex-wrap: wrap; }
-.pv-btns { display: flex; gap: 10px; flex-wrap: wrap; }
 .pv-link {
   width: 40px; height: 40px; border-radius: 12px;
   display: inline-flex; align-items: center; justify-content: center;
-  background: var(--bg-subtle); border: 1px solid var(--border-strong);
+  background: var(--surface); border: 1px solid var(--border-strong);
   color: var(--text); font-size: 17px; text-decoration: none;
   transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
 }
 .pv-link:hover { border-color: var(--color-accent); color: var(--color-accent); transform: translateY(-1px); }
 /* legible as solid glass over a playing profile-background video */
-body.profile-bg-on .pv-actions { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
-:root[data-theme="light"] body.profile-bg-on .pv-actions { background: rgba(255,255,255,0.66); border-color: rgba(0,0,0,0.08); }
-:root[data-theme="dark"] body.profile-bg-on .pv-actions { background: rgba(18,20,28,0.5); border-color: rgba(255,255,255,0.13); }
+body.profile-bg-on .pv-link { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+:root[data-theme="light"] body.profile-bg-on .pv-link { background: rgba(255,255,255,0.7); border-color: rgba(0,0,0,0.1); }
+:root[data-theme="dark"] body.profile-bg-on .pv-link { background: rgba(18,20,28,0.55); border-color: rgba(255,255,255,0.16); }
 .meta-row { display: flex; gap: 18px; flex-wrap: wrap; color: var(--text-muted); font-size: 14px; margin: 6px 0 12px; }
 .meta-row i { margin-right: 6px; color: var(--text-faint); }
 /* AI persona panel — reads like any other box (no gradient outline) */
