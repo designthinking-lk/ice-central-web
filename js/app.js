@@ -135,6 +135,9 @@
   }
   function hasRoleU(u, role) { return rolesOf(u).indexOf(role) !== -1; }
   function hasAccess(u) { return rolesOf(u).length > 0; }
+  // A member = a role-holding registered user, or a global admin. Members-only
+  // surfaces (Program, Tools) gate on this, not merely on being signed in.
+  function isMember() { return !!(state.data && (state.data.isAdmin || (me() && hasAccess(me())))); }
   // Shown in the community surfaces — the ICE letter hive, teams and project
   // cards — only if they hold a participant/mentor role. Admin-only accounts
   // (organizers with no community chip) stay off those views.
@@ -425,9 +428,15 @@
     // A registered member whose every role was removed gets the visitor
     // chrome (no member nav) — only the avatar menu remains, to sign out.
     var noRole = !!(d.me && !hasAccess(d.me));
-    if (navTools) navTools.hidden = !loggedIn || noRole;
-    if (navProgram) navProgram.hidden = !loggedIn || noRole;
+    // Program & Tools are members-only (not merely "signed in") — a signed-in but
+    // un-invited account must not see them. Admins and role-holders pass.
+    var canMember = !!d.isAdmin || (!!d.me && hasAccess(d.me));
+    if (navTools) navTools.hidden = !canMember;
+    if (navProgram) navProgram.hidden = !canMember;
     if (navAdmin) navAdmin.hidden = !d.isAdmin;
+    // Un-invited signed-in accounts are locked to the switch-account gate: hide
+    // the sidebar nav and floating tools so nothing members-only is reachable.
+    document.body.classList.toggle('access-locked', isLockedOut());
     // "Highlight mine" toggle: a member-only affordance — only meaningful once
     // there's something of mine to glow (a team or my own skills). Keep its
     // pressed state in sync with the persisted body.mine-on class.
@@ -3068,6 +3077,38 @@
     return !!want && code.toLowerCase() === want.toLowerCase();
   }
 
+  // A signed-in Google account that is NOT a member of this project — not
+  // registered, not a global admin, not invited, and no access code. Such a
+  // session is held at a switch-account gate (see route()/viewNotInvited) and
+  // the backend refuses it every members-only action.
+  function isLockedOut() {
+    return signedIn() && state.loaded && !!state.data &&
+      !me() && !state.data.isAdmin && !state.data.invite && !accessBypass();
+  }
+
+  // Full-app gate for a wrong/un-invited account: switch account or enter a code.
+  function viewNotInvited() {
+    var email = (state.data && state.data.email) || '';
+    var isWorkAddr = /@designthinking\.lk$/i.test(email);
+    return '<div class="empty access-gate">' +
+      '<i class="fa-solid fa-user-lock"></i>' +
+      '<h2 style="margin:8px 0 6px;font-size:22px">This account isn’t invited to ' + esc(eventName()) + '</h2>' +
+      (email
+        ? '<p style="color:var(--text-body);margin:0 0 4px">You’re signed in as <b>' + esc(email) + '</b>.</p>' +
+          '<p style="color:var(--text-muted);margin:0">' +
+          (isWorkAddr
+            ? 'Sign in with the personal Google account your invitation was sent to.'
+            : esc(eventName()) + ' is invite-only — use the Google account your invitation was sent to, or ask the organizers to invite you.') +
+          '</p>'
+        : '') +
+      '<div class="form-actions" style="justify-content:center;margin-top:20px">' +
+      '<button class="btn btn-gradient" data-action="sign-out"><i class="fa-solid fa-arrow-right-from-bracket"></i>Use a different account</button>' +
+      '</div>' +
+      '<div class="access-code"><input id="accessCodeInput" placeholder="Have an access code?" autocomplete="off" spellcheck="false">' +
+      '<button class="btn btn-outline btn-sm" data-action="access-code-submit">Continue</button></div>' +
+      '</div>';
+  }
+
   function viewRegister() {
     if (!signedIn()) {
       return '<div class="empty" style="margin-top:40px"><i class="fa-solid fa-user-plus"></i>Sign in with Google first, then complete your profile.<br><br>' +
@@ -4104,7 +4145,7 @@
   }
 
   function viewTools() {
-    if (!signedIn()) return signInGate('tools');
+    if (!isMember()) return signInGate('tools');
     return '<div class="empty" style="margin-top:40px"><i class="fa-solid fa-toolbox"></i>Tools are coming soon.<br>Handy links and resources for the workshop ' +
       tense('will live', 'live', 'lived') + ' here.</div>';
   }
@@ -4239,7 +4280,7 @@
   ];
 
   function viewProgram() {
-    if (!signedIn()) return signInGate('the program');
+    if (!isMember()) return signInGate('the program');
     var labels = programDayLabels();
     var cols = labels.map(function (label, di) {
       var blocks = PG_SKELETON[di].map(function (g) {
@@ -5372,6 +5413,15 @@
     // Leave inline team-edit mode when navigating away from that team.
     if (teamEditing && hash !== '#/team/' + teamEditing) teamEditing = null;
     var view = $('#view');
+    // Security: a signed-in but un-invited account is held at a switch-account
+    // gate for every route (except the tokenless phone wallet/pcard handoff) —
+    // it must never reach People/Program/Tools or any members-only data.
+    if (isLockedOut() && !/^#\/(wallet|pcard)/.test(hash)) {
+      view.innerHTML = viewNotInvited();
+      renderChrome();
+      wireViewExtras(hash, null);
+      return;
+    }
     for (var i = 0; i < routes.length; i++) {
       var m = hash.match(routes[i].re);
       if (m) {

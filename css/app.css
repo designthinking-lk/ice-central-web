@@ -642,6 +642,14 @@ body.profile-bg-on .pv-link { -webkit-backdrop-filter: blur(14px); backdrop-filt
   transition: border-color 0.15s;
 }
 .access-code input:focus { border-color: var(--color-accent); }
+/* full-app switch-account gate for an un-invited signed-in account */
+.access-gate { max-width: 560px; margin: 70px auto 0; }
+.access-gate > i { font-size: 30px; color: var(--color-accent); }
+/* while locked out, nothing members-only is reachable in the chrome */
+body.access-locked .sidebar,
+body.access-locked .fab-stack,
+body.access-locked #mineToggle,
+body.access-locked #topbarTeams { display: none !important; }
 
 /* ------------------------------------------------------------------- forms */
 .form { display: flex; flex-direction: column; gap: 18px; max-width: 640px; }
