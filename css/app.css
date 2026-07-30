@@ -2478,12 +2478,18 @@ body:has(.site-credit:not([hidden])) .view { padding-bottom: 84px; }
   color: var(--text-faint);
 }
 .credit-logos { display: flex; align-items: center; gap: 20px; }
+/* Sponsor marks are sized so their VISIBLE artwork lines up top-and-bottom for
+   symmetry. NUS is the baseline (its shield fills its box). The AHL svg carries
+   internal padding, so its box is larger for the mark to reach the same height. */
 .credit-logos img { height: 26px; width: auto; display: block; opacity: 0.8; transition: opacity 0.15s; }
+.credit-logos img.ahl { height: 33px; }
 .credit-logos a:hover img { opacity: 1; }
-/* SHA Foundation has no logo yet — a wordmark stands in beside the images */
+/* SHA Foundation has no logo yet — a two-line wordmark stands in, set to the
+   same visible height as the NUS/AHL marks beside it */
 .credit-sha {
   font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em;
-  font-size: 15px; color: var(--text); opacity: 0.8; text-decoration: none;
+  font-size: 14px; line-height: 1.06; text-align: left;
+  color: var(--text); opacity: 0.8; text-decoration: none;
   transition: color 0.15s, opacity 0.15s;
 }
 .credit-sha:hover { color: var(--color-accent); opacity: 1; }
