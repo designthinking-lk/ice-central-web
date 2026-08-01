@@ -17,6 +17,11 @@ window.ICE_CONFIG = {
   // register anyway (kept in sync with the backend's ACCESS_CODE). Case-
   // insensitive; empty string disables the bypass.
   ACCESS_CODE: 'ice2026',
+  // A GitHub username is mandatory on the profile card. Someone without a GitHub
+  // account types THIS keyword into the GitHub field to waive the requirement —
+  // they pass validation but are NEVER added to the GitHub org (kept in sync
+  // with the backend's GITHUB_BYPASS). Case-insensitive.
+  GITHUB_BYPASS: 'ice2026',
   // Google Chat handoff — OAuth web client ID from the ahlab.org GCP project.
   // Empty = chat buttons show a "not set up yet" message. See docs/google-chat-setup.md.
   CHAT_CLIENT_ID: '664996878590-6chfseq2fn94ir8fg2tj53oncl2ebh74.apps.googleusercontent.com',

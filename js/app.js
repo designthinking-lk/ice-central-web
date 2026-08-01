@@ -2613,12 +2613,23 @@
   function validateProfile(form) {
     var fd = new FormData(form);
     if (!String(fd.get('firstName') || '').trim()) return 'Please enter your first name.';
+    // GitHub is mandatory. Someone without an account types the bypass keyword
+    // (C.GITHUB_BYPASS) to satisfy it — they won't be added to the GitHub org.
+    var ghRaw = String(fd.get('linkGithub') || '').trim();
+    var ghWaiver = String(C.GITHUB_BYPASS || '');
+    var ghBypassed = !!ghWaiver && ghRaw.toLowerCase() === ghWaiver.toLowerCase();
+    if (!ghRaw) {
+      return ghWaiver
+        ? 'A GitHub username is required. If you don’t have one, type “' + ghWaiver + '” to skip.'
+        : 'A GitHub username is required.';
+    }
     var linkRules = [
       ['linkGithub', /(^|\.)github\.com$/i, 'GitHub'],
       ['linkWebsite', null, 'Website'],
       ['linkLinkedin', /(^|\.)linkedin\.com$/i, 'LinkedIn'],
     ];
     for (var i = 0; i < linkRules.length; i++) {
+      if (linkRules[i][0] === 'linkGithub' && ghBypassed) continue; // waiver keyword
       var v = normUrl(completeLink(linkRules[i][0], fd.get(linkRules[i][0])));
       if (!v) continue;
       var host = '';
@@ -5736,8 +5747,14 @@
 
   function collectProfile(form) {
     var fd = new FormData(form);
+    // GitHub waiver: when the person typed the bypass keyword (no GitHub account)
+    // store NO GitHub link — so nothing bogus shows on their card and the backend
+    // never adds them to the org — and flag the waiver so the server accepts it.
+    var ghRaw = String(fd.get('linkGithub') || '').trim();
+    var ghWaiver = String(C.GITHUB_BYPASS || '');
+    var ghBypassed = !!ghWaiver && ghRaw.toLowerCase() === ghWaiver.toLowerCase();
     var links = [
-      normUrl(completeLink('linkGithub', fd.get('linkGithub'))),
+      ghBypassed ? '' : normUrl(completeLink('linkGithub', fd.get('linkGithub'))),
       normUrl(fd.get('linkWebsite')),
       normUrl(completeLink('linkLinkedin', fd.get('linkLinkedin'))),
     ].filter(Boolean);
@@ -5761,6 +5778,8 @@
       videoName: video ? profileVideoName : '',
       // access-code bypass of the invite-only gate (ignored by update_profile)
       accessCode: storedAccessCode(),
+      // GitHub-requirement waiver keyword (empty unless the person has no GitHub)
+      githubBypass: ghBypassed ? ghWaiver : '',
       // no role: it's pre-assigned by the invite (register) and admin-managed
       // via the role chips (update_profile ignores it anyway)
     };
