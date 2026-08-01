@@ -2,14 +2,14 @@
  * Strategy: network-first for every same-origin GET (never stale while online),
  * cache fallback when offline. Bump VERSION together with the ?v= asset bumps
  * in index.html so old caches are dropped on deploy. */
-var VERSION = 'v186';
+var VERSION = 'v187';
 var CACHE = 'ice-' + VERSION;
 
 var SHELL = [
   './',
   'index.html',
   'css/theme.css?v=53',
-  'css/app.css?v=160',
+  'css/app.css?v=175',
   'assets/favicon.svg',
   'assets/icon-192.png',
   'assets/icon-512.png',
@@ -38,9 +38,12 @@ self.addEventListener('fetch', function (e) {
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   e.respondWith(
     fetch(req).then(function (res) {
-      if (res && res.ok) {
+      // Only cache a full 200. `res.ok` is also true for 206 (Partial Content)
+      // from <video> range requests, which Cache.put() rejects with an uncaught
+      // error. The .catch keeps any other cache write from surfacing either.
+      if (res && res.status === 200) {
         var copy = res.clone();
-        caches.open(CACHE).then(function (c) { c.put(req, copy); });
+        caches.open(CACHE).then(function (c) { return c.put(req, copy); }).catch(function () {});
       }
       return res;
     }).catch(function () {
