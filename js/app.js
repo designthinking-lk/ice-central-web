@@ -326,6 +326,8 @@
   function viewBusy() {
     if ($('#profileForm')) return true;      // profile editor (card flip, photo preview, video)
     if (projSel != null) return true;         // a project card is open / being flipped
+    if ($('#toolFormSlot') && $('#toolFormSlot').children.length) return true; // tool add/edit form open
+    if (teamEditing) return true;             // inline team edit in progress
     var view = $('#view');
     if (view && view.querySelector('video, iframe[src*="youtu"]')) return true; // an intro video is on screen
     return false;
@@ -4144,10 +4146,194 @@
       .catch(function (err) { videoActionPending = false; projVideoBusy(false); setStatus(err.message || 'Could not remove the video', true); });
   }
 
+  // --------------------------------------------------------------- tools
+  // Shared resources scoped to the whole project (global) or one team (team).
+  // Each is a card with optional description + a "link" and/or "secret" chip.
+  var TOOL_SCOPES = {
+    team: { label: 'Team', icon: 'fa-solid fa-user-group' },
+    global: { label: 'Global', icon: 'fa-solid fa-globe' },
+  };
+  var toolsData = null;                          // { tools, canAddGlobal, canAddTeam, myTeam }
+  var toolsUI = { filter: 'all', form: null, deleting: null };
+
   function viewTools() {
     if (!isMember()) return signInGate('tools');
-    return '<div class="empty" style="margin-top:40px"><i class="fa-solid fa-toolbox"></i>Tools are coming soon.<br>Handy links and resources for the workshop ' +
-      tense('will live', 'live', 'lived') + ' here.</div>';
+    return '<div class="tools-view" id="toolsView">' +
+      '<div class="tools-bar" id="toolsBar"></div>' +
+      '<div class="tool-form-slot" id="toolFormSlot"></div>' +
+      '<div class="tools-grid" id="toolsGrid">' +
+      '<div class="empty" style="grid-column:1/-1"><span class="spin"></span></div></div>' +
+      '</div>';
+  }
+
+  function toolById(id) {
+    return ((toolsData && toolsData.tools) || []).filter(function (t) { return t.id === id; })[0] || null;
+  }
+
+  function initTools() {
+    toolsUI.deleting = null; toolsUI.form = null;
+    A.api('tools_list').then(function (r) {
+      toolsData = r;
+      if (!$('#toolsView')) return;
+      renderToolsBar(); renderToolsGrid();
+    }).catch(function () {
+      if ($('#toolsGrid')) $('#toolsGrid').innerHTML =
+        '<div class="empty" style="grid-column:1/-1"><i class="fa-solid fa-triangle-exclamation"></i>Could not load tools.</div>';
+    });
+  }
+  function refreshTools() {
+    return A.api('tools_list').then(function (r) { toolsData = r; renderToolsBar(); renderToolsGrid(); });
+  }
+
+  function renderToolsBar() {
+    var bar = $('#toolsBar'); if (!bar || !toolsData) return;
+    var tools = toolsData.tools || [];
+    var counts = { all: tools.length, team: 0, global: 0 };
+    tools.forEach(function (t) { counts[t.scope]++; });
+    var chips = [['all', 'All'], ['team', 'Team'], ['global', 'Global']].map(function (f) {
+      return '<button class="tool-fchip' + (toolsUI.filter === f[0] ? ' on' : '') + '" data-action="tool-filter" data-f="' + f[0] + '" data-s="' + f[0] + '">' +
+        '<span class="tf-dot"></span>' + f[1] + ' <span class="tf-n">' + counts[f[0]] + '</span></button>';
+    }).join('');
+    var canAdd = toolsData.canAddTeam || toolsData.canAddGlobal;
+    bar.innerHTML = '<div class="tool-filters">' + chips + '</div>' +
+      (canAdd ? '<button class="btn btn-gradient btn-sm tools-add-btn" data-action="tool-add-open"><i class="fa-solid fa-plus"></i>Add tool</button>' : '');
+  }
+
+  function renderToolsGrid() {
+    var g = $('#toolsGrid'); if (!g || !toolsData) return;
+    var list = (toolsData.tools || []).filter(function (t) { return toolsUI.filter === 'all' || t.scope === toolsUI.filter; });
+    if (!list.length) {
+      g.innerHTML = '<div class="empty" style="grid-column:1/-1"><i class="fa-solid fa-toolbox"></i>' +
+        ((toolsData.tools || []).length ? 'No ' + esc(toolsUI.filter) + ' tools yet.' : 'No tools yet.') +
+        ((toolsData.canAddTeam || toolsData.canAddGlobal) ? '<br>Add one with the button above.' : '') + '</div>';
+      return;
+    }
+    g.innerHTML = list.map(toolCardHTML).join('');
+  }
+
+  function toolCardHTML(t) {
+    var sc = TOOL_SCOPES[t.scope] || TOOL_SCOPES.global;
+    var chips = '';
+    if (t.url) chips += '<a class="tool-chip" href="' + esc(t.url) + '" target="_blank" rel="noopener" title="' + esc(t.url) + '">link <i class="fa-solid fa-arrow-up-right-from-square"></i></a>';
+    if (t.secret) chips += '<button class="tool-chip tool-copy" type="button" data-action="tool-copy" data-id="' + esc(t.id) + '" title="Copy secret">secret <i class="fa-regular fa-copy"></i></button>';
+    var manage = t.canManage
+      ? '<div class="tool-manage">' +
+          '<button class="tool-mbtn" data-action="tool-edit" data-id="' + esc(t.id) + '" title="Edit"><i class="fa-solid fa-pen"></i></button>' +
+          '<button class="tool-mbtn" data-action="tool-del" data-id="' + esc(t.id) + '" title="Remove"><i class="fa-regular fa-trash-can"></i></button></div>'
+      : '';
+    var confirm = toolsUI.deleting === t.id
+      ? '<div class="tool-confirm"><span><i class="fa-solid fa-triangle-exclamation"></i>Remove this tool?</span>' +
+          '<span class="tc-actions"><button class="btn btn-danger btn-sm" data-action="tool-del-yes" data-id="' + esc(t.id) + '"><span class="label">Remove</span><span class="spin"></span></button>' +
+          '<button class="btn btn-ghost btn-sm" data-action="tool-del-no">Cancel</button></span></div>'
+      : '';
+    return '<div class="tool-card scope-' + t.scope + (t.canManage ? ' has-manage' : '') + '" data-id="' + esc(t.id) + '">' +
+      '<div class="tool-top"><div class="tool-title">' + esc(t.title) + '</div>' +
+      '<span class="tool-scope"><i class="' + sc.icon + '"></i>' + sc.label + '</span>' + manage + '</div>' +
+      (t.description ? '<div class="tool-desc">' + esc(t.description) + '</div>' : '') +
+      '<div class="tool-foot">' + chips + '</div>' + confirm + '</div>';
+  }
+
+  // ---- add / edit form (inline) ----
+  function openToolForm(tool) {
+    toolsUI.form = { editing: tool || null }; toolsUI.deleting = null;
+    renderToolsGrid(); renderToolForm();
+    var slot = $('#toolFormSlot');
+    if (slot) slot.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  function closeToolForm() {
+    toolsUI.form = null;
+    var slot = $('#toolFormSlot'); if (slot) slot.innerHTML = '';
+  }
+  function renderToolForm() {
+    var slot = $('#toolFormSlot'); if (!slot) return;
+    if (!toolsUI.form) { slot.innerHTML = ''; return; }
+    slot.innerHTML = toolFormHTML(toolsUI.form.editing);
+    wireToolForm();
+  }
+
+  function toolFormHTML(tool) {
+    var editing = !!tool, d = tool || {};
+    var canGlobal = !!(toolsData && toolsData.canAddGlobal);
+    var canTeam = !!(toolsData && toolsData.canAddTeam);
+    var scope = editing ? d.scope : (canTeam ? 'team' : 'global');
+    var teamName = (toolsData && toolsData.myTeam && toolsData.myTeam.name) || 'your team';
+    var scopeUI;
+    if (editing) {
+      var sc = TOOL_SCOPES[scope];
+      scopeUI = '<div class="tf-field"><label>Who it’s for</label>' +
+        '<div class="tf-scope-static scope-' + scope + '"><i class="' + sc.icon + '"></i>' + sc.label +
+        (scope === 'team' ? ' · ' + esc(teamName) : ' · everyone in ' + esc(eventName())) + '</div></div>';
+    } else {
+      function opt(v, ic, nm, hint, locked) {
+        return '<label class="tf-opt scope-' + v + (locked ? ' locked' : '') + '">' +
+          '<input type="radio" name="toolScope" value="' + v + '"' + (scope === v ? ' checked' : '') + (locked ? ' disabled' : '') + '>' +
+          '<span class="tf-box"><span class="tf-nm"><i class="' + ic + '"></i>' + nm + '</span><span class="tf-hint">' + hint + '</span></span></label>';
+      }
+      scopeUI = '<div class="tf-field"><label>Who is it for?</label><div class="tf-scope">' +
+        opt('team', 'fa-solid fa-user-group', 'Team', esc(teamName), !canTeam) +
+        opt('global', 'fa-solid fa-globe', 'Global', canGlobal ? 'Everyone in ' + esc(eventName()) : 'Organizers &amp; mentors only', !canGlobal) +
+        '</div></div>';
+    }
+    return '<div class="tool-form">' +
+      '<div class="tf-main">' + scopeUI +
+      '<div class="tf-field"><div class="tf-lblrow"><label for="tfTitle">Title</label><span class="tf-count" id="tfcTitle"></span></div>' +
+      '<input class="tf-input" id="tfTitle" maxlength="44" placeholder="e.g. Staging API token" value="' + esc(d.title || '') + '"></div>' +
+      '<div class="tf-field"><div class="tf-lblrow"><label for="tfDesc">Description <span class="tf-optl">— optional</span></label><span class="tf-count" id="tfcDesc"></span></div>' +
+      '<textarea class="tf-input" id="tfDesc" maxlength="100" placeholder="What it’s for, how to use it…">' + esc(d.description || '') + '</textarea></div>' +
+      '<div class="tf-field"><label for="tfUrl">Link <span class="tf-optl">— optional</span></label>' +
+      '<input class="tf-input" id="tfUrl" placeholder="https://…" value="' + esc(d.url || '') + '"></div>' +
+      '<div class="tf-field tf-secret"><label for="tfSecret">Secret / token <span class="tf-optl">— optional</span></label>' +
+      '<input class="tf-input" id="tfSecret" type="password" placeholder="Paste a token or value" value="' + esc(d.secret || '') + '">' +
+      '<button type="button" class="tf-reveal" id="tfReveal" aria-label="Show"><i class="fa-regular fa-eye"></i></button></div>' +
+      '</div>' +
+      '<div class="tf-side">' +
+      '<div class="tf-preview-lbl">Live preview</div>' +
+      '<div class="tools-grid tf-preview" id="toolPreview"></div>' +
+      '<div class="tf-actions">' +
+      '<button class="btn btn-gradient btn-sm" id="tfSave" data-action="tool-save" disabled><span class="label">' + (editing ? 'Save changes' : 'Save tool') + '</span><span class="spin"></span></button>' +
+      '<button class="btn btn-ghost btn-sm" data-action="tool-cancel">Cancel</button></div>' +
+      '<p class="tf-hint2" id="tfHint"></p>' +
+      '</div></div>';
+  }
+
+  function collectToolForm() {
+    var scopeEl = document.querySelector('input[name=toolScope]:checked');
+    var editing = toolsUI.form && toolsUI.form.editing;
+    return {
+      scope: editing ? editing.scope : (scopeEl ? scopeEl.value : 'team'),
+      title: ($('#tfTitle') || {}).value ? $('#tfTitle').value.trim() : '',
+      description: ($('#tfDesc') || {}).value ? $('#tfDesc').value.trim() : '',
+      url: ($('#tfUrl') || {}).value ? $('#tfUrl').value.trim() : '',
+      secret: ($('#tfSecret') || {}).value ? $('#tfSecret').value.trim() : '',
+    };
+  }
+  function toolFormValid(f) { return !!f.title && !!(f.description || f.url || f.secret); }
+
+  function wireToolForm() {
+    var ttl = $('#tfTitle'), desc = $('#tfDesc'), url = $('#tfUrl'), sec = $('#tfSecret');
+    if (!ttl) return;
+    function upd() {
+      var f = collectToolForm();
+      var ct = $('#tfcTitle'), cd = $('#tfcDesc');
+      if (ct) ct.textContent = ttl.value.length + ' / 44';
+      if (cd) cd.textContent = desc.value.length + ' / 100';
+      var save = $('#tfSave'), hint = $('#tfHint');
+      var ok = toolFormValid(f);
+      if (save) save.disabled = !ok;
+      if (hint) hint.textContent = !f.title ? 'A title is required.'
+        : !ok ? 'Add at least one of description, link or secret.' : 'Ready to save.';
+      var pv = $('#toolPreview');
+      if (pv) pv.innerHTML = toolCardHTML({ scope: f.scope, title: f.title || 'Untitled tool', description: f.description, url: f.url, secret: f.secret, canManage: false });
+    }
+    [ttl, desc, url, sec].forEach(function (el) { el.addEventListener('input', upd); });
+    var scopeInputs = document.querySelectorAll('input[name=toolScope]');
+    [].forEach.call(scopeInputs, function (el) { el.addEventListener('change', upd); });
+    var rev = $('#tfReveal');
+    if (rev) rev.addEventListener('click', function () {
+      var p = sec.type === 'password'; sec.type = p ? 'text' : 'password';
+      rev.innerHTML = p ? '<i class="fa-regular fa-eye-slash"></i>' : '<i class="fa-regular fa-eye"></i>';
+    });
+    upd();
   }
 
   // --------------------------------------------------------------- about
@@ -5473,6 +5659,8 @@
     }
     // program: swap the skeleton for live calendar events when configured
     if ($('.program-grid')) initProgram();
+    // tools: load the project/team resources
+    if ($('#toolsView')) initTools();
     // wallet: profile QR panel + the phone's #/wallet handoff page
     if ($('#walletPanel')) initWalletPanel();
     if ($('#walletView')) initWalletHandoff();
@@ -5612,6 +5800,46 @@
           toast('That access code isn’t right.', true);
           if (acInp) { acInp.focus(); acInp.select(); }
         }
+        break;
+      }
+      case 'tool-filter':
+        toolsUI.filter = t.getAttribute('data-f') || 'all';
+        renderToolsBar(); renderToolsGrid();
+        break;
+      case 'tool-add-open': openToolForm(null); break;
+      case 'tool-edit': openToolForm(toolById(t.getAttribute('data-id'))); break;
+      case 'tool-cancel': closeToolForm(); break;
+      case 'tool-copy': {
+        var ct = toolById(t.getAttribute('data-id'));
+        if (ct && ct.secret) {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(ct.secret).then(function () { toast('Secret copied'); })
+              .catch(function () { window.prompt('Copy this secret:', ct.secret); });
+          } else window.prompt('Copy this secret:', ct.secret);
+        }
+        break;
+      }
+      case 'tool-del': toolsUI.deleting = t.getAttribute('data-id'); renderToolsGrid(); break;
+      case 'tool-del-no': toolsUI.deleting = null; renderToolsGrid(); break;
+      case 'tool-del-yes': {
+        var delId = t.getAttribute('data-id');
+        busy(t, true);
+        try { await A.api('tool_delete', { id: delId }); toolsUI.deleting = null; await refreshTools(); toast('Tool removed'); }
+        catch (err) { toast(err.message || 'Could not remove.', true); busy(t, false); }
+        break;
+      }
+      case 'tool-save': {
+        var tf = collectToolForm();
+        if (!toolFormValid(tf)) break;
+        var editingTool = toolsUI.form && toolsUI.form.editing;
+        busy(t, true);
+        try {
+          if (editingTool) await A.api('tool_update', Object.assign({ id: editingTool.id }, tf));
+          else await A.api('tool_add', tf);
+          closeToolForm();
+          await refreshTools();
+          toast(editingTool ? 'Tool updated' : 'Tool added');
+        } catch (err) { toast(err.message || 'Could not save.', true); busy(t, false); }
         break;
       }
       case 'card-share': {
