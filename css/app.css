@@ -129,10 +129,13 @@ button { font-family: inherit; }
   position: absolute; top: 50%; left: -140px; transform: translateY(-50%);
   width: 280px; height: 280px; z-index: 0; pointer-events: none;
   clip-path: url(#octr);
-  /* the grey half-hexagon surface behind the nav; the rest of the (floated,
-     transparent) sidebar still lets the view's effects bleed around it */
-  background: var(--bg-subtle);
+  /* frosted-glass half-hexagon behind the nav: a theme-driven translucent tint
+     over a blurred backdrop, so the aurora/view drifts softly through it */
+  background: rgba(255, 255, 255, 0.42);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
 }
+:root[data-theme="dark"] .side-oct { background: rgba(18, 18, 24, 0.38); }
 /* real content paints above the octagon */
 .nav { position: relative; z-index: 1; }
 /* empty top spacer in the sidebar (the animated brand moved out to .shell so it
@@ -1451,22 +1454,31 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
 
 /* large octagon preview in the hollow of the C (no outline) */
 .oct-preview {
-  position: absolute; pointer-events: none; z-index: 20;
-  clip-path: var(--oct); transition: filter 0.3s ease;
+  position: absolute; pointer-events: auto; z-index: 20;
+  clip-path: var(--oct); opacity: 0.7;
+  transition: opacity 0.45s ease, filter 0.45s ease;
 }
 /* idle: an empty slot octagon so the C's hollow always reads as filled */
 .oct-preview::before {
   content: ""; position: absolute; inset: 0; clip-path: var(--oct);
   background: var(--bg-subtle);
 }
-.oct-preview.on { filter: drop-shadow(0 14px 34px rgba(0, 0, 0, 0.6)); }
-.oct-preview .oct-pin { opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; transform: scale(0.94); }
-.oct-preview.on .oct-pin { opacity: 1; transform: scale(1); }
-/* the large hexagon is a display tile, not a link — no pointer cursor */
-/* click-hold expiring: quick fade-out of the pinned photo */
-.oct-preview.fadeout .oct-pin { opacity: 0; transform: scale(0.96); transition: opacity 0.22s ease, transform 0.22s ease; }
+.oct-preview .oct-pin { opacity: 1; }
+/* rests dimmed & flat like the small tiles; lifts to full opacity + a drop
+   shadow only when hovered directly or while showing a hovered member */
+.word.focus .oct-preview,
+.oct-preview:hover { opacity: 1; filter: drop-shadow(0 14px 34px rgba(0, 0, 0, 0.6)); }
 .oct-pin { width: 100%; height: 100%; position: relative; z-index: 1; overflow: hidden; background: #111; clip-path: var(--oct); }
-.oct-pin img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* two stacked layers crossfade on swap; greyscale at rest, full colour when the
+   preview is active (hovered directly, or previewing a hovered member) */
+.oct-pin .pv-img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block;
+  opacity: 0; filter: grayscale(1) contrast(1.03) brightness(1.02);
+  transition: opacity 0.5s ease, filter 0.45s ease;
+}
+.oct-pin .pv-img.show { opacity: 1; }
+.word.focus .oct-preview .pv-img.show,
+.oct-preview:hover .pv-img.show { filter: none; }
 .oct-pvname {
   position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 12px 12%;
   text-align: center; font-weight: 700; font-size: 15px; letter-spacing: -0.01em; color: #fff;
@@ -2425,7 +2437,7 @@ body.hive-full .nav a { pointer-events: auto; }
   --aurora-3: rgba(255, 60, 170, 0.30);
 }
 
-/* Ambient idle — after ~15s with no pointer/key input the peripheral action
+/* Ambient idle — after ~10s with no pointer/key input the peripheral action
    buttons (team chips, We/Me, theme, profile menu, admin, and the About/Program/
    Tools fabs) fade away for a calmer, more immersive view. `body.idle` is added
    by app.js on inactivity and removed the instant any input arrives. The main
@@ -2433,7 +2445,9 @@ body.hive-full .nav a { pointer-events: auto; }
 #topbarTeams, #mineToggle, #themeToggle, #topbarActions, #navAdmin, .fab-stack {
   transition: opacity 0.9s ease;
 }
-body.idle #topbarTeams,
+/* the team chips only fade on People — on Projects #topbarTeams holds the
+   "N projects … N teams" tagline, which stays put */
+body.hive-full.idle #topbarTeams,
 body.idle #mineToggle,
 body.idle #themeToggle,
 body.idle #topbarActions,

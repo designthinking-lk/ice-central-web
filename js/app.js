@@ -1324,18 +1324,36 @@
   // Nanayakkara by default — his portrait sits there whenever no member tile is
   // being hovered. Hovering a small tile swaps him out for that person; the
   // large tile itself is not a link (to open a profile, click the small tile).
-  // name in the name slot, "Prof" in the role slot (where Mentor/Participant
+  // name in the name slot, "Professor" in the role slot (where Mentor/Participant
   // shows for others) so the label lines up with everyone else's placement.
-  var HIVE_FEATURE = { image: 'assets/about/suranga-hive.jpg', name: 'Suranga Nanayakkara', role: 'Prof', kind: 'cat' };
+  var HIVE_FEATURE = { image: 'assets/about/suranga-hive.jpg', name: 'Suranga Nanayakkara', role: 'Professor', kind: 'cat' };
 
   // Fill the large preview hexagon's photo pin. opts: {image,name,role,kind}.
+  // Two stacked <img> layers crossfade so swapping people is smooth, not sudden.
   function fillHivePreview(word, opts) {
-    var img = $('#hivePvImg'), nm = $('#hivePvNm'), role = $('#hivePvRole');
-    if (img) img.src = opts.image || '';
+    var imgs = word.__pinImgs;
+    var nm = $('#hivePvNm'), role = $('#hivePvRole');
     if (nm) nm.textContent = opts.name || '';
     if (role) role.textContent = opts.role || '';
     var p = word.__preview;
     if (p) { p.classList.remove('m', 'p', 'cat', 'fadeout'); p.classList.add(opts.kind || 'cat', 'on'); }
+    if (!imgs || imgs.length < 2) return;
+    var front = word.__pinFront;
+    // already showing this image — nothing to crossfade
+    if (front >= 0 && imgs[front].getAttribute('src') === opts.image) return;
+    var back = front === 0 ? 1 : 0;
+    var backImg = imgs[back];
+    var token = (word.__pinToken = (word.__pinToken || 0) + 1);
+    var reveal = function () {
+      if (token !== word.__pinToken) return; // a newer hover superseded this
+      backImg.classList.add('show');
+      if (front >= 0) imgs[front].classList.remove('show');
+      word.__pinFront = back;
+    };
+    backImg.onload = reveal;
+    backImg.onerror = reveal;
+    backImg.setAttribute('src', opts.image || '');
+    if (backImg.complete && backImg.naturalWidth) reveal(); // cached — fire now
   }
 
   // Populate the wordmark tiles from live users, then size to fit (no scroll).
@@ -1453,15 +1471,18 @@
     preview.style.width = pw + 'px'; preview.style.height = ph + 'px';
     preview.style.left = (pvCenterX - minX - pw / 2) + 'px';
     preview.style.top = (pvCenterY - minY - ph / 2) + 'px';
-    // The photo pin fills the hexagon. There's no "View profile" link and the
-    // tile isn't a link — clicking a small tile opens that person's profile.
+    // The photo pin fills the hexagon (two <img> layers crossfade on swap).
+    // There's no "View profile" link and the tile isn't a link — clicking a
+    // small tile opens that person's profile.
     preview.innerHTML = '<span class="hive-caption"></span>' +
-      '<div class="oct-pin"><img id="hivePvImg" alt="">' +
+      '<div class="oct-pin"><img class="pv-img" alt=""><img class="pv-img" alt="">' +
       '<span class="oct-pvname"><span id="hivePvNm"></span><span class="oct-pvrole" id="hivePvRole"></span></span></div>';
     // the C-hollow preview reveals just after the last letter (E)
     preview.style.animationDelay = '0.95s';
     word.appendChild(preview);
     word.__preview = preview;
+    word.__pinImgs = preview.querySelectorAll('.pv-img');
+    word.__pinFront = -1; word.__pinToken = 0;
     // Default: feature Suranga until a member tile is hovered.
     fillHivePreview(word, HIVE_FEATURE);
     // hollow centre in natural coords — fitWordmark re-sizes the preview from it.
@@ -6724,7 +6745,7 @@
   window.addEventListener('hashchange', route);
   window.addEventListener('resize', fitWordmark);
 
-  // Ambient idle: after 15s with no pointer/key/scroll input, fade the
+  // Ambient idle: after 10s with no pointer/key/scroll input, fade the
   // peripheral action buttons (team chips, We/Me, theme, profile menu, admin and
   // the About/Program/Tools fabs — see body.idle in app.css). Any activity
   // brings them straight back. Capture phase so scrolls inside inner panes count.
@@ -6732,7 +6753,7 @@
   function wakeChrome() {
     if (document.body.classList.contains('idle')) document.body.classList.remove('idle');
     clearTimeout(idleTimer);
-    idleTimer = setTimeout(function () { document.body.classList.add('idle'); }, 15000);
+    idleTimer = setTimeout(function () { document.body.classList.add('idle'); }, 10000);
   }
   ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach(function (ev) {
     window.addEventListener(ev, wakeChrome, { passive: true, capture: true });
