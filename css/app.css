@@ -1426,10 +1426,10 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
    read as catalyst seats even before anyone joins */
 .oct.cat.empty .oct-in { background: rgba(245, 145, 10, 0.12); }
 .oct.cat.empty .oct-slot { color: var(--accent3); opacity: 0.75; }
-/* the lone floating catalyst tile in the C–E gap beside the large hexagon — a
-   soft shadow sets it apart, and it sits above the preview so it's never hidden */
-.oct.oct-float { filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.26)); z-index: 21; }
-.oct.oct-float.empty .oct-in { box-shadow: 0 0 0 1px rgba(245, 145, 10, 0.35) inset; }
+/* the lone floating catalyst tile in the C–E gap beside the large hexagon —
+   styled exactly like the other catalyst slots; only lifted above the preview
+   so it's never hidden */
+.oct.oct-float { z-index: 21; }
 .word.focus .oct.empty { opacity: 0.4; filter: none; }
 
 /* intro: the ICE wordmark reveals a letter-group at a time (I → C → E). Each

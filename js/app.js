@@ -1323,7 +1323,9 @@
   // Nanayakkara by default — his portrait sits there whenever no member tile is
   // being hovered. Hovering a small tile swaps him out for that person; the
   // large tile itself is not a link (to open a profile, click the small tile).
-  var HIVE_FEATURE = { image: 'assets/about/suranga.jpg', name: 'Prof. Suranga Nanayakkara', role: '', kind: 'cat' };
+  // name in the name slot, "Prof" in the role slot (where Mentor/Participant
+  // shows for others) so the label lines up with everyone else's placement.
+  var HIVE_FEATURE = { image: 'assets/about/suranga-hive.jpg', name: 'Suranga Nanayakkara', role: 'Prof', kind: 'cat' };
 
   // Fill the large preview hexagon's photo pin. opts: {image,name,role,kind}.
   function fillHivePreview(word, opts) {
@@ -1431,9 +1433,10 @@
         el.classList.add('oct-float');
         // Sits in the C–E gap just to the lower-right of the large preview
         // hexagon, so it reads as beside it without covering the portrait.
-        // Tunable via these two factors.
+        // Tunable via these two factors; the extra + w drops it one tile-height
+        // lower so it clears the hexagon completely.
         left = (pvCenterX + pw * 0.64) - minX - w / 2;
-        top = (pvCenterY + pw * 0.22) - minY - w / 2;
+        top = (pvCenterY + pw * 0.22) - minY - w / 2 + w;
       } else {
         left = (slot.c * w) - minX;
         top = (slot.r * w) - minY;
