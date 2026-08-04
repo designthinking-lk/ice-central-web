@@ -1319,6 +1319,22 @@
     return order;
   }
 
+  // The large preview hexagon (in the C's hollow) features Prof. Suranga
+  // Nanayakkara by default — his portrait sits there whenever no member tile is
+  // being hovered. Hovering a small tile swaps him out for that person; the
+  // large tile itself is not a link (to open a profile, click the small tile).
+  var HIVE_FEATURE = { image: 'assets/about/suranga.jpg', name: 'Prof. Suranga Nanayakkara', role: '', kind: 'cat' };
+
+  // Fill the large preview hexagon's photo pin. opts: {image,name,role,kind}.
+  function fillHivePreview(word, opts) {
+    var img = $('#hivePvImg'), nm = $('#hivePvNm'), role = $('#hivePvRole');
+    if (img) img.src = opts.image || '';
+    if (nm) nm.textContent = opts.name || '';
+    if (role) role.textContent = opts.role || '';
+    var p = word.__preview;
+    if (p) { p.classList.remove('m', 'p', 'cat', 'fadeout'); p.classList.add(opts.kind || 'cat', 'on'); }
+  }
+
   // Populate the wordmark tiles from live users, then size to fit (no scroll).
   function buildWordmark() {
     var word = $('#word');
@@ -1365,11 +1381,10 @@
           (u.image ? '<img src="' + esc(u.image) + '" alt="" loading="lazy">' : '<span class="oct-blank">' + esc(initials(u.name)) + '</span>') +
           '</div>' +
           (isOn ? '<span class="oct-online" title="Online"></span>' : '');
+        // Hover shows the person in the large hexagon; the click just follows the
+        // tile's own href to their profile (no pin/hold).
         el.addEventListener('mouseenter', function () { showHivePreview(u, kind, el); });
         el.addEventListener('mouseleave', hideHivePreview);
-        // click: pin the preview for 10 s, then a quick fade-out. (The big
-        // preview octagon itself opens the profile.)
-        el.addEventListener('click', function (e) { e.preventDefault(); holdHivePreview(u, kind, el); });
       } else {
         el = document.createElement('div');
         el.className = 'oct empty' + (kind === 'cat' ? ' cat' : '');
@@ -1399,14 +1414,26 @@
     // the formation's bottom-right. All four are positioned from the measured
     // box but excluded from it, so none of them shift the ICE letters. Extra
     // catalysts beyond four have no slot (only four exist).
+    // Preview hexagon geometry — computed here so the 4th (floating) catalyst
+    // slot can be tucked beside it. Parked in the C's hollow, nudged right so its
+    // right edge lines up with the C letter's right-most edge (letter index 1).
+    var pw = w * 2.9, ph = pw;
+    var cRight = -1e9;
+    cells.forEach(function (cell) { if (cell.letter === 1) cRight = Math.max(cRight, cell.c * w + w); });
+    var pvCenterX = (cRight > -1e9) ? (cRight - pw / 2) : ((built.hollow.col + 0.5) * w);
+    var pvCenterY = (built.hollow.row + 0.5) * w;
+
     (built.reserved || []).forEach(function (slot, ri) {
       var el = makeTile(catalysts[ri], 'cat');
       el.classList.add('oct-reserved');
       var left, top;
       if (slot.floating) {
         el.classList.add('oct-float');
-        left = (maxX - minX) + w * 0.55;   // just past the formation's right edge
-        top = (maxY - minY) - w;            // bottom band — stays within the box height
+        // Sits in the C–E gap just to the lower-right of the large preview
+        // hexagon, so it reads as beside it without covering the portrait.
+        // Tunable via these two factors.
+        left = (pvCenterX + pw * 0.64) - minX - w / 2;
+        top = (pvCenterY + pw * 0.22) - minY - w / 2;
       } else {
         left = (slot.c * w) - minX;
         top = (slot.r * w) - minY;
@@ -1417,33 +1444,26 @@
       word.appendChild(el);
     });
 
-    // preview parked in the C's hollow (regular octagon), but nudged right so its
-    // right edge lines up with the C letter's right-most edge (letter index 1)
-    var pw = w * 2.9, ph = pw;
-    var cRight = -1e9;
-    cells.forEach(function (cell) { if (cell.letter === 1) cRight = Math.max(cRight, cell.c * w + w); });
-    var pvCenterX = (cRight > -1e9) ? (cRight - pw / 2) : ((built.hollow.col + 0.5) * w);
     var preview = document.createElement('div');
     preview.className = 'oct-preview';
     preview.style.width = pw + 'px'; preview.style.height = ph + 'px';
     preview.style.left = (pvCenterX - minX - pw / 2) + 'px';
-    preview.style.top = ((built.hollow.row + 0.5) * w - minY - ph / 2) + 'px';
-    // the caption sits inside the empty preview octagon (the C's cavity);
-    // it fades out when a hovered member's photo fills the slot
-    var activeTeam = null;
-    ((state.data && state.data.teams) || []).forEach(function (x) { if (x.id === state.teamFilter) activeTeam = x; });
-    preview.innerHTML = '<span class="hive-caption">' + hiveCaptionText(users, activeTeam) + '</span>' +
+    preview.style.top = (pvCenterY - minY - ph / 2) + 'px';
+    // The photo pin fills the hexagon. There's no "View profile" link and the
+    // tile isn't a link — clicking a small tile opens that person's profile.
+    preview.innerHTML = '<span class="hive-caption"></span>' +
       '<div class="oct-pin"><img id="hivePvImg" alt="">' +
-      '<span class="oct-pvname"><span id="hivePvNm"></span><span class="oct-pvrole" id="hivePvRole"></span>' +
-      '<a class="oct-pv-view" id="hivePvView" href="#/">View profile<i class="fa-solid fa-arrow-right"></i></a></span></div>';
-    // the C-hollow preview/caption reveals just after the last letter (E)
+      '<span class="oct-pvname"><span id="hivePvNm"></span><span class="oct-pvrole" id="hivePvRole"></span></span></div>';
+    // the C-hollow preview reveals just after the last letter (E)
     preview.style.animationDelay = '0.95s';
     word.appendChild(preview);
     word.__preview = preview;
+    // Default: feature Suranga until a member tile is hovered.
+    fillHivePreview(word, HIVE_FEATURE);
     // hollow centre in natural coords — fitWordmark re-sizes the preview from it.
     // Keep it aligned with the right-nudged position so fitWordmark doesn't undo it.
     word.__hollowX = pvCenterX - minX;
-    word.__hollowY = (built.hollow.row + 0.5) * w - minY;
+    word.__hollowY = pvCenterY - minY;
 
     // Fresh render fits the CURRENT width; the size only locks once the user
     // narrows the window from there (see fitWordmark).
@@ -1468,44 +1488,25 @@
     });
   }
 
+  // Hover a small tile → show that person in the large hexagon.
   function showHivePreview(u, kind, el) {
     var word = $('#word'); if (!word) return;
     word.classList.add('focus');
     word.__pvUid = u.id;
     if (word.__active) word.__active.classList.remove('active');
     el.classList.add('active'); word.__active = el;
-    var img = $('#hivePvImg'), nm = $('#hivePvNm'), role = $('#hivePvRole'), view = $('#hivePvView');
-    if (img) img.src = u.image || '';
-    if (nm) nm.textContent = u.name;
-    if (role) role.textContent = kind === 'cat' ? 'Catalyst' : kind === 'm' ? 'Mentor' : 'Participant';
-    if (view) view.href = '#/profile/' + u.id; // explicit "View profile" link
-    var p = word.__preview;
-    if (p) { p.classList.remove('m', 'p', 'cat', 'fadeout'); p.classList.add(kind, 'on'); }
+    fillHivePreview(word, {
+      image: u.image, name: u.name, kind: kind,
+      role: kind === 'cat' ? 'Catalyst' : kind === 'm' ? 'Mentor' : 'Participant',
+    });
   }
-  // Click-pin: the preview survives mouseleave for 10 s, then fades out fast.
-  var hiveHold = { timer: null, until: 0 };
-  function holdHivePreview(u, kind, el) {
-    showHivePreview(u, kind, el);
-    clearTimeout(hiveHold.timer);
-    hiveHold.until = Date.now() + 10000;
-    hiveHold.timer = setTimeout(function () {
-      hiveHold.until = 0;
-      var word = $('#word');
-      if (word && word.__preview) word.__preview.classList.add('fadeout');
-      setTimeout(function () {
-        var w2 = $('#word');
-        if (w2 && w2.__preview) w2.__preview.classList.remove('fadeout');
-        hideHivePreview();
-      }, 240);
-    }, 10000);
-  }
+  // Mouse leaves → revert the large hexagon to its featured default (Suranga).
   function hideHivePreview() {
-    if (hiveHold.until > Date.now()) return; // pinned by a click — stays up
     var word = $('#word'); if (!word) return;
     word.classList.remove('focus');
     word.__pvUid = null;
     if (word.__active) { word.__active.classList.remove('active'); word.__active = null; }
-    if (word.__preview) word.__preview.classList.remove('on');
+    fillHivePreview(word, HIVE_FEATURE);
   }
 
   // Wordmark sizing state: `scale`/`w` lock the ICE size so narrowing the window

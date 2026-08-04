@@ -1426,9 +1426,9 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
    read as catalyst seats even before anyone joins */
 .oct.cat.empty .oct-in { background: rgba(245, 145, 10, 0.12); }
 .oct.cat.empty .oct-slot { color: var(--accent3); opacity: 0.75; }
-/* the lone floating catalyst tile off the formation's bottom-right — a soft
-   shadow sets it apart from the letter grid */
-.oct.oct-float { filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.26)); }
+/* the lone floating catalyst tile in the C–E gap beside the large hexagon — a
+   soft shadow sets it apart, and it sits above the preview so it's never hidden */
+.oct.oct-float { filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.26)); z-index: 21; }
 .oct.oct-float.empty .oct-in { box-shadow: 0 0 0 1px rgba(245, 145, 10, 0.35) inset; }
 .word.focus .oct.empty { opacity: 0.4; filter: none; }
 
@@ -1458,7 +1458,7 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
 .oct-preview.on { filter: drop-shadow(0 14px 34px rgba(0, 0, 0, 0.6)); }
 .oct-preview .oct-pin { opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; transform: scale(0.94); }
 .oct-preview.on .oct-pin { opacity: 1; transform: scale(1); }
-.oct-preview.on { cursor: pointer; }
+/* the large hexagon is a display tile, not a link — no pointer cursor */
 /* click-hold expiring: quick fade-out of the pinned photo */
 .oct-preview.fadeout .oct-pin { opacity: 0; transform: scale(0.96); transition: opacity 0.22s ease, transform 0.22s ease; }
 .oct-pin { width: 100%; height: 100%; position: relative; z-index: 1; overflow: hidden; background: #111; clip-path: var(--oct); }
