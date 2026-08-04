@@ -3702,7 +3702,11 @@
           '<button class="btn btn-gradient" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in</button>' +
         '</div></div>';
     }
-    return '<div class="projects-wrap"><div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div><div class="projects-grid" id="projectsGrid">' +
+    // Aurora is a direct, full-bleed child of the view (position:absolute inset:0,
+    // like the skills wrap) so it paints the actual background under the sidebar —
+    // not just the inner cards box.
+    return '<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>' +
+      '<div class="projects-wrap"><div class="projects-grid" id="projectsGrid">' +
       teamProjectsData().map(projectCardHtml).join('') +
       '<div class="proj-members-strip" id="projMembersStrip" hidden></div>' +
       '<div class="proj-detail" id="projDetail" hidden></div>' +

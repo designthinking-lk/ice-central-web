@@ -229,6 +229,10 @@ button { font-family: inherit; }
 }
 .nav a.nav-admin i { color: var(--text-muted); }
 .nav a:hover { background: var(--bg-subtle); color: var(--text); }
+/* admin (bottom button): no box on hover — tint the label + icon in the accent
+   colour, matching the About/Program/Tools fabs */
+.nav a.nav-admin:hover { background: none; color: var(--color-accent); }
+.nav a.nav-admin:hover i { color: var(--color-accent); }
 .nav a.active {
   background: none; color: var(--color-accent);
   transform-origin: left center;
@@ -1674,7 +1678,9 @@ body.mine-on .pms-skill.is-mine b { color: var(--mine); }
   transition: background 0.15s, color 0.15s;
 }
 .tools-fab i { font-size: 15.5px; width: 20px; text-align: center; color: var(--text-faint); }
-.tools-fab:hover { background: var(--bg-subtle); color: var(--text); }
+/* hover: no box — just tint the label + icon in the active (theme accent) colour */
+.tools-fab:hover { background: none; color: var(--color-accent); }
+.tools-fab:hover i { color: var(--color-accent); }
 /* same glow + breathing animation as the sidebar nav's active link */
 .tools-fab.active {
   background: none; color: var(--color-accent);
@@ -1684,7 +1690,6 @@ body.mine-on .pms-skill.is-mine b { color: var(--mine); }
 .tools-fab.active i { color: var(--color-accent); filter: drop-shadow(0 0 6px rgba(97, 0, 255, 0.45)); }
 :root[data-theme="dark"] .tools-fab.active { animation-name: nav-glow-dark; }
 :root[data-theme="dark"] .tools-fab.active i { filter: drop-shadow(0 0 6px rgba(0, 215, 238, 0.5)); }
-.tools-fab:hover { background: var(--bg-subtle); border-color: var(--border-strong); color: var(--text); }
 .tools-fab[hidden] { display: none; }
 .tools-fab.active { color: var(--color-accent); border-color: var(--color-accent); }
 .chat-fab {
