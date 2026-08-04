@@ -2419,6 +2419,25 @@ body.hive-full .nav a { pointer-events: auto; }
   --aurora-2: rgba(0, 200, 255, 0.30);
   --aurora-3: rgba(255, 60, 170, 0.30);
 }
+
+/* Ambient idle — after ~15s with no pointer/key input the peripheral action
+   buttons (team chips, We/Me, theme, profile menu, admin, and the About/Program/
+   Tools fabs) fade away for a calmer, more immersive view. `body.idle` is added
+   by app.js on inactivity and removed the instant any input arrives. The main
+   nav and brand are intentionally left visible. */
+#topbarTeams, #mineToggle, #themeToggle, #topbarActions, #navAdmin, .fab-stack {
+  transition: opacity 0.9s ease;
+}
+body.idle #topbarTeams,
+body.idle #mineToggle,
+body.idle #themeToggle,
+body.idle #topbarActions,
+body.idle #navAdmin,
+body.idle .fab-stack {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* right-third detail panel: blurb + people + projects for the picked skill */
 .skills-side {
   /* start below the app bar (min-height 60px) so the panel title never slides

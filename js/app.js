@@ -1297,6 +1297,7 @@
     // legend lives in the app bar beside the team chain; caption inside the
     // preview octagon (buildWordmark)
     return '<div class="hive">' +
+      '<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>' +
       '<div class="hive-stage" id="hiveStage"><div class="word" id="word"></div></div>' +
       '</div>';
   }
@@ -3701,7 +3702,7 @@
           '<button class="btn btn-gradient" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in</button>' +
         '</div></div>';
     }
-    return '<div class="projects-wrap"><div class="projects-grid" id="projectsGrid">' +
+    return '<div class="projects-wrap"><div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div><div class="projects-grid" id="projectsGrid">' +
       teamProjectsData().map(projectCardHtml).join('') +
       '<div class="proj-members-strip" id="projMembersStrip" hidden></div>' +
       '<div class="proj-detail" id="projDetail" hidden></div>' +
@@ -6718,6 +6719,21 @@
 
   window.addEventListener('hashchange', route);
   window.addEventListener('resize', fitWordmark);
+
+  // Ambient idle: after 15s with no pointer/key/scroll input, fade the
+  // peripheral action buttons (team chips, We/Me, theme, profile menu, admin and
+  // the About/Program/Tools fabs — see body.idle in app.css). Any activity
+  // brings them straight back. Capture phase so scrolls inside inner panes count.
+  var idleTimer = null;
+  function wakeChrome() {
+    if (document.body.classList.contains('idle')) document.body.classList.remove('idle');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () { document.body.classList.add('idle'); }, 15000);
+  }
+  ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach(function (ev) {
+    window.addEventListener(ev, wakeChrome, { passive: true, capture: true });
+  });
+  wakeChrome();
 
   // Live "name already taken" check + Create-button gating on the New Project
   // field. Delegated (survives re-renders) and bound to input/keyup/change so a
