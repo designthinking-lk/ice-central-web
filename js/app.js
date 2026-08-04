@@ -1514,8 +1514,10 @@
   }
 
   // Hover a small tile → show that person in the large hexagon.
+  var hivePvLeaveTimer = null;
   function showHivePreview(u, kind, el) {
     var word = $('#word'); if (!word) return;
+    clearTimeout(hivePvLeaveTimer); // moving straight to another tile — don't revert
     word.classList.add('focus');
     word.__pvUid = u.id;
     if (word.__active) word.__active.classList.remove('active');
@@ -1525,13 +1527,19 @@
       role: kind === 'cat' ? 'Catalyst' : kind === 'm' ? 'Mentor' : 'Participant',
     });
   }
-  // Mouse leaves → revert the large hexagon to its featured default (Suranga).
+  // Mouse leaves → revert to the featured default (Suranga), but DEFER it a beat:
+  // sliding straight from one tile to an adjacent one fires mouseleave then
+  // mouseenter, and showHivePreview cancels this so it crossfades A→B directly
+  // instead of flashing through Suranga.
   function hideHivePreview() {
-    var word = $('#word'); if (!word) return;
-    word.classList.remove('focus');
-    word.__pvUid = null;
-    if (word.__active) { word.__active.classList.remove('active'); word.__active = null; }
-    fillHivePreview(word, HIVE_FEATURE);
+    clearTimeout(hivePvLeaveTimer);
+    hivePvLeaveTimer = setTimeout(function () {
+      var word = $('#word'); if (!word) return;
+      word.classList.remove('focus');
+      word.__pvUid = null;
+      if (word.__active) { word.__active.classList.remove('active'); word.__active = null; }
+      fillHivePreview(word, HIVE_FEATURE);
+    }, 70);
   }
 
   // Wordmark sizing state: `scale`/`w` lock the ICE size so narrowing the window
