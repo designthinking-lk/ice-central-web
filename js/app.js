@@ -117,10 +117,15 @@
   }
 
   // ---- roles ----
-  // users.role can hold up to 2 comma-separated roles: 'admin' plus one of
-  // 'participant'/'mentor' (never both). 'none' = every role removed — the
-  // person keeps their data but gets the visitor view until a role comes
-  // back. Blank/legacy counts as participant. Mirrors rolesOf_ in the backend.
+  // users.role can hold up to 2 comma-separated roles: 'admin' plus one of the
+  // mutually-exclusive "track" roles 'participant'/'mentor'/'catalyst' (only one
+  // of the three). 'none' = every role removed — the person keeps their data but
+  // gets the visitor view until a role comes back. Blank/legacy counts as
+  // participant. Mirrors rolesOf_ in the backend. A catalyst is a special guest
+  // (they "spark" the program) — shown on the ICE letter formation in reserved
+  // slots, but never on a team or project, and with no platform powers.
+  var PLATFORM_ROLES = ['admin', 'participant', 'mentor', 'catalyst'];
+  var TRACK_ROLES = ['participant', 'mentor', 'catalyst']; // at most one of these
   function rolesOf(u) {
     if (!u) return [];
     var raw = String(u.role || '').trim().toLowerCase();
@@ -129,7 +134,7 @@
     var out = [];
     raw.split(',').forEach(function (r) {
       r = r.trim();
-      if (['admin', 'participant', 'mentor'].indexOf(r) !== -1 && out.indexOf(r) === -1) out.push(r);
+      if (PLATFORM_ROLES.indexOf(r) !== -1 && out.indexOf(r) === -1) out.push(r);
     });
     return out.length ? out : ['participant'];
   }
@@ -138,18 +143,21 @@
   // A member = a role-holding registered user, or a global admin. Members-only
   // surfaces (Program, Tools) gate on this, not merely on being signed in.
   function isMember() { return !!(state.data && (state.data.isAdmin || (me() && hasAccess(me())))); }
-  // Shown in the community surfaces — the ICE letter hive, teams and project
-  // cards — only if they hold a participant/mentor role. Admin-only accounts
-  // (organizers with no community chip) stay off those views.
+  // On a team / owns a project — only participants and mentors. Admin-only and
+  // catalyst-only accounts stay out of teams and project rosters.
   function isCommunityMember(u) { return hasRoleU(u, 'participant') || hasRoleU(u, 'mentor'); }
-  // Roles an admin can still add to this person (max 2; participant/mentor
-  // are mutually exclusive).
+  // Catalysts DO appear on the ICE letter hive (in reserved slots), alongside
+  // community members.
+  function isCatalyst(u) { return hasRoleU(u, 'catalyst'); }
+  function isOnHive(u) { return isCommunityMember(u) || isCatalyst(u); }
+  // Roles an admin can still add to this person (max 2; participant/mentor/
+  // catalyst are mutually exclusive).
   function addableRoles(u) {
     var roles = rolesOf(u);
     if (roles.length >= 2) return [];
     var out = [];
     if (roles.indexOf('admin') === -1) out.push('admin');
-    if (roles.indexOf('participant') === -1 && roles.indexOf('mentor') === -1) out.push('participant', 'mentor');
+    if (!roles.some(function (r) { return TRACK_ROLES.indexOf(r) !== -1; })) out.push('participant', 'mentor', 'catalyst');
     return out;
   }
 
@@ -1091,6 +1099,7 @@
       '<div class="person-top">' + avatar(u) +
       '<div><div class="person-name">' + esc(u.name) +
       (isMentor ? '<span class="role-tag mentor"><i class="fa-solid fa-star"></i>Mentor</span>' : '') +
+      (hasRoleU(u, 'catalyst') ? '<span class="role-tag catalyst"><i class="fa-solid fa-bolt"></i>Catalyst</span>' : '') +
       (hasRoleU(u, 'admin') ? '<span class="role-tag admin"><i class="fa-solid fa-shield-halved"></i>Organizer</span>' : '') +
       '</div>' +
       (u.affiliation ? '<div class="person-affil">' + esc(u.affiliation) + '</div>' : '') +
@@ -1138,7 +1147,23 @@
         if (Cl[rr][cc] === '0') { sc += Co + cc; sr += rr; n++; }
       }
     }
-    return { cells: cells, hollow: { col: sc / n, row: sr / n } };
+    // Four RESERVED slots for catalysts (special guests). Three fill currently-
+    // empty cells that sit INSIDE a letter's existing column span, so the ICE
+    // bounding box — and therefore the whole formation's size and centring — is
+    // unchanged. The fourth floats just off the formation's bottom-right; it's
+    // positioned in buildWordmark relative to the measured box (and excluded
+    // from that measurement) so it, too, never nudges the letters.
+    //   1. C top-left corner   (row 0, C col 0)
+    //   2. C bottom-left corner (row 6, C col 0)
+    //   3. E middle-branch end  (row 3, E col 4)
+    //   4. floating bottom-right accent
+    var reserved = [
+      { r: 0, c: origins[1] + 0, letter: 1 },
+      { r: 6, c: origins[1] + 0, letter: 1 },
+      { r: 3, c: origins[2] + 4, letter: 2 },
+      { floating: true },
+    ];
+    return { cells: cells, hollow: { col: sc / n, row: sr / n }, reserved: reserved };
   }
 
   // Team list for the filter chips — one per team, sorted by name; before any
@@ -1197,14 +1222,16 @@
       }).join('') + '</div>';
   }
 
-  // mentors/participants counts — shown beside the team chain in the app bar
+  // mentors/participants/catalysts counts — shown beside the team chain in the app bar
   function topbarLegendHtml() {
-    var users = ((state.data && state.data.users) || []).filter(isCommunityMember);
-    var mentors = users.filter(function (u) { return hasRoleU(u, 'mentor'); }).length;
-    var participants = users.filter(function (u) { return hasRoleU(u, 'participant'); }).length;
+    var all = (state.data && state.data.users) || [];
+    var mentors = all.filter(function (u) { return hasRoleU(u, 'mentor'); }).length;
+    var participants = all.filter(function (u) { return hasRoleU(u, 'participant'); }).length;
+    var catalysts = all.filter(isCatalyst).length;
     return '<div class="topbar-legend">' +
       '<span><span class="dot mentor"></span>' + mentors + ' mentor' + (mentors === 1 ? '' : 's') + '</span>' +
       '<span><span class="dot participant"></span>' + participants + ' participant' + (participants === 1 ? '' : 's') + '</span>' +
+      (catalysts ? '<span><span class="dot catalyst"></span>' + catalysts + ' catalyst' + (catalysts === 1 ? '' : 's') + '</span>' : '') +
       '</div>';
   }
 
@@ -1296,8 +1323,13 @@
   function buildWordmark() {
     var word = $('#word');
     if (!word) return;
-    // role-less rows (access removed) stay off the hive
-    var users = ((state.data && state.data.users) || []).filter(isCommunityMember);
+    // Community members (participant/mentor) fill the 42 letter cells; catalysts
+    // (special guests) fill the 4 reserved slots. Role-less rows (access removed)
+    // stay off the hive entirely.
+    var allUsers = (state.data && state.data.users) || [];
+    var users = allUsers.filter(isCommunityMember);
+    var catalysts = allUsers.filter(isCatalyst);
+    var onlineIds = (state.data && state.data.online) || [];
     var built = wordCells();
     var cells = built.cells;
     var w = 74, minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
@@ -1307,7 +1339,8 @@
       cell.x = bx + (cell.letter === 0 ? I_SHIFT * w : 0);
       cell.y = cell.r * w;
       // measure from base positions so the box, C/E and centring are unchanged —
-      // the I just slides right within the reserved left margin
+      // the I just slides right within the reserved left margin. Reserved
+      // catalyst slots are deliberately NOT measured, so they never move ICE.
       minX = Math.min(minX, bx); maxX = Math.max(maxX, bx + w);
       minY = Math.min(minY, cell.y); maxY = Math.max(maxY, cell.y + w);
     });
@@ -1317,43 +1350,70 @@
     word.__h = maxY - minY;
     word.innerHTML = '';
 
-    // map each assigned user onto a spread-out cell
+    // A single hive tile — a filled member octagon (kind 'p'|'m'|'cat') wired to
+    // the preview, or an empty placeholder for an open slot.
+    function makeTile(u, kind) {
+      var el;
+      if (u) {
+        var isOn = onlineIds.indexOf(u.id) !== -1;
+        el = document.createElement('a');
+        el.className = 'oct ' + kind;
+        el.href = '#/profile/' + u.id;
+        el.title = u.name + (isOn ? ' — online' : '');
+        el.setAttribute('data-uid', u.id);
+        el.innerHTML = '<div class="oct-in">' +
+          (u.image ? '<img src="' + esc(u.image) + '" alt="" loading="lazy">' : '<span class="oct-blank">' + esc(initials(u.name)) + '</span>') +
+          '</div>' +
+          (isOn ? '<span class="oct-online" title="Online"></span>' : '');
+        el.addEventListener('mouseenter', function () { showHivePreview(u, kind, el); });
+        el.addEventListener('mouseleave', hideHivePreview);
+        // click: pin the preview for 10 s, then a quick fade-out. (The big
+        // preview octagon itself opens the profile.)
+        el.addEventListener('click', function (e) { e.preventDefault(); holdHivePreview(u, kind, el); });
+      } else {
+        el = document.createElement('div');
+        el.className = 'oct empty' + (kind === 'cat' ? ' cat' : '');
+        el.innerHTML = '<div class="oct-in"><span class="oct-slot"><i class="fa-solid fa-' + (kind === 'cat' ? 'bolt' : 'user') + '"></i></span></div>';
+      }
+      el.style.width = w + 'px'; el.style.height = w + 'px';
+      return el;
+    }
+
+    // map each assigned community user onto a spread-out cell
     var order = slotOrder(cells), cellUser = {};
     for (var k = 0; k < users.length && k < order.length; k++) cellUser[order[k]] = users[k];
 
     cells.forEach(function (cell, i) {
       var u = cellUser[i];
-      var el;
-      if (u) {
-        var mentor = hasRoleU(u, 'mentor');
-        var online = ((state.data && state.data.online) || []).indexOf(u.id) !== -1;
-        el = document.createElement('a');
-        el.className = 'oct ' + (mentor ? 'm' : 'p');
-        el.href = '#/profile/' + u.id;
-        el.title = u.name + (online ? ' — online' : '');
-        el.setAttribute('data-uid', u.id);
-        el.innerHTML = '<div class="oct-in">' +
-          (u.image ? '<img src="' + esc(u.image) + '" alt="" loading="lazy">' : '<span class="oct-blank">' + esc(initials(u.name)) + '</span>') +
-          '</div>' +
-          (online ? '<span class="oct-online" title="Online"></span>' : '');
-        el.addEventListener('mouseenter', function () { showHivePreview(u, mentor, el); });
-        el.addEventListener('mouseleave', hideHivePreview);
-        // click: pin the preview for 10 s, then a quick fade-out. (The big
-        // preview octagon itself opens the profile.)
-        el.addEventListener('click', function (e) {
-          e.preventDefault();
-          holdHivePreview(u, mentor, el);
-        });
-      } else {
-        el = document.createElement('div');
-        el.className = 'oct empty';
-        el.innerHTML = '<div class="oct-in"><span class="oct-slot"><i class="fa-solid fa-user"></i></span></div>';
-      }
-      el.style.width = w + 'px'; el.style.height = w + 'px';
+      var el = makeTile(u, u ? (hasRoleU(u, 'mentor') ? 'm' : 'p') : 'p');
       el.style.left = (cell.x - minX) + 'px';
       el.style.top = (cell.y - minY) + 'px';
       // intro fade: whole letter-group appears at once, I → C → E, slight stagger
       el.style.animationDelay = (cell.letter * 0.35) + 's';
+      word.appendChild(el);
+    });
+
+    // Reserved catalyst slots — always shown (empty until a catalyst joins) so
+    // the four opened slots are visible. The first three are grid-anchored to
+    // currently-empty cells inside a letter's span; the fourth floats just off
+    // the formation's bottom-right. All four are positioned from the measured
+    // box but excluded from it, so none of them shift the ICE letters. Extra
+    // catalysts beyond four have no slot (only four exist).
+    (built.reserved || []).forEach(function (slot, ri) {
+      var el = makeTile(catalysts[ri], 'cat');
+      el.classList.add('oct-reserved');
+      var left, top;
+      if (slot.floating) {
+        el.classList.add('oct-float');
+        left = (maxX - minX) + w * 0.55;   // just past the formation's right edge
+        top = (maxY - minY) - w;            // bottom band — stays within the box height
+      } else {
+        left = (slot.c * w) - minX;
+        top = (slot.r * w) - minY;
+      }
+      el.style.left = left + 'px';
+      el.style.top = top + 'px';
+      el.style.animationDelay = '1.1s';     // fade in just after the E group
       word.appendChild(el);
     });
 
@@ -1408,7 +1468,7 @@
     });
   }
 
-  function showHivePreview(u, mentor, el) {
+  function showHivePreview(u, kind, el) {
     var word = $('#word'); if (!word) return;
     word.classList.add('focus');
     word.__pvUid = u.id;
@@ -1417,15 +1477,15 @@
     var img = $('#hivePvImg'), nm = $('#hivePvNm'), role = $('#hivePvRole'), view = $('#hivePvView');
     if (img) img.src = u.image || '';
     if (nm) nm.textContent = u.name;
-    if (role) role.textContent = mentor ? 'Mentor' : 'Participant';
+    if (role) role.textContent = kind === 'cat' ? 'Catalyst' : kind === 'm' ? 'Mentor' : 'Participant';
     if (view) view.href = '#/profile/' + u.id; // explicit "View profile" link
     var p = word.__preview;
-    if (p) { p.classList.remove('m', 'p', 'fadeout'); p.classList.add(mentor ? 'm' : 'p', 'on'); }
+    if (p) { p.classList.remove('m', 'p', 'cat', 'fadeout'); p.classList.add(kind, 'on'); }
   }
   // Click-pin: the preview survives mouseleave for 10 s, then fades out fast.
   var hiveHold = { timer: null, until: 0 };
-  function holdHivePreview(u, mentor, el) {
-    showHivePreview(u, mentor, el);
+  function holdHivePreview(u, kind, el) {
+    showHivePreview(u, kind, el);
     clearTimeout(hiveHold.timer);
     hiveHold.until = Date.now() + 10000;
     hiveHold.timer = setTimeout(function () {
@@ -1548,6 +1608,7 @@
       '<div class="info"><h1>' + esc(u.name) + '</h1>' +
       '<div class="person-name">' +
       (hasRoleU(u, 'mentor') ? '<span class="role-tag mentor"><i class="fa-solid fa-star"></i>Mentor</span>' : '') +
+      (hasRoleU(u, 'catalyst') ? '<span class="role-tag catalyst"><i class="fa-solid fa-bolt"></i>Catalyst</span>' : '') +
       (hasRoleU(u, 'admin') ? '<span class="role-tag admin"><i class="fa-solid fa-shield-halved"></i>Organizer</span>' : '') + '</div>' +
       '<div class="meta-row">' +
       (u.affiliation ? '<span><i class="fa-solid fa-building"></i>' + esc(u.affiliation) + '</span>' : '') +
@@ -1843,10 +1904,10 @@
     if (!d) return skeletons();
     var teams = (d.teams || []).slice().sort(function (a, b) { return a.createdAt < b.createdAt ? 1 : -1; });
     var head = '<div class="section-head section-actions">' +
-      (me() ? '<button class="btn btn-gradient btn-sm" data-action="new-team"><i class="fa-solid fa-plus"></i>Create team</button>' : '') + '</div>';
+      (me() && (isCommunityMember(me()) || state.data.isAdmin) ? '<button class="btn btn-gradient btn-sm" data-action="new-team"><i class="fa-solid fa-plus"></i>Create team</button>' : '') + '</div>';
     if (!teams.length) {
       return head + '<div class="empty"><i class="fa-solid fa-people-group"></i>No teams yet.' +
-        (me() ? '<br><br><button class="btn btn-gradient" data-action="new-team"><i class="fa-solid fa-plus"></i>Create the first team</button>' : ' Sign in to create the first one.') + '</div>';
+        (me() && (isCommunityMember(me()) || state.data.isAdmin) ? '<br><br><button class="btn btn-gradient" data-action="new-team"><i class="fa-solid fa-plus"></i>Create the first team</button>' : ' Sign in to create the first one.') + '</div>';
     }
     return head + '<div class="grid grid-teams">' + teams.map(teamCard).join('') + '</div>';
   }
@@ -1898,9 +1959,12 @@
       (editing
         ? '<button class="btn btn-gradient btn-sm" data-action="team-edit-save" data-id="' + esc(id) + '"><span class="label">Save changes</span><span class="spin"></span></button>' +
           '<button class="btn btn-ghost btn-sm" type="button" data-action="team-edit-cancel"><i class="fa-solid fa-xmark"></i>Cancel</button>'
-        : (me() ? (amMember
-              ? '<button class="btn btn-outline btn-sm" data-action="leave-team" data-id="' + esc(id) + '"><i class="fa-solid fa-arrow-right-from-bracket"></i><span class="label">Leave team</span><span class="spin"></span></button>'
-              : '<button class="btn btn-gradient btn-sm" data-action="join-team" data-id="' + esc(id) + '"><i class="fa-solid fa-plus"></i><span class="label">Join team</span><span class="spin"></span></button>')
+        : (me()
+            ? (isCommunityMember(me())
+                ? (amMember
+                    ? '<button class="btn btn-outline btn-sm" data-action="leave-team" data-id="' + esc(id) + '"><i class="fa-solid fa-arrow-right-from-bracket"></i><span class="label">Leave team</span><span class="spin"></span></button>'
+                    : '<button class="btn btn-gradient btn-sm" data-action="join-team" data-id="' + esc(id) + '"><i class="fa-solid fa-plus"></i><span class="label">Join team</span><span class="spin"></span></button>')
+                : '') // catalysts/organizers aren't team members — no join control
             : '<button class="btn btn-primary btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in to join</button>') +
           (canManage ? '<button class="btn btn-outline btn-sm" data-action="edit-team" data-id="' + esc(id) + '"><i class="fa-solid fa-pen"></i>Edit</button>' : '')) +
       '</div></div></div>' +
@@ -2613,12 +2677,14 @@
   function validateProfile(form) {
     var fd = new FormData(form);
     if (!String(fd.get('firstName') || '').trim()) return 'Please enter your first name.';
-    // GitHub is mandatory. Someone without an account types the bypass keyword
-    // (C.GITHUB_BYPASS) to satisfy it — they won't be added to the GitHub org.
+    // GitHub is mandatory for builders (participants/mentors). Someone without an
+    // account types the bypass keyword (C.GITHUB_BYPASS) to satisfy it — they
+    // won't be added to the GitHub org. Catalysts (guests) are exempt.
+    var isCatalystCard = form.getAttribute('data-role') === 'catalyst';
     var ghRaw = String(fd.get('linkGithub') || '').trim();
     var ghWaiver = String(C.GITHUB_BYPASS || '');
-    var ghBypassed = !!ghWaiver && ghRaw.toLowerCase() === ghWaiver.toLowerCase();
-    if (!ghRaw) {
+    var ghBypassed = isCatalystCard || (!!ghWaiver && ghRaw.toLowerCase() === ghWaiver.toLowerCase());
+    if (!isCatalystCard && !ghRaw) {
       return ghWaiver
         ? 'A GitHub username is required. If you don’t have one, type “' + ghWaiver + '” to skip.'
         : 'A GitHub username is required.';
@@ -2648,9 +2714,9 @@
   // (bootstrap.invite, mirrored server-side), by the stored role chips when
   // editing — so the badge is fixed; there is nothing to choose.
   function cardRole(u, isNew) {
-    if (!isNew) return hasRoleU(u, 'admin') ? 'admin' : hasRoleU(u, 'mentor') ? 'mentor' : 'participant';
+    if (!isNew) return hasRoleU(u, 'admin') ? 'admin' : hasRoleU(u, 'mentor') ? 'mentor' : hasRoleU(u, 'catalyst') ? 'catalyst' : 'participant';
     var d = state.data || {};
-    if (d.invite) return d.invite.role === 'mentor' ? 'mentor' : d.invite.role === 'admin' ? 'admin' : 'participant';
+    if (d.invite) return PLATFORM_ROLES.indexOf(d.invite.role) !== -1 ? d.invite.role : 'participant';
     return d.isAdmin ? 'admin' : 'participant';
   }
 
@@ -2690,7 +2756,7 @@
       '<div class="card-video" id="cardVideo"></div>' +
       '<div class="idcard-head"><span class="idcard-brand">' + brandHtml(true) + '</span>' +
       // role badge is fixed (pre-assigned by the invite / role chips)
-      '<span class="idcard-type">' + (role === 'admin' ? 'ORGANIZER' : role === 'mentor' ? 'MENTOR' : 'MEMBER') + '</span>' +
+      '<span class="idcard-type">' + (role === 'admin' ? 'ORGANIZER' : role === 'mentor' ? 'MENTOR' : role === 'catalyst' ? 'CATALYST' : 'MEMBER') + '</span>' +
       '</div>' +
       '<div class="idcard-main">' +
       '<div class="idcard-photo"><div class="photo-vp" id="photoVp" title="Drag to adjust · scroll to zoom">' +
@@ -2826,7 +2892,7 @@
     var last = String(fd.get('lastName') || '').trim();
     return {
       name: (first + ' ' + last).trim(),
-      role: form.getAttribute('data-role') === 'mentor' ? 'mentor' : 'participant',
+      role: (function (r) { return r === 'mentor' || r === 'catalyst' ? r : 'participant'; })(form.getAttribute('data-role')),
       affiliation: String(fd.get('affiliation') || '').trim(),
       bio: String(fd.get('bio') || '').trim(),
       skills: getTagValues(),
@@ -2911,7 +2977,7 @@
     if (!signedIn()) return;
     var f = {
       name: u.name || '',
-      role: hasRoleU(u, 'mentor') ? 'mentor' : 'participant',
+      role: hasRoleU(u, 'mentor') ? 'mentor' : hasRoleU(u, 'catalyst') ? 'catalyst' : 'participant',
       affiliation: u.affiliation || '',
       bio: u.bio || '',
       skills: u.skills || [],
@@ -3269,9 +3335,12 @@
     };
     var mark = function (el, need) { if (el) el.classList.toggle('needs-fill', !!need); };
 
-    // text fields on the card (names, affiliation, bio, links)
+    // text fields on the card (names, affiliation, bio, links). Catalysts aren't
+    // asked for links, so those fields never glow for them.
+    var hintCatalyst = form.getAttribute('data-role') === 'catalyst';
     ['firstName', 'lastName', 'affiliation', 'bio',
      'linkGithub', 'linkWebsite', 'linkLinkedin'].forEach(function (n) {
+      if (hintCatalyst && (n === 'linkGithub' || n === 'linkWebsite' || n === 'linkLinkedin')) return;
       var el = form.querySelector('[name="' + n + '"]');
       if (el) mark(el, !el.value.trim());
     });
@@ -3279,8 +3348,12 @@
     // default backdrop plays when none is set), so it is never marked as a gap.
     mark(form.querySelector('.photo-vp'), !(photoEd || val('image')));
     mark(form.querySelector('#skillAddBtn'), getTagValues().length === 0);
-    // front "flip" button glows while the back still has gaps
-    var backGap = !val('bio') || !val('linkGithub') || !val('linkWebsite') || !val('linkLinkedin');
+    // front "flip" button glows while the back still has gaps. Catalysts (guests)
+    // aren't asked for links, so only the bio counts as a back-side gap for them.
+    var isCatalystCard = form.getAttribute('data-role') === 'catalyst';
+    var backGap = isCatalystCard
+      ? !val('bio')
+      : (!val('bio') || !val('linkGithub') || !val('linkWebsite') || !val('linkLinkedin'));
     mark(form.querySelector('.idfront [data-action="flip-card"]'), backGap);
   }
 
@@ -3323,12 +3396,18 @@
     if (!btn) return;
     var fd = new FormData(form);
     var has = function (n) { return String(fd.get(n) || '').trim().length > 0; };
+    var isCatalystCard = form.getAttribute('data-role') === 'catalyst';
     var photoOk = !!photoEd || has('image');
     var textOk = has('firstName') && has('lastName') && has('affiliation') && has('bio');
     var skillsOk = getTagValues().length > 0;
     // Intro video is optional — a member can join without one (the default
-    // card backdrop plays in its place), so it's not part of the gate.
-    var linksOk = LINK_FIELDS.every(function (f) { return linkStatus[f] === 'ok'; });
+    // card backdrop plays in its place), so it's not part of the gate. Links are
+    // required for builders; catalysts (guests) may leave them blank, but a link
+    // they DO type must still resolve.
+    var linksOk = LINK_FIELDS.every(function (f) {
+      var s = linkStatus[f];
+      return s === 'ok' || (isCatalystCard && (s === 'empty' || !s));
+    });
     var complete = photoOk && textOk && skillsOk && linksOk;
     // staged activation: complete card → consent unlocks; consent ticked →
     // button unlocks. Consent is never persisted, and it un-ticks if the
@@ -5112,7 +5191,7 @@
     // Send is blocked while any address is already invited/registered — remove it first.
     var canSend = n > 0 && dupCount === 0 && !frozen;
     return '<div class="panel invite-card">' +
-      '<h3><i class="fa-regular fa-paper-plane"></i>Invite ' + (c.role === 'mentor' ? 'mentors' : c.role === 'admin' ? 'admins' : 'participants') + '</h3>' +
+      '<h3><i class="fa-regular fa-paper-plane"></i>Invite ' + (c.role === 'mentor' ? 'mentors' : c.role === 'catalyst' ? 'catalysts' : c.role === 'admin' ? 'admins' : 'participants') + '</h3>' +
       '<div class="tag-input invite-input" data-action="invite-focus">' + chips +
       '<input id="inviteEntry" type="text" autocomplete="off" spellcheck="false" value="' + esc(c.text || '') + '" placeholder="' + (n ? 'Add another…' : 'Type or paste email addresses…') + '"' + dis + '>' +
       '</div>' +
@@ -5186,6 +5265,7 @@
     var head = '<div class="invite-bar">' +
       '<button class="btn btn-outline btn-sm" data-action="invite-open" data-role="participant"><i class="fa-solid fa-user-plus"></i>Invite participants</button>' +
       '<button class="btn btn-outline btn-sm" data-action="invite-open" data-role="mentor"><i class="fa-solid fa-user-tie"></i>Invite mentors</button>' +
+      '<button class="btn btn-outline btn-sm" data-action="invite-open" data-role="catalyst"><i class="fa-solid fa-bolt"></i>Invite catalysts</button>' +
       '<button class="btn btn-outline btn-sm" data-action="invite-open" data-role="admin"><i class="fa-solid fa-shield-halved"></i>Invite admins</button>' +
       '</div>' + (inviteCard ? inviteCardHtml() : '');
     if (!users.length && !pending.length) {
@@ -5220,7 +5300,7 @@
         '<td><button class="btn btn-ghost btn-sm" data-action="del-user" data-id="' + esc(u.id) + '" data-name="' + esc(u.name) + '"' + (deletingUserId ? ' style="visibility:hidden" tabindex="-1"' : '') + '><i class="fa-regular fa-trash-can"></i></button></td></tr>';
     }).join('');
     var invRows = pending.map(function (i) {
-      var roleTag = i.role === 'mentor' ? 'mentor' : i.role === 'admin' ? 'admin' : 'participant';
+      var roleTag = i.role === 'mentor' ? 'mentor' : i.role === 'catalyst' ? 'catalyst' : i.role === 'admin' ? 'admin' : 'participant';
       return '<tr class="invite-row"><td style="display:flex;align-items:center;gap:10px">' +
         '<span class="avatar avatar-sm invite-avatar"><i class="fa-regular fa-envelope"></i></span><span class="invite-noname">—</span></td>' +
         '<td>' + esc(i.email) + '</td>' +
@@ -6147,7 +6227,7 @@
       case 'invite-open': {
         if (inviteCard && inviteCard.sending) break;
         var invRole = t.getAttribute('data-role');
-        inviteCard = { role: (invRole === 'mentor' || invRole === 'admin') ? invRole : 'participant', chips: [] };
+        inviteCard = { role: (invRole === 'mentor' || invRole === 'catalyst' || invRole === 'admin') ? invRole : 'participant', chips: [] };
         route();
         var invEntry0 = $('#inviteEntry');
         if (invEntry0) invEntry0.focus();

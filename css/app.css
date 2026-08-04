@@ -489,7 +489,9 @@ a.card { color: inherit; display: block; }
 .role-tag.mentor { background: rgba(97, 0, 255, 0.09); color: var(--color-accent); }
 .role-tag.admin { background: rgba(14, 15, 17, 0.08); color: var(--text); }
 .role-tag.participant { background: rgba(0, 215, 238, 0.12); color: #007c8a; }
+.role-tag.catalyst { background: rgba(245, 145, 10, 0.13); color: #b5670a; }
 :root[data-theme="dark"] .role-tag.participant { color: #4fd8e8; }
+:root[data-theme="dark"] .role-tag.catalyst { color: #ffb64d; }
 :root[data-theme="dark"] .role-tag.admin { background: rgba(255, 255, 255, 0.10); }
 .role-tag.none { background: rgba(14, 15, 17, 0.05); color: var(--text-muted); font-style: italic; text-transform: none; }
 
@@ -1358,7 +1360,7 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
    square grid arranged to spell ICE; greyscale photos + duotone tint by role. */
 .hive {
   --oct: url(#octr); /* rounded-corner octagon (SVG clip in index.html) */
-  --accent: #6100FF; --accent2: #00D7EE;
+  --accent: #6100FF; --accent2: #00D7EE; --accent3: #F5910A; /* catalyst amber */
   position: absolute; inset: 0; overflow: hidden; color: var(--text);
   /* Light background to match the other sections (dark theme comes later). */
   background: var(--bg);
@@ -1370,6 +1372,7 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
 .hive-legend .dot { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 7px; vertical-align: -1px; }
 .dot.mentor { background: var(--accent); }
 .dot.participant { background: var(--accent2); }
+.dot.catalyst { background: #F5910A; }
 /* caption inside the empty preview octagon (the C's cavity) */
 .oct-preview .hive-caption {
   position: absolute; inset: 16%; z-index: 0;
@@ -1408,6 +1411,7 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
 .oct-in::after { content: ""; position: absolute; inset: 0; mix-blend-mode: color; opacity: 0.9; }
 .oct.m .oct-in::after { background: var(--accent); }
 .oct.p .oct-in::after { background: var(--accent2); }
+.oct.cat .oct-in::after { background: var(--accent3); } /* catalyst — amber duotone */
 
 /* placeholder slot — an empty octagon outline, waiting to be filled.
    The shape (all 8 sides) is drawn as a ring: a filled octagon in the outline
@@ -1418,6 +1422,14 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
 .oct.empty .oct-in::after { display: none; }
 .oct-slot { position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center; color: var(--text-faint); font-size: 22px; }
 .oct.empty:hover { transform: none; }
+/* reserved catalyst slots — an amber-tinted open seat, so the four opened slots
+   read as catalyst seats even before anyone joins */
+.oct.cat.empty .oct-in { background: rgba(245, 145, 10, 0.12); }
+.oct.cat.empty .oct-slot { color: var(--accent3); opacity: 0.75; }
+/* the lone floating catalyst tile off the formation's bottom-right — a soft
+   shadow sets it apart from the letter grid */
+.oct.oct-float { filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.26)); }
+.oct.oct-float.empty .oct-in { box-shadow: 0 0 0 1px rgba(245, 145, 10, 0.35) inset; }
 .word.focus .oct.empty { opacity: 0.4; filter: none; }
 
 /* intro: the ICE wordmark reveals a letter-group at a time (I → C → E). Each
