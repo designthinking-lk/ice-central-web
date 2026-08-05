@@ -2444,9 +2444,10 @@ body.hive-full .nav a { pointer-events: auto; }
 #topbarTeams, #mineToggle, #themeToggle, #topbarActions, #navAdmin, .fab-stack {
   transition: opacity 0.9s ease;
 }
-/* the team chips only fade on People — on Projects #topbarTeams holds the
-   "N projects … N teams" tagline, which stays put */
+/* #topbarTeams fades on People (team chips) and Tools (scope filters + Add),
+   but NOT on Projects, where it holds the "N projects … N teams" tagline */
 body.hive-full.idle #topbarTeams,
+body.view-tools.idle #topbarTeams,
 body.idle #mineToggle,
 body.idle #themeToggle,
 body.idle #topbarActions,
