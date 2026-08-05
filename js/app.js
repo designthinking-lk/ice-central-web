@@ -1645,7 +1645,8 @@
                 : '<button class="btn btn-primary btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in to message</button>'))) +
       '<button class="btn btn-outline btn-sm" type="button" data-action="card-share" data-kind="u" data-id="' + esc(u.id) + '"><i class="fa-solid fa-share-nodes"></i>Share</button>';
 
-    return '<div class="page-head">' +
+    return (u.video ? '' : auroraHtml()) + // no intro video → aurora instead of a black void
+      '<div class="page-head">' +
       '<div class="pv-avatar">' + avatar(u, 'avatar-lg pv-oct') +
       (u.video ? '<button type="button" class="profile-bg-btn pv-mute" data-action="profile-bg-mute" title="Unmute"><i class="fa-solid fa-volume-xmark"></i></button>' : '') +
       '</div>' +
@@ -3288,7 +3289,8 @@
   }
 
   function profileScaffold(title, sub, inner) {
-    return '<div class="profile-edit">' +
+    return auroraHtml() + // aurora backdrop behind the ID card instead of black
+      '<div class="profile-edit">' +
       (title ? '<h1 style="font-size:30px">' + title + '</h1>' : '') +
       (sub ? '<p style="color:var(--text-body)">' + sub + '</p>' : '') + inner + '</div>';
   }
@@ -5687,6 +5689,10 @@
   function adminTabKey() { return 'ice.admintab.' + A.getProject(); }
   var adminTab = 'people';
   try { var savedTab = localStorage.getItem(adminTabKey()); if (savedTab) adminTab = savedTab; } catch (e) { /* private mode */ }
+  // Logs tab: which sub-view is open, and a per-severity fetch cache
+  // (undefined = not fetched yet → shows a loading skeleton).
+  var adminLogsTab = 'analytics';
+  var adminLogsData = {}; // 'error' | 'warning' | 'info' -> array of entries
 
   // Teams tab interaction state (module-level so it survives route() re-renders).
   var teamSel = {};        // userId -> true : multi-selected people in the pool
@@ -5706,6 +5712,7 @@
     if (d.registryUrl) tabs.push({ id: 'projects', label: 'Platform' });
     tabs.push({ id: 'event', label: 'Event' });
     tabs.push({ id: 'resources', label: 'Resources' });
+    tabs.push({ id: 'logs', label: 'Logs' });
     if (!tabs.some(function (t) { return t.id === adminTab; })) adminTab = 'people';
     var bar = '<div class="admin-tabs">' + tabs.map(function (t) {
       return '<button class="comm-tab' + (t.id === adminTab ? ' active' : '') + '" type="button" data-action="admin-tab" data-tab="' + t.id + '">' + t.label + '</button>';
@@ -5716,9 +5723,92 @@
       adminTab === 'projects' ? projectsPanel(d) :
       adminTab === 'event' ? adminEventSection(d) :
       adminTab === 'resources' ? adminResourcesSection(d) :
+      adminTab === 'logs' ? adminLogsSection(d) :
       adminPeopleSection(d);
     // tabs sit at the footer, on the same line as the sidebar's Admin item
     return auroraHtml() + '<div class="admin-wrap"><div class="admin-tabview">' + body + '</div>' + bar + '</div>';
+  }
+
+  // ---- admin › Logs (Analytics + Errors/Warnings/Info) ----
+  // The sub-tab bar stays fixed; only .logs-body scrolls as content grows.
+  function adminLogsSection(d) {
+    var subs = [['analytics', 'Analytics', 'fa-chart-simple'], ['error', 'Errors', 'fa-circle-exclamation'],
+                ['warning', 'Warnings', 'fa-triangle-exclamation'], ['info', 'Info', 'fa-circle-info']];
+    var bar = '<div class="logs-subtabs">' + subs.map(function (s) {
+      return '<button class="logs-subtab' + (adminLogsTab === s[0] ? ' on' : '') + '" type="button" data-action="logs-subtab" data-sub="' + s[0] + '"><i class="fa-solid ' + s[2] + '"></i>' + s[1] + '</button>';
+    }).join('') + '</div>';
+    var body = adminLogsTab === 'analytics' ? adminAnalyticsHtml(d) : adminLogListHtml(adminLogsTab);
+    return '<div class="logs-view">' + bar + '<div class="logs-body">' + body + '</div></div>';
+  }
+
+  function fmtLogTime(ts) {
+    try {
+      return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (e) { return String(ts || ''); }
+  }
+
+  function adminLogListHtml(sev) {
+    var rows = adminLogsData[sev];
+    if (rows === undefined) {
+      var sk = '';
+      for (var i = 0; i < 6; i++) sk += '<div class="skeleton" style="height:44px;margin-bottom:8px"></div>';
+      return '<div class="logs-list">' + sk + '</div>';
+    }
+    if (!rows.length) return '<div class="empty"><i class="fa-regular fa-circle-check"></i>No ' + esc(sev) + ' entries in the log.</div>';
+    return '<div class="logs-list">' + rows.map(function (r) {
+      return '<div class="log-row log-' + esc(String(r.severity || '').toLowerCase()) + '">' +
+        '<span class="log-ts">' + esc(fmtLogTime(r.ts)) + '</span>' +
+        '<span class="log-action">' + esc(r.action || '—') + '</span>' +
+        '<span class="log-msg">' + esc(r.message || '') + '</span>' +
+        (r.email ? '<span class="log-email">' + esc(r.email) + '</span>' : '') +
+        '</div>';
+    }).join('') + '</div>';
+  }
+
+  // Registrations bucketed by calendar day for the last `days` days.
+  function registrationsByDay(users, days) {
+    var counts = {};
+    users.forEach(function (u) { if (u.createdAt) { var k = String(u.createdAt).slice(0, 10); counts[k] = (counts[k] || 0) + 1; } });
+    var out = [], now = new Date();
+    for (var i = days - 1; i >= 0; i--) {
+      var dt = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      var y = dt.getFullYear(), m = ('0' + (dt.getMonth() + 1)).slice(-2), day = ('0' + dt.getDate()).slice(-2);
+      var key = y + '-' + m + '-' + day;
+      out.push({ n: counts[key] || 0, d: dt.getDate(), label: dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) });
+    }
+    return out;
+  }
+
+  function adminAnalyticsHtml(d) {
+    var users = d.users || [], teams = d.teams || [];
+    var participants = users.filter(function (u) { return hasRoleU(u, 'participant'); }).length;
+    var mentors = users.filter(function (u) { return hasRoleU(u, 'mentor'); }).length;
+    var catalysts = users.filter(isCatalyst).length;
+    var admins = users.filter(function (u) { return hasRoleU(u, 'admin'); }).length;
+    var regEmails = {};
+    users.forEach(function (u) { if (u.email) regEmails[String(u.email).toLowerCase()] = 1; });
+    var pending = (d.invites || []).filter(function (i) { return !regEmails[String(i.email).toLowerCase()]; }).length;
+    var provisioned = users.filter(function (u) { return u.workEmail; }).length;
+    var withVideo = users.filter(function (u) { return u.video; }).length;
+    var stat = function (n, label, cls) { return '<div class="an-stat ' + (cls || '') + '"><b>' + n + '</b><span>' + label + '</span></div>'; };
+    var grid = '<div class="an-grid">' +
+      stat(users.length, 'accounts') +
+      stat(participants, 'participants', 'an-p') +
+      stat(mentors, 'mentors', 'an-m') +
+      stat(catalysts, 'catalysts', 'an-c') +
+      stat(admins, 'organizers') +
+      stat(teams.length, 'teams') +
+      stat(pending, 'pending invites') +
+      stat(provisioned, 'workspace accts') +
+      stat(withVideo, 'intro videos') +
+      '</div>';
+    var byDay = registrationsByDay(users, 14);
+    var maxN = Math.max.apply(null, byDay.map(function (x) { return x.n; }).concat([1]));
+    var bars = byDay.map(function (x) {
+      var h = x.n ? Math.max(Math.round((x.n / maxN) * 100), 8) : 0;
+      return '<div class="an-bar" title="' + esc(x.label) + ': ' + x.n + '"><span class="an-bar-fill" style="height:' + h + '%"></span><span class="an-bar-x">' + x.d + '</span></div>';
+    }).join('');
+    return grid + '<div class="an-chart"><h4>Registrations · last 14 days</h4><div class="an-bars">' + bars + '</div></div>';
   }
 
   // ---------------------------------------------------------------- router
@@ -6470,6 +6560,22 @@
         try { localStorage.setItem(adminTabKey(), adminTab); } catch (e) { /* private mode */ }
         route();
         break;
+      case 'logs-subtab': {
+        adminLogsTab = t.getAttribute('data-sub');
+        route();
+        // Fetch the log bucket the first time it's opened (Analytics is client-side).
+        if (adminLogsTab !== 'analytics' && adminLogsData[adminLogsTab] === undefined) {
+          var wantSev = adminLogsTab;
+          A.api('admin_logs', { severity: wantSev }).then(function (r) {
+            adminLogsData[wantSev] = (r && r.logs) || [];
+            if (adminTab === 'logs' && adminLogsTab === wantSev && location.hash === '#/admin') route();
+          }).catch(function () {
+            adminLogsData[wantSev] = [];
+            if (adminTab === 'logs' && location.hash === '#/admin') route();
+          });
+        }
+        break;
+      }
       case 'tb-toggle-select': {
         if (teamBusy) break;
         if (teamSel[id]) delete teamSel[id]; else teamSel[id] = true;

@@ -2180,6 +2180,51 @@ body.hive-full .nav a { pointer-events: auto; }
 :root[data-theme="dark"] .admin-tabs .comm-tab.active { color: #08272B; }
 .admin-tabview { flex: 1; min-height: 0; overflow-y: auto; padding-top: 8px; padding-bottom: 12px; }
 
+/* admin › Logs — the sub-tab bar is fixed; only .logs-body scrolls as it grows,
+   so the whole view fits the screen without the outer panel scrolling */
+.logs-view { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.logs-subtabs { flex: none; display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.logs-subtab {
+  display: inline-flex; align-items: center; gap: 7px; font: inherit; font-size: 13.5px; font-weight: 600;
+  padding: 8px 14px; border-radius: 999px; cursor: pointer; background: var(--surface);
+  border: 1px solid var(--border); color: var(--text-muted); transition: background .15s, border-color .15s, color .15s;
+}
+.logs-subtab i { font-size: 12px; }
+.logs-subtab:hover { border-color: var(--border-strong); color: var(--text); }
+.logs-subtab.on { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+:root[data-theme="dark"] .logs-subtab.on { color: #08272B; }
+.logs-body { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
+
+/* log rows */
+.logs-list { display: flex; flex-direction: column; gap: 6px; }
+.log-row {
+  display: grid; grid-template-columns: 128px 118px 1fr auto; gap: 12px; align-items: baseline;
+  padding: 9px 12px; border-radius: 8px; font-size: 13px; background: var(--bg-subtle);
+  box-shadow: inset 3px 0 0 var(--border-strong);
+}
+.log-row.log-error { background: rgba(214, 69, 69, 0.07); box-shadow: inset 3px 0 0 #d64545; }
+.log-row.log-warning { background: rgba(245, 145, 10, 0.07); box-shadow: inset 3px 0 0 #F5910A; }
+.log-ts { color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.log-action { font-weight: 600; color: var(--text-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-msg { color: var(--text-body); word-break: break-word; line-height: 1.45; }
+.log-email { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+@media (max-width: 760px) { .log-row { grid-template-columns: 1fr; gap: 2px; } }
+
+/* analytics stat cards + registrations mini-chart */
+.an-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.an-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 15px 12px; text-align: center; }
+.an-stat b { display: block; font-family: var(--font-display); font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+.an-stat span { font-size: 11.5px; color: var(--text-muted); }
+.an-stat.an-p b { color: #007c8a; } :root[data-theme="dark"] .an-stat.an-p b { color: #4fd8e8; }
+.an-stat.an-m b { color: var(--color-accent); }
+.an-stat.an-c b { color: #b5670a; } :root[data-theme="dark"] .an-stat.an-c b { color: #ffb64d; }
+.an-chart { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+.an-chart h4 { margin: 0 0 14px; font-size: 12.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.an-bars { display: flex; align-items: flex-end; gap: 6px; height: 130px; }
+.an-bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 5px; }
+.an-bar-fill { width: 100%; max-width: 26px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, #00D7EE 0%, #6100FF 100%); }
+.an-bar-x { font-size: 10px; color: var(--text-faint); }
+
 /* admin Resources tab — compact link directory, fits one screen */
 .res-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
 .res-group { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
