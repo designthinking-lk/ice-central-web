@@ -497,9 +497,11 @@
       }
     }
     // app-bar context blocks (right-aligned): People gets the legend + team
-    // count + chips; Projects gets the crafted-by tagline.
+    // count + chips; Projects gets the crafted-by tagline; Tools gets its
+    // scope filters + Add button (the We/Me toggle is hidden there instead).
     var isPeople = /^#\/people$/.test(location.hash || '#/');
     var isProjects = /^#\/projects$/.test(location.hash || '#/');
+    var isTools = /^#\/tools$/.test(location.hash || '#/');
     var tb = $('#topbarTeams');
     if (tb) {
       var chips = '';
@@ -513,9 +515,13 @@
         chips = '<span class="topbar-tag">' + DEMO_PROJECTS.length + ' amazing projects ' +
           tense('to be', 'being', 'were') + ' crafted in 3 days by ' +
           nT + ' amazing teams</span>';
+      } else if (isTools) {
+        chips = toolsBarHtml();
       }
       if (tb.innerHTML !== chips) tb.innerHTML = chips;
     }
+    // Tools moves its controls into the app bar, so hide the We/Me toggle there.
+    document.body.classList.toggle('view-tools', isTools);
     // on People, the hive goes full-bleed over the rail (letters above the
     // half octagon; the I's cavity hosts the nav)
     document.body.classList.toggle('hive-full', isPeople);
@@ -4294,8 +4300,9 @@
 
   function viewTools() {
     if (!isMember()) return signInGate('tools');
+    // The scope filters + Add button live in the app bar (see toolsBarHtml /
+    // renderChrome), not in the view body.
     return auroraHtml() + '<div class="tools-view" id="toolsView">' +
-      '<div class="tools-bar" id="toolsBar"></div>' +
       '<div class="tool-form-slot" id="toolFormSlot"></div>' +
       '<div class="tools-grid" id="toolsGrid">' + toolsSkeletonHTML(6) + '</div>' +
       '</div>';
@@ -4329,7 +4336,14 @@
   }
 
   function renderToolsBar() {
-    var bar = $('#toolsBar'); if (!bar || !toolsData) return;
+    // The tools controls live in the app bar's #topbarTeams slot now.
+    var tb = $('#topbarTeams'); if (!tb || !toolsData) return;
+    tb.innerHTML = toolsBarHtml();
+  }
+
+  // App-bar controls for the Tools view: Add button (leftmost) + scope filters.
+  function toolsBarHtml() {
+    if (!toolsData) return '';
     var tools = toolsData.tools || [];
     var counts = { all: tools.length, team: 0, global: 0 };
     tools.forEach(function (t) { counts[t.scope]++; });
@@ -4338,8 +4352,9 @@
         '<span class="tf-dot"></span>' + f[1] + ' <span class="tf-n">' + counts[f[0]] + '</span></button>';
     }).join('');
     var canAdd = toolsData.canAddTeam || toolsData.canAddGlobal;
-    bar.innerHTML = '<div class="tool-filters">' + chips + '</div>' +
-      (canAdd ? '<button class="btn btn-gradient btn-sm tools-add-btn" data-action="tool-add-open"><i class="fa-solid fa-plus"></i>Add tool</button>' : '');
+    return '<div class="topbar-tools">' +
+      (canAdd ? '<button class="btn btn-gradient btn-sm tools-add-btn" data-action="tool-add-open"><i class="fa-solid fa-plus"></i>Add tool</button>' : '') +
+      '<div class="tool-filters">' + chips + '</div></div>';
   }
 
   function renderToolsGrid() {

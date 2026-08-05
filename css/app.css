@@ -2559,15 +2559,22 @@ body.idle .fab-stack {
 .tool-fchip.on .tf-n { color: inherit; opacity: .7; }
 .tools-add-btn { margin-left: auto; }
 
+/* Tools controls hoisted into the app bar (see toolsBarHtml): Add button
+   leftmost, then the scope filters — all matching the We/Me pill height (38px).
+   The We/Me toggle itself is hidden on this view. */
+body.view-tools #mineToggle { display: none; }
+.topbar-tools { display: flex; align-items: center; gap: 8px; }
+.topbar-tools .tools-add-btn { margin-left: 0; height: 38px; }
+.topbar-tools .tool-filters { gap: 8px; flex-wrap: nowrap; }
+.topbar-tools .tool-fchip { height: 38px; }
+
 .tools-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); }
 .tool-skel { height: 164px; } /* match .tool-card so the grid doesn't reflow on load */
+/* flat cards — no border or left accent stripe, just a soft surface fill */
 .tool-card { position: relative; height: 164px; border-radius: var(--radius-lg); padding: 16px 16px 15px 18px;
-  background: var(--surface); border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
-.tool-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
-.tool-card.scope-team { border-color: var(--team-line); background: color-mix(in srgb, var(--surface) 90%, var(--team) 10%); }
-.tool-card.scope-global { border-color: var(--global-line); background: color-mix(in srgb, var(--surface) 90%, var(--global) 10%); }
-.tool-card.scope-team::before { background: var(--team); }
-.tool-card.scope-global::before { background: var(--global); }
+  background: var(--surface); border: none; display: flex; flex-direction: column; overflow: hidden; }
+.tool-card.scope-team { background: color-mix(in srgb, var(--surface) 90%, var(--team) 10%); }
+.tool-card.scope-global { background: color-mix(in srgb, var(--surface) 90%, var(--global) 10%); }
 .tool-top { display: flex; align-items: flex-start; gap: 10px; }
 .tool-title { font-weight: 700; font-size: 15.5px; letter-spacing: -.01em; line-height: 1.28; flex: 1; min-width: 0;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
