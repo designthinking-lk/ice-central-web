@@ -231,11 +231,10 @@ button { font-family: inherit; }
   gap: 4px; align-items: flex-start;
 }
 .nav a.nav-admin i { color: var(--text-muted); }
-.nav a:hover { background: var(--bg-subtle); color: var(--text); }
-/* admin (bottom button): no box on hover — tint the label + icon in the accent
-   colour, matching the About/Program/Tools fabs */
-.nav a.nav-admin:hover { background: none; color: var(--color-accent); }
-.nav a.nav-admin:hover i { color: var(--color-accent); }
+/* hover: no box — just tint the label + icon in the accent colour (same as the
+   active state, and the About/Program/Tools bottom fabs) */
+.nav a:hover { background: none; color: var(--color-accent); }
+.nav a:hover i { color: var(--color-accent); }
 .nav a.active {
   background: none; color: var(--color-accent);
   transform-origin: left center;
