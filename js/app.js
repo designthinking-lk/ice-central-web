@@ -4284,9 +4284,17 @@
   var toolsData = null;                          // { tools, canAddGlobal, canAddTeam, myTeam }
   var toolsUI = { filter: 'all', form: null, deleting: null };
 
+  // Drifting-aurora backdrop, full-bleed behind a view's content. Rendered as a
+  // direct child of #view (the .aurora CSS is position:absolute inset:0) so it
+  // paints the whole background — bleeding under the transparent sidebar — not
+  // just the inner content box.
+  function auroraHtml() {
+    return '<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>';
+  }
+
   function viewTools() {
     if (!isMember()) return signInGate('tools');
-    return '<div class="tools-view" id="toolsView">' +
+    return auroraHtml() + '<div class="tools-view" id="toolsView">' +
       '<div class="tools-bar" id="toolsBar"></div>' +
       '<div class="tool-form-slot" id="toolFormSlot"></div>' +
       '<div class="tools-grid" id="toolsGrid">' +
@@ -4499,7 +4507,7 @@
   ];
 
   function viewAbout() {
-    return '<div class="about">' +
+    return auroraHtml() + '<div class="about">' +
       '<header class="ab-hero">' +
       '<div class="hero-kicker">Innovation &middot; Creativity &middot; Entrepreneurship</div>' +
       '<h1>A step towards an <span class="grad">innovation ecosystem</span> in Sri&nbsp;Lanka</h1>' +
@@ -4603,7 +4611,7 @@
       return '<div class="pg-day"><div class="pg-day-head">' + esc(label) + '</div>' +
         '<div class="pg-day-body" data-di="' + di + '">' + blocks + '</div></div>';
     }).join('');
-    return '<div class="program-wrap"><div class="program-grid">' + cols + '</div></div>';
+    return auroraHtml() + '<div class="program-wrap"><div class="program-grid">' + cols + '</div></div>';
   }
 
   function initProgram() {
@@ -5684,7 +5692,7 @@
       adminTab === 'resources' ? adminResourcesSection(d) :
       adminPeopleSection(d);
     // tabs sit at the footer, on the same line as the sidebar's Admin item
-    return '<div class="admin-wrap"><div class="admin-tabview">' + body + '</div>' + bar + '</div>';
+    return auroraHtml() + '<div class="admin-wrap"><div class="admin-tabview">' + body + '</div>' + bar + '</div>';
   }
 
   // ---------------------------------------------------------------- router
