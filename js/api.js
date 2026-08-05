@@ -68,26 +68,30 @@
     var token = getToken();
     if (token && !body.token) body.token = token;
     var payload = JSON.stringify(body);
-    var res = null;
+    var data = null;
     for (var attempt = 0; ; attempt++) {
       try {
-        res = await fetch(C.API_URL, {
+        var res = await fetch(C.API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: payload,
           redirect: 'follow',
         });
+        // Apps Script's 302 -> googleusercontent echo intermittently 404s (and
+        // returns HTML, not JSON). Treat a non-OK status or an unparseable body
+        // as transient and retry, rather than surfacing a hard failure.
+        if (!res.ok) throw new Error('http_' + res.status);
+        data = JSON.parse(await res.text());
         break;
       } catch (netErr) {
-        if (attempt >= 2) {
+        if (attempt >= 3) {
           var e = new Error('Could not reach the server — check your connection and try again.');
           e.code = 'network';
           throw e;
         }
-        await new Promise(function (r) { setTimeout(r, 600 * (attempt + 1)); });
+        await new Promise(function (r) { setTimeout(r, 500 * (attempt + 1)); });
       }
     }
-    var data = await res.json();
     if (data && data.ok === false) {
       if (data.error === 'auth') setToken(null); // expired/invalid token
       var err = new Error(data.message || data.error || 'Request failed');

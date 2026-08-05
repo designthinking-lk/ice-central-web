@@ -4297,9 +4297,16 @@
     return auroraHtml() + '<div class="tools-view" id="toolsView">' +
       '<div class="tools-bar" id="toolsBar"></div>' +
       '<div class="tool-form-slot" id="toolFormSlot"></div>' +
-      '<div class="tools-grid" id="toolsGrid">' +
-      '<div class="empty" style="grid-column:1/-1"><span class="spin"></span></div></div>' +
+      '<div class="tools-grid" id="toolsGrid">' + toolsSkeletonHTML(6) + '</div>' +
       '</div>';
+  }
+
+  // Shimmer placeholder cards shown while the tools list is being fetched, sized
+  // to match the real cards so the grid doesn't jump when they arrive.
+  function toolsSkeletonHTML(n) {
+    var out = '';
+    for (var i = 0; i < n; i++) out += '<div class="skeleton tool-skel" aria-hidden="true"></div>';
+    return out;
   }
 
   function toolById(id) {

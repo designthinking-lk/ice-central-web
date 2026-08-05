@@ -2561,6 +2561,7 @@ body.idle .fab-stack {
 .tools-add-btn { margin-left: auto; }
 
 .tools-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); }
+.tool-skel { height: 164px; } /* match .tool-card so the grid doesn't reflow on load */
 .tool-card { position: relative; height: 164px; border-radius: var(--radius-lg); padding: 16px 16px 15px 18px;
   background: var(--surface); border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
 .tool-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
