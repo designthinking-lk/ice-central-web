@@ -2563,8 +2563,17 @@ body.idle .fab-stack {
 /* Tools controls hoisted into the app bar (see toolsBarHtml): Add button
    leftmost, then the scope filters — all matching the We/Me pill height (38px).
    The We/Me toggle itself is hidden on this view. */
-body.view-tools #mineToggle { display: none; }
-.topbar-tools { display: flex; align-items: center; gap: 8px; }
+.topbar-tools {
+  display: flex; align-items: center; gap: 8px;
+  /* scope colours also live here (the chips moved out of .tools-view), so the
+     dot / on-state tints resolve in the app bar */
+  --team: #10b3c9; --team-bg: rgba(22,199,222,.10); --team-line: rgba(22,199,222,.42);
+  --global: #1ea877; --global-bg: rgba(44,201,138,.10); --global-line: rgba(44,201,138,.40);
+}
+:root[data-theme="dark"] .topbar-tools { --team: #16C7DE; --global: #2CC98A; }
+/* We/Me only makes sense where there's something to highlight (People/Projects/
+   Skills). Hidden on Tools, About, Program and every Admin tab. */
+body.mine-hidden #mineToggle { display: none; }
 .topbar-tools .tools-add-btn { margin-left: 0; height: 38px; }
 .topbar-tools .tool-filters { gap: 8px; flex-wrap: nowrap; }
 .topbar-tools .tool-fchip { height: 38px; }

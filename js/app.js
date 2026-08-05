@@ -522,6 +522,10 @@
     }
     // Tools moves its controls into the app bar, so hide the We/Me toggle there.
     document.body.classList.toggle('view-tools', isTools);
+    // We/Me only applies where there's something to highlight (People/Projects/
+    // Skills). Hide it on Tools, About, Program and Admin.
+    document.body.classList.toggle('mine-hidden',
+      isTools || /^#\/(about|program|admin)$/.test(location.hash || '#/'));
     // on People, the hive goes full-bleed over the rail (letters above the
     // half octagon; the I's cavity hosts the nav)
     document.body.classList.toggle('hive-full', isPeople);
