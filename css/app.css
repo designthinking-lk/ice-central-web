@@ -1351,6 +1351,9 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
   text-align: center; color: var(--text-muted); padding: 56px 20px;
   border: 1px dashed var(--border-strong); border-radius: var(--radius-lg);
 }
+/* sign-in gate (Program / Tools when signed out): vertically centre the dashed
+   box in the view instead of pinning it near the top */
+.signin-gate { min-height: 100%; display: flex; flex-direction: column; justify-content: center; }
 .empty i { font-size: 30px; color: var(--text-faint); display: block; margin-bottom: 12px; }
 .skeleton { border-radius: var(--radius-lg); background: linear-gradient(100deg, var(--bg-subtle) 40%, #fff 50%, var(--bg-subtle) 60%); background-size: 200% 100%; animation: shim 1.2s infinite; height: 160px; }
 @keyframes shim { to { background-position: -200% 0; } }

@@ -3658,9 +3658,9 @@
   // ---- Projects & Tools (logged-in only; placeholder content for now) ----
 
   function signInGate(what) {
-    return '<div class="empty" style="margin-top:40px"><i class="fa-solid fa-lock"></i>' +
+    return '<div class="signin-gate"><div class="empty"><i class="fa-solid fa-lock"></i>' +
       'Sign in to view ' + esc(what) + '.<br><br>' +
-      '<button class="btn btn-gradient" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in with Google</button></div>';
+      '<button class="btn btn-gradient btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in with Google</button></div></div>';
   }
 
   // Placeholder showcase until teams publish real projects — 6 cards at the
