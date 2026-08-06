@@ -2186,6 +2186,13 @@
       wirePhotoGestures(vp);
       updateJoinState(); // a photo now exists — may complete the form
     };
+    // Without this, a file the browser can't decode (most often an iPhone HEIC
+    // opened in Chrome — Safari decodes HEIC, Chrome doesn't) failed silently:
+    // the picker did nothing and the user hit a dead end. Now they get told why.
+    img.onerror = function () {
+      URL.revokeObjectURL(url);
+      toast('Couldn’t open that image. If it’s an iPhone HEIC photo, upload a JPG or PNG instead.', true);
+    };
     img.src = url;
   }
 
@@ -5982,7 +5989,7 @@
         URL.revokeObjectURL(url);
         resolve(canvas.toDataURL('image/jpeg', quality));
       };
-      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Could not read image')); };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Couldn’t open that image — if it’s an iPhone HEIC photo, use a JPG or PNG.')); };
       img.src = url;
     });
   }
