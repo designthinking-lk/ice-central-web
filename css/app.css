@@ -2715,9 +2715,13 @@ textarea.tf-input { min-height: 58px; resize: vertical; }
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
   display: flex; align-items: center; justify-content: center; gap: 26px;
   padding: 15px 0 17px;
-  background: var(--bg);
+  background: transparent;
   font-size: 13.5px; color: var(--text-muted); pointer-events: none;
 }
+/* The opaque credit band is only wanted behind the #/about page — it caps the
+   long scrolling brochure. Everywhere else (People/Projects/Skills gates) the
+   footer floats transparent over the content/aurora, like the landing. */
+body:has(#navAbout.active) .site-credit { background: var(--bg); }
 /* while the footer band is up, let views scroll their last items clear of it */
 body:has(.site-credit:not([hidden])) .view { padding-bottom: 84px; }
 .site-credit[hidden] { display: none; } /* our display:flex would defeat [hidden] */
