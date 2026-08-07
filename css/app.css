@@ -1156,7 +1156,7 @@ body.profile-bg-on .panel {
 .profile-bg-btn:hover { background: rgba(14,15,17,0.92); }
 
 /* ------------------------------------------- public (signed-out) gate + teaser */
-.pub-gate { max-width: 640px; margin: 56px auto; display: flex; flex-direction: column; gap: 22px; }
+.pub-gate { max-width: 640px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
 .pub-gate-card { padding: 26px 28px; border-radius: 16px; background: var(--gradient-brand); color: #fff; box-shadow: 0 18px 40px rgba(97,0,255,0.22); }
 .pub-gate-kicker { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
 .pub-gate-card h1 { font-size: 27px; letter-spacing: -0.02em; margin: 8px 0 6px; }

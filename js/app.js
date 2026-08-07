@@ -3756,7 +3756,6 @@
         '<div class="pub-gate-cta"><i class="fa-solid fa-lock"></i>' +
           '<h2>Projects are for the ' + esc(eventName()) + ' community</h2>' +
           '<p>Sign in to explore every team’s project and demo — or request an invite to join the community.</p>' +
-          '<button class="btn btn-gradient" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in</button>' +
         '</div></div>';
     }
     // Aurora is a direct, full-bleed child of the view (position:absolute inset:0,
