@@ -5728,7 +5728,7 @@
         '<p class="wp-lead">Pushes to every member’s installed card (Google&nbsp;+&nbsp;Apple) and updates the card’s <b>LATEST</b> line. Logged in the history below.</p>' +
         '<textarea id="wpInput" class="wp-input" maxlength="200" rows="3" placeholder="e.g. Lunch is served in the atrium — sessions resume at 1:30"></textarea>' +
         '<div class="wp-actions"><span class="wp-hint">Shown on the card and as a push notification.</span>' +
-          '<button class="btn btn-gradient btn-sm" data-action="wallet-push-send"><i class="fa-solid fa-paper-plane"></i><span class="label">Send push</span><span class="spin"></span></button>' +
+          '<button id="wpSend" class="btn btn-gradient btn-sm" data-action="wallet-push-send" disabled><i class="fa-solid fa-paper-plane"></i><span class="label">Send push</span><span class="spin"></span></button>' +
         '</div>' +
       '</div>' +
       '<div class="panel wp-history"><h3><i class="fa-solid fa-clock-rotate-left"></i>History</h3>' + histHtml + '</div>' +
@@ -6306,13 +6306,14 @@
         var wmsg = wi ? wi.value.trim() : '';
         if (!wmsg) { toast('Type a message first', true); break; }
         busy(t, true);
+        if (wi) wi.disabled = true; // freeze the message while the push is in flight
         try {
           var wr = await A.api('admin_wallet_push', { message: wmsg });
           if (wi) wi.value = '';
           walletPushHist = null; // force history reload on re-render
           route();
           toast('Pushed to wallets · Google ' + (wr.googleCount || 0) + ' · Apple ' + (wr.appleCount || 0));
-        } catch (err) { toast(err.message, true); busy(t, false); }
+        } catch (err) { toast(err.message, true); busy(t, false); if (wi) wi.disabled = false; }
         break;
       }
       case 'toggle-theme': {
@@ -6730,6 +6731,11 @@
   // Auto-grow the chat composer as it wraps.
   document.addEventListener('input', function (e) {
     if (e.target && e.target.id === 'chatMsgInput') { chatUI.draft = e.target.value; autoGrow(e.target); }
+    // Wallet broadcast: gate the Send button on a non-empty message.
+    if (e.target && e.target.id === 'wpInput') {
+      var wpBtn = $('#wpSend');
+      if (wpBtn) wpBtn.disabled = !e.target.value.trim();
+    }
   });
 
   document.addEventListener('change', async function (e) {
