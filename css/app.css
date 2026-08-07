@@ -2718,10 +2718,20 @@ textarea.tf-input { min-height: 58px; resize: vertical; }
   background: transparent;
   font-size: 13.5px; color: var(--text-muted); pointer-events: none;
 }
-/* The opaque credit band is only wanted behind the #/about page — it caps the
-   long scrolling brochure. Everywhere else (People/Projects/Skills gates) the
-   footer floats transparent over the content/aurora, like the landing. */
-body:has(#navAbout.active) .site-credit { background: var(--bg); }
+/* The credit band gets a frosted-glass fill only behind the #/about page — it
+   caps the long scrolling brochure, matching the signed-in glass ::after band
+   (below). Everywhere else (People/Projects/Skills gates) the footer floats
+   transparent over the content/aurora, like the landing. No top-fade mask here:
+   unlike the decorative ::after, this element holds the credit content, and a
+   mask would clip the logos/text. */
+body:has(#navAbout.active) .site-credit {
+  background: rgba(244, 247, 249, 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  backdrop-filter: blur(14px) saturate(120%);
+}
+:root[data-theme="dark"] body:has(#navAbout.active) .site-credit {
+  background: rgba(18, 19, 22, 0.5);
+}
 /* while the footer band is up, let views scroll their last items clear of it */
 body:has(.site-credit:not([hidden])) .view { padding-bottom: 84px; }
 .site-credit[hidden] { display: none; } /* our display:flex would defeat [hidden] */
