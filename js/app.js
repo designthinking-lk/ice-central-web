@@ -507,9 +507,14 @@
       var chips = '';
       if (isPeople) {
         var nTeams = homeTeams().length;
+        // Hide the team-filter chips while the "Complete registration" CTA is up
+        // (signed in but no profile yet) — same signal that gates the CTA. The
+        // legend + team count stay; only the interactive selectors go away until
+        // registration is done, so an unregistered visitor isn't invited to filter.
+        var regIncomplete = signedIn() && !d.me && state.loaded;
         chips = topbarLegendHtml() +
           '<span class="topbar-count">' + nTeams + ' team' + (nTeams === 1 ? '' : 's') + '</span>' +
-          teamChipsHtml();
+          (regIncomplete ? '' : teamChipsHtml());
       } else if (isProjects) {
         var nT = homeTeams().length;
         chips = '<span class="topbar-tag">' + DEMO_PROJECTS.length + ' amazing projects ' +
