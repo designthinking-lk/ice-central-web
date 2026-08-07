@@ -5478,10 +5478,11 @@
   // same caps, so a stale board can never oversubscribe a team).
   var TEAM_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
   var TEAM_CAP = { participant: 5, mentor: 2 };
-  // Compact team labels for the board: Team A → T1 … Team F → T6. Data/name
-  // stay letter-based; only the visible admin labels are numbered.
-  function teamNum(L) { return String(TEAM_LETTERS.indexOf(L) + 1); }
-  function teamShort(L) { return 'T' + teamNum(L); }
+  // Team labels for the board are letter-based (Team A … Team F), matching the
+  // data/name and the public hive. The compact quick-assign buttons show just
+  // the bare letter (A … F).
+  function teamNum(L) { return L; }
+  function teamShort(L) { return 'Team ' + L; }
 
   // Participant chip → participant slot; mentor chip (or admin-only) → mentor slot.
   function teamSlot(u) { return hasRoleU(u, 'participant') ? 'participant' : 'mentor'; }
