@@ -1887,23 +1887,33 @@
     Promise.all(jobs).then(function (rs) {
       var g = null, a = null;
       rs.forEach(function (x) { if (x.google) g = x.google; if (x.apple) a = x.apple; });
-      var btnG = g ? '<a class="btn-wallet btn-wallet-google btn-wallet-lg" href="' + esc(g) + '"><i class="fa-brands fa-google-wallet"></i><span>Add to Google Wallet</span></a>' : '';
-      var btnA = a ? '<a class="btn-wallet btn-wallet-apple btn-wallet-lg" href="' + esc(a) + '"><i class="fa-brands fa-apple"></i><span>Add to Apple Wallet</span></a>' : '';
       var apple = isApplePlatform_();
-      // On Apple devices lead with the Apple button. Keep both as a fallback.
-      var html = apple ? (btnA + btnG) : (btnG + btnA);
-      action.innerHTML = html || '<p class="wallet-err">Could not prepare your card. Reopen the QR from your profile.</p>';
-      // Phone: jump straight to the matching wallet (iOS → Apple, else Google).
-      // One-shot per token so the back button returns to the buttons instead of
-      // bouncing straight out again.
+      // Render the tappable buttons — on Apple devices lead with Apple.
+      function renderButtons() {
+        var btnG = g ? '<a class="btn-wallet btn-wallet-google btn-wallet-lg" href="' + esc(g) + '"><i class="fa-brands fa-google-wallet"></i><span>Add to Google Wallet</span></a>' : '';
+        var btnA = a ? '<a class="btn-wallet btn-wallet-apple btn-wallet-lg" href="' + esc(a) + '"><i class="fa-brands fa-apple"></i><span>Add to Apple Wallet</span></a>' : '';
+        var html = apple ? (btnA + btnG) : (btnG + btnA);
+        action.innerHTML = html || '<p class="wallet-err">Could not prepare your card. Reopen the QR from your profile.</p>';
+      }
       var primary = apple ? (a || g) : (g || a);
       var phone = /Mobi|Android/i.test(navigator.userAgent) || apple;
+      // One-shot per token so the back button returns to the buttons instead of
+      // bouncing straight back out into the wallet again.
       var jumped = false;
       try { jumped = sessionStorage.getItem('ice.wallet.jumped') === (wt || 'self'); } catch (e) {}
+      // First arrival on a phone with a ready pass → open the wallet directly.
+      // Don't flash the button first: keep an "Opening…" note and navigate. If
+      // the OS didn't leave the page in a couple of seconds (jump blocked), fall
+      // back to the tappable buttons so the user is never stranded.
       if (primary && phone && !jumped) {
         try { sessionStorage.setItem('ice.wallet.jumped', wt || 'self'); } catch (e) {}
+        action.innerHTML = '<div class="wallet-loading"><span class="spin"></span> Opening your wallet…</div>';
+        setTimeout(renderButtons, 2500);
         location.href = primary;
+        return;
       }
+      // Desktop, or a return via the back button → show the tappable buttons.
+      renderButtons();
     });
   }
 

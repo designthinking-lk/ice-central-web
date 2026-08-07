@@ -2978,8 +2978,18 @@ html.is-mobile.is-wallet .fab-stack,
 html.is-mobile.is-wallet .site-credit,
 html.is-mobile.is-wallet .shell::before { display: none; }
 html.is-mobile.is-wallet .view { padding: 20px 16px; }
-html.is-mobile.is-wallet .wallet-view { margin-top: 5vh; max-width: 100%; }
+html.is-mobile.is-wallet .wallet-view { max-width: 100%; }
 html.is-mobile.is-wallet .btn-wallet { width: 100%; box-sizing: border-box; }
+
+/* The wallet/pcard handoff is a standalone card — drop the fixed brand title
+   (ICE ⇄ "Innovation Creativity…") that otherwise floats over the top, and
+   centre the card in the viewport instead of pinning it near the top. */
+html.is-wallet .brand { display: none; }
+html.is-wallet .view {
+  min-height: 100vh; min-height: 100dvh;
+  display: flex; align-items: center; justify-content: center;
+}
+html.is-wallet .wallet-view { margin: 0 auto; }
 
 /* ---------------------------------------------------------------- wallet */
 .wallet-panel { margin-top: 22px; }
