@@ -2738,6 +2738,18 @@ body:has(#navAbout.active) .site-credit::before {
 :root[data-theme="dark"] body:has(#navAbout.active) .site-credit::before {
   background: rgba(18, 19, 22, 0.5);
 }
+/* Matching frosted glass on the app-bar band — only on #/about, both signed-in
+   and signed-out (the selector keys off the route, not auth). The .shell::before
+   band already carries the soft lower-edge mask + z-index; here we just switch on
+   the same fill/blur recipe as the footer so the top and bottom bands match. */
+body:has(#navAbout.active) .shell::before {
+  background: rgba(244, 247, 249, 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  backdrop-filter: blur(14px) saturate(120%);
+}
+:root[data-theme="dark"] body:has(#navAbout.active) .shell::before {
+  background: rgba(18, 19, 22, 0.5);
+}
 /* while the footer band is up, let views scroll their last items clear of it */
 body:has(.site-credit:not([hidden])) .view { padding-bottom: 84px; }
 .site-credit[hidden] { display: none; } /* our display:flex would defeat [hidden] */
