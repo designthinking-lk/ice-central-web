@@ -1763,15 +1763,21 @@
   // ---- Add-to-Wallet flyout on #/me: flips a QR into the persona space,
   //      auto-hiding after 10s of inactivity. QR is minted lazily on first open.
   var walletFlyoutTimer = null;
+  // True while the QR + save links are still being minted. The inactivity
+  // auto-hide is paused during this window so the flyout can never time out
+  // mid-generation (generation can outlast the 10s idle timer).
+  var walletGenerating = false;
   function clearWalletFlyoutTimer() {
     if (walletFlyoutTimer) { clearTimeout(walletFlyoutTimer); walletFlyoutTimer = null; }
   }
   function resetWalletFlyoutTimer() {
     clearWalletFlyoutTimer();
+    if (walletGenerating) return; // paused until the card is ready
     walletFlyoutTimer = setTimeout(hideWalletFlyout, 10000);
   }
   function hideWalletFlyout() {
     clearWalletFlyoutTimer();
+    walletGenerating = false;
     var fly = $('#walletFlyout'), persona = $('#personaPanel');
     if (fly) fly.hidden = true;
     if (persona) persona.hidden = false;
@@ -1795,8 +1801,8 @@
   /** Fetch the Google/Apple save URLs and render them under the QR (same block). */
   function loadWalletPasses() {
     var passes = $('#walletPasses');
-    if (!passes) return;
-    Promise.all([
+    if (!passes) return Promise.resolve();
+    return Promise.all([
       A.api('wallet_pass', {}).then(function (r) { return r && r.url; }, function () { return null; }),
       A.api('apple_pass_link', {}).then(function (r) { return r && r.url; }, function () { return null; })
     ]).then(function (res) {
@@ -1823,7 +1829,12 @@
     // mint the QR + wallet links once, then reuse
     if (!fly.getAttribute('data-loaded')) {
       fly.setAttribute('data-loaded', '1');
-      A.api('wallet_link', {}).then(function (r) {
+      // Pause the auto-hide for the whole generation window — the QR mint and
+      // the two save-link calls can each outlast the 10s idle timer, and
+      // interaction-driven resets must not sneak the timer back on either.
+      walletGenerating = true;
+      clearWalletFlyoutTimer();
+      var qrJob = A.api('wallet_link', {}).then(function (r) {
         if (!r || !r.url) throw new Error('no url');
         var slot = $('#walletQrSlot');
         if (slot) { slot.innerHTML = '<div class="wallet-qr" id="walletQr"></div>'; renderQr_($('#walletQr'), r.url); }
@@ -1831,9 +1842,17 @@
         var slot = $('#walletQrSlot');
         if (slot) slot.innerHTML = '<p class="wallet-err">Could not prepare the QR.</p>';
       });
-      loadWalletPasses();
+      var passJob = loadWalletPasses();
+      // Only once both have settled (ready or errored) do we arm the inactivity
+      // auto-hide — and only if the user hasn't already closed the flyout.
+      Promise.all([qrJob, passJob]).then(function () {
+        walletGenerating = false;
+        if (!fly.hidden) resetWalletFlyoutTimer();
+      });
+    } else {
+      // Already generated on a previous open — the card is ready, arm the timer.
+      resetWalletFlyoutTimer();
     }
-    resetWalletFlyoutTimer();
   }
 
   /** #/wallet handoff page — the phone lands here after scanning the QR. The
