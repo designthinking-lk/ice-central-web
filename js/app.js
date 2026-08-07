@@ -3748,7 +3748,8 @@
     // project link) sees a teaser for that project + an invite prompt instead.
     if (!signedIn()) {
       var pp = (slot !== undefined && slot !== '') ? projectBySlot(Number(slot)) : null;
-      return '<div class="pub-gate">' +
+      return '<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>' +
+        '<div class="pub-gate">' +
         (pp && pp.title
           ? '<div class="pub-gate-card"><span class="pub-gate-kicker">' + esc(eventName()) + ' &middot; Project</span>' +
               '<h1>' + esc(pp.title) + '</h1>' + (pp.description ? '<p>' + esc(pp.description) + '</p>' : '') + '</div>'
