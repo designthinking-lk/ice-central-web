@@ -2793,8 +2793,17 @@
     var firstName = nameParts.shift() || '';
     var lastName = nameParts.join(' ');
     var role = cardRole(u, isNew);
+    // Persona role is how the community meets this person — mentor/catalyst/
+    // participant only. It deliberately ignores `admin` (an internal role that
+    // `cardRole` lets win the badge), so an admin who is also a mentor is still
+    // introduced as a mentor. Kept identical to the public profile view
+    // (initProfilePersona) so both places send the same fields and render the
+    // same blurb.
+    var personaRole = isNew
+      ? ((state.data && state.data.invite && (state.data.invite.role === 'mentor' || state.data.invite.role === 'catalyst')) ? state.data.invite.role : 'participant')
+      : (hasRoleU(u, 'mentor') ? 'mentor' : hasRoleU(u, 'catalyst') ? 'catalyst' : 'participant');
 
-    return '<form class="form pf-grid" id="profileForm" data-new="' + (isNew ? '1' : '') + '" data-role="' + role + '">' +
+    return '<form class="form pf-grid" id="profileForm" data-new="' + (isNew ? '1' : '') + '" data-role="' + role + '" data-persona-role="' + personaRole + '">' +
 
       '<div class="pf-left">' +
       '<div class="idcard-scene">' +
@@ -2944,7 +2953,7 @@
     var last = String(fd.get('lastName') || '').trim();
     return {
       name: (first + ' ' + last).trim(),
-      role: (function (r) { return r === 'mentor' || r === 'catalyst' ? r : 'participant'; })(form.getAttribute('data-role')),
+      role: (function (r) { return r === 'mentor' || r === 'catalyst' ? r : 'participant'; })(form.getAttribute('data-persona-role')),
       affiliation: String(fd.get('affiliation') || '').trim(),
       bio: String(fd.get('bio') || '').trim(),
       skills: getTagValues(),
