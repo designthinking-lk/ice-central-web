@@ -2721,15 +2721,21 @@ textarea.tf-input { min-height: 58px; resize: vertical; }
 /* The credit band gets a frosted-glass fill only behind the #/about page — it
    caps the long scrolling brochure, matching the signed-in glass ::after band
    (below). Everywhere else (People/Projects/Skills gates) the footer floats
-   transparent over the content/aurora, like the landing. No top-fade mask here:
-   unlike the decorative ::after, this element holds the credit content, and a
-   mask would clip the logos/text. */
-body:has(#navAbout.active) .site-credit {
+   transparent over the content/aurora, like the landing.
+   The glass is a ::before that extends ABOVE the bar with the same top-fade
+   mask as the signed-in ::after, so the edge blurs softly instead of a sharp
+   line — and it sits at z-index:-1 (behind the credit content) so the mask
+   fades over empty space above the logos/text, never clipping them. */
+body:has(#navAbout.active) .site-credit::before {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+  height: 92px; z-index: -1; pointer-events: none;
   background: rgba(244, 247, 249, 0.55);
   -webkit-backdrop-filter: blur(14px) saturate(120%);
   backdrop-filter: blur(14px) saturate(120%);
+  -webkit-mask-image: linear-gradient(to top, #000 55%, transparent);
+  mask-image: linear-gradient(to top, #000 55%, transparent);
 }
-:root[data-theme="dark"] body:has(#navAbout.active) .site-credit {
+:root[data-theme="dark"] body:has(#navAbout.active) .site-credit::before {
   background: rgba(18, 19, 22, 0.5);
 }
 /* while the footer band is up, let views scroll their last items clear of it */
