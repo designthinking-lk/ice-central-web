@@ -3280,7 +3280,10 @@ html.is-mobile.m-on .project-card { max-width: min(80vw, 344px); margin-left: au
 /* detail below the deck: content-driven height (no huge empty box before a
    description is added), a clear gap above it, and no close button (mobile has
    no grid overview to return to) */
-html.is-mobile.m-on .proj-detail { bottom: auto !important; height: auto !important; margin-top: 34px; }
+html.is-mobile.m-on .proj-detail { bottom: auto !important; height: auto !important; margin-top: 34px; overflow: visible !important; }
+/* the inner region scrolls on desktop's fixed-height panel; on mobile it should
+   flow so the card grows with content (QR, media, etc.) — no inner scrollbar */
+html.is-mobile.m-on .proj-d-inner { flex: none; overflow: visible !important; padding: 22px 20px; }
 html.is-mobile.m-on .proj-close { display: none; }
 
 /* ---- Skills on mobile: full-bleed sphere; detail is a bottom sheet ---- */
