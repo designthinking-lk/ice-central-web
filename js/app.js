@@ -5622,13 +5622,13 @@
         : (full ? '<span class="tb-fulltag"><i class="fa-solid fa-circle-check"></i> Full</span>' : '');
       var tr = teamRow[L];
       var score = tr ? (Number(tr.score) || 0) : 0;
-      // Live team score — shown on every member's wallet card. Disabled until
-      // the team row exists (created on first assignment).
-      var scoreCtl = tr
-        ? '<span class="tb-score"><i class="fa-solid fa-trophy"></i>' +
-            '<input type="number" class="tb-score-in" value="' + score + '" data-team="' + esc(tr.id) + '" aria-label="' + teamShort(L) + ' score">' +
-            '<button class="tb-score-save" type="button" data-action="save-score" data-team="' + esc(tr.id) + '" title="Save score" aria-label="Save score"><i class="fa-solid fa-floppy-disk"></i></button></span>'
-        : '<span class="tb-score tb-score-na" title="Assign members first"><i class="fa-solid fa-trophy"></i>—</span>';
+      // Live team score — shown on every member's wallet card. Shown for all six
+      // teams; a team with no row yet is addressed by its letter and the row is
+      // created on first score save (see admin_set_score).
+      var scoreKey = tr ? ' data-team="' + esc(tr.id) + '"' : ' data-letter="' + L + '"';
+      var scoreCtl = '<span class="tb-score"><i class="fa-solid fa-trophy"></i>' +
+        '<input type="number" class="tb-score-in" value="' + score + '"' + scoreKey + ' aria-label="' + teamShort(L) + ' score">' +
+        '<button class="tb-score-save" type="button" data-action="save-score"' + scoreKey + ' title="Save score" aria-label="Save score"><i class="fa-solid fa-floppy-disk"></i></button></span>';
       return '<div class="tb-card' + (full ? ' tb-full' : '') + (canFit ? ' tb-target' : '') + '">' +
         '<div class="tb-head"><h3 title="' + teamShort(L) + '">' + L + '</h3>' + scoreCtl + headExtra +
         '</div><div class="tb-slots">' + slots + '</div></div>';
@@ -6287,14 +6287,21 @@
       }
       case 'save-score': {
         var stid = t.getAttribute('data-team');
-        var sin = document.querySelector('.tb-score-in[data-team="' + stid + '"]');
+        var sletter = t.getAttribute('data-letter');
+        var sin = stid
+          ? document.querySelector('.tb-score-in[data-team="' + stid + '"]')
+          : document.querySelector('.tb-score-in[data-letter="' + sletter + '"]');
         var sval = sin ? sin.value : '';
         busy(t, true);
         try {
-          var sr = await A.api('admin_set_score', { teamId: stid, score: sval });
+          var sr = await A.api('admin_set_score', stid ? { teamId: stid, score: sval } : { team: sletter, score: sval });
           if (sr.team) {
-            (state.data.teams || []).forEach(function (x, i) { if (x.id === stid) state.data.teams[i] = sr.team; });
+            state.data.teams = state.data.teams || [];
+            var found = false;
+            state.data.teams.forEach(function (x, i) { if (x.id === sr.team.id) { state.data.teams[i] = sr.team; found = true; } });
+            if (!found) state.data.teams.push(sr.team); // first score created the row
             A.writeCache(state.data);
+            if (!stid) route(); // re-render so the new team is now id-backed
           }
           toast('Team score saved — cards refresh within ~5 min');
         } catch (err) { toast(err.message, true); }

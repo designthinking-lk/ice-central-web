@@ -3059,8 +3059,8 @@ html.is-wallet .wallet-view { margin: 0 auto; }
 .tb-score { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-muted); margin-left: auto; }
 .tb-score > i { color: var(--color-accent); }
 .tb-score-in { width: 58px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 12px; }
-.tb-score-save { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 12px; cursor: pointer; }
-.tb-score-save:hover { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+.tb-score-save { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: none; border-radius: 6px; background: transparent; color: var(--text-muted); font-size: 13px; cursor: pointer; }
+.tb-score-save:hover { color: var(--color-accent); background: transparent; }
 .tb-score-save.loading { opacity: 0.6; pointer-events: none; }
 .tb-score-na { opacity: 0.5; }
 
