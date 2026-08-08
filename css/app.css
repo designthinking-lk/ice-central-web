@@ -3272,12 +3272,15 @@ html.is-mobile.m-on .mic.on { background: linear-gradient(120deg,#6100FF,#00D7EE
 
 /* ---- Projects on mobile: single-column credit cards below the bar ---- */
 html.is-mobile.m-on .projects-wrap { padding-top: 64px; }
-/* narrower than the viewport so the stacked deck's right-hand fan never touches
-   the screen edge */
-html.is-mobile.m-on .projects-grid { grid-template-columns: 1fr; gap: 16px; max-width: min(82vw, 360px); margin: 0 auto; }
+/* the grid is a touch wider than the card so the detail block below can be
+   wider than the deck; the card itself stays narrow so its right-hand fan never
+   touches the screen edge */
+html.is-mobile.m-on .projects-grid { grid-template-columns: 1fr; gap: 16px; max-width: min(90vw, 410px); margin: 0 auto; }
+html.is-mobile.m-on .project-card { max-width: min(80vw, 344px); margin-left: auto; margin-right: auto; }
 /* detail below the deck: content-driven height (no huge empty box before a
-   description is added), and no close button — mobile has no grid to return to */
-html.is-mobile.m-on .proj-detail { bottom: auto !important; height: auto !important; }
+   description is added), a clear gap above it, and no close button (mobile has
+   no grid overview to return to) */
+html.is-mobile.m-on .proj-detail { bottom: auto !important; height: auto !important; margin-top: 34px; }
 html.is-mobile.m-on .proj-close { display: none; }
 
 /* ---- Skills on mobile: full-bleed sphere; detail is a bottom sheet ---- */
