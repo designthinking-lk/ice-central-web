@@ -1398,7 +1398,12 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
   justify-content: center;
   justify-content: safe center;
   overflow-x: auto; overflow-y: hidden;
+  /* Keep the pan-when-wider-than-window behaviour, but hide the scrollbar chrome
+     (same trick as .topbar-teams) — a horizontal bar across the hive bottom is
+     ugly; a trackpad swipe still reaches an overflowing wordmark. */
+  scrollbar-width: none; /* Firefox */
 }
+.hive-stage::-webkit-scrollbar { display: none; } /* WebKit */
 .word { position: relative; flex: none; }
 
 .oct {
