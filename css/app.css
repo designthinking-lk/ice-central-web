@@ -3153,6 +3153,8 @@ html.is-mobile.m-on .mic { width: 34px; height: 34px; border-radius: 50%; paddin
   align-items: center; justify-content: center; background: var(--surface); border: 1px solid var(--border);
   color: var(--text); font-size: 14px; cursor: pointer; }
 html.is-mobile.m-on .mic .avatar { width: 30px; height: 30px; }
+html.is-mobile.m-on .mham { background: none; border: 0; color: var(--text); font-size: 19px; line-height: 1;
+  padding: 0 2px 0 0; cursor: pointer; display: flex; align-items: center; }
 
 html.is-mobile.m-on .mhive-scroll { position: absolute; top: 52px; bottom: 0; left: 0; right: 0;
   overflow-y: auto; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
@@ -3182,10 +3184,15 @@ html.is-mobile.m-on .moct-on { position: absolute; right: 12%; bottom: 12%; widt
 html.is-mobile.m-on body.mine-on .moct.is-mine,
 html.is-mobile.m-on .moct.is-mine.mine-glow { filter: drop-shadow(0 0 3px #F5910A) drop-shadow(0 0 3px #F5910A); }
 html.is-mobile.m-on .mhive-scroll.dimmed .moct[data-uid]:not(.team) { opacity: 0.16; filter: grayscale(0.6); }
-html.is-mobile.m-on .mhint { position: absolute; bottom: 74px; left: 0; right: 0; text-align: center;
-  color: var(--text-muted); font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; }
-html.is-mobile.m-on .mhint-caret { margin-left: 5px; animation: mbob 1.6s ease-in-out infinite; }
-@keyframes mbob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+/* animated down-arrows (bottom-right) cueing the next letter */
+html.is-mobile.m-on .mcue { position: absolute; right: 18px; bottom: 26px; z-index: 5; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; color: #00D7EE; }
+html.is-mobile.m-on .mcue i { font-size: 14px; margin-top: -4px; opacity: 0.25; animation: mcue 1.4s ease-in-out infinite; }
+html.is-mobile.m-on .mcue i:nth-child(2) { animation-delay: 0.16s; }
+html.is-mobile.m-on .mcue i:nth-child(3) { animation-delay: 0.32s; }
+@keyframes mcue { 0%,100% { opacity: 0.2; transform: translateY(0); } 50% { opacity: 1; transform: translateY(3px); } }
+html.is-mobile.m-on .mfloatcat { position: absolute; right: 10%; bottom: 92px; width: 56px; height: 56px; }
+html.is-mobile.m-on .mfloatcat .moct { width: 100%; height: 100%; }
 
 html.is-mobile.m-on .mfab { position: absolute; left: 50%; transform: translateX(-50%); bottom: 18px; z-index: 22;
   display: flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 999px; font-weight: 700;
@@ -3246,6 +3253,6 @@ html.is-mobile.m-on .mspotbar { position: absolute; top: 60px; left: 12px; right
 html.is-mobile.m-on .mspotbar.on { display: flex; }
 html.is-mobile.m-on .mspotbar button { background: rgba(255,255,255,0.25); border: 0; color: #fff; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
-  html.is-mobile.m-on .mhint-caret { animation: none; }
+  html.is-mobile.m-on .mcue i { animation: none; opacity: 0.6; }
   html.is-mobile.m-on .moctnav, html.is-mobile.m-on .mslidenav .mscrim, html.is-mobile.m-on .moverlay { transition: none; }
 }

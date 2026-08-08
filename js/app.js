@@ -6070,9 +6070,15 @@
     for (var rk = 0; rk < maxLen; rk++) for (var li = 0; li < letters.length; li++) {
       var lt = letters[li]; if (lt.cells[rk] && q.length) lt.cells[rk].u = q.shift();
     }
-    // catalysts fill remaining empty cells (guests scattered among the letters)
+    // Catalysts occupy the SAME reserved empty cells as desktop (wordCells):
+    // C top-left (r0c0), C bottom-left (r6c0), E middle-branch end (r3c4); a 4th
+    // floats bottom-right. Members stay in the '1' cells via slotOrder, so the
+    // per-tile assignment is identical to the desktop wordmark.
     var cq = cats.slice();
-    letters.forEach(function (lt) { lt.cells.forEach(function (cell) { if (!cell.u && cq.length) cell.u = cq.shift(); }); });
+    var reserved = [{ li: 1, r: 0, c: 0 }, { li: 1, r: 6, c: 0 }, { li: 2, r: 3, c: 4 }];
+    var resMap = {};
+    reserved.forEach(function (rc) { if (cq.length) resMap[rc.li + '-' + rc.r + '-' + rc.c] = cq.shift(); });
+    var floatCat = cq.length ? cq.shift() : null;
 
     function tile(u) {
       if (!u) return '<div class="moct moct-empty"></div>';
@@ -6084,14 +6090,17 @@
     var panes = letters.map(function (lt, i) {
       var rows = lt.grid.map(function (row, r) {
         var cs = '';
-        for (var c = 0; c < row.length; c++) cs += (row[c] === '1') ? tile(lt.map[r + '-' + c].u) : '<div class="moct moct-gap"></div>';
+        for (var c = 0; c < row.length; c++) {
+          if (row[c] === '1') cs += tile(lt.map[r + '-' + c].u);
+          else { var rcat = resMap[i + '-' + r + '-' + c]; cs += rcat ? tile(rcat) : '<div class="moct moct-gap"></div>'; }
+        }
         return cs;
       }).join('');
-      var hint = i < letters.length - 1
-        ? 'Scroll for ' + letters[i + 1].L + ' <i class="fa-solid fa-chevron-down mhint-caret"></i>'
-        : 'That’s everyone';
-      return '<section class="mletter"><span class="mletter-bg">' + lt.L + '</span>' +
-        '<div class="mletter-grid">' + rows + '</div><div class="mhint">' + hint + '</div></section>';
+      var last = i === letters.length - 1;
+      // animated down-arrows (bottom-right) hint the next letter; none on the last
+      var cue = last ? '' : '<div class="mcue" aria-hidden="true"><i class="fa-solid fa-chevron-down"></i><i class="fa-solid fa-chevron-down"></i><i class="fa-solid fa-chevron-down"></i></div>';
+      var floatt = (last && floatCat) ? '<div class="mfloatcat">' + tile(floatCat) + '</div>' : '';
+      return '<section class="mletter"><div class="mletter-grid">' + rows + '</div>' + cue + floatt + '</section>';
     }).join('');
 
     // counts for the legend
@@ -6116,13 +6125,14 @@
     var mob = document.createElement('div');
     mob.className = 'mhive';
     mob.innerHTML =
-      '<header class="mtop"><span class="mbrand">ICE<b>2026</b></span><span class="mtop-sp"></span>' +
+      '<header class="mtop">' +
+        '<button class="mham" id="mHam" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>' +
+        '<span class="mbrand">ICE<b>2026</b></span><span class="mtop-sp"></span>' +
+        '<button class="mic" id="mOptBtn" aria-label="View options"><i class="fa-solid fa-sliders"></i></button>' +
         '<button class="mic" data-action="toggle-theme" aria-label="Night mode"><i class="fa-solid fa-moon"></i></button>' + acct + '</header>' +
       '<div class="mhive-scroll' + (state.teamFilter ? ' dimmed' : '') + '" id="mHiveScroll">' + panes + '</div>' +
       '<div class="mspotbar" id="mSpotbar"><span id="mSpotTxt"></span><button id="mSpotClear" aria-label="Clear"><i class="fa-solid fa-xmark"></i></button></div>' +
-      '<button class="mfab" id="mFab"><i class="fa-solid fa-sliders"></i> View options</button>' +
       (d.isAdmin ? '<a class="madmin" href="#/admin"><i class="fa-solid fa-gear"></i> Admin</a>' : '') +
-      '<div class="mgrab" id="mGrab" aria-label="Menu"><i class="fa-solid fa-chevron-right"></i></div>' +
       '<div class="mslidenav" id="mNav"><div class="mscrim" id="mNavScrim"></div>' +
         '<nav class="moctnav">' +
           '<a class="mnav on" href="#/people"><i class="fa-solid fa-users"></i>People</a>' +
@@ -6161,9 +6171,9 @@
 
   function wireMobileHive(mob) {
     var nav = mob.querySelector('#mNav'), ov = mob.querySelector('#mOverlay');
-    mob.querySelector('#mGrab').onclick = function () { nav.classList.add('open'); };
+    mob.querySelector('#mHam').onclick = function () { nav.classList.add('open'); };
     mob.querySelector('#mNavScrim').onclick = function () { nav.classList.remove('open'); };
-    mob.querySelector('#mFab').onclick = function () { ov.classList.add('on'); };
+    mob.querySelector('#mOptBtn').onclick = function () { ov.classList.add('on'); };
     mob.querySelector('#mOvClose').onclick = function () { ov.classList.remove('on'); };
     var clear = mob.querySelector('#mSpotClear');
     if (clear) clear.onclick = function () { state.teamFilter = null; mSpotTeam(null); mob.querySelectorAll('.mtchip').forEach(function (x) { x.classList.remove('on'); }); };
