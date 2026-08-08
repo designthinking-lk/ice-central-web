@@ -5627,10 +5627,10 @@
       var scoreCtl = tr
         ? '<span class="tb-score"><i class="fa-solid fa-trophy"></i>' +
             '<input type="number" class="tb-score-in" value="' + score + '" data-team="' + esc(tr.id) + '" aria-label="' + teamShort(L) + ' score">' +
-            '<button class="tb-score-save" type="button" data-action="save-score" data-team="' + esc(tr.id) + '" title="Save score">Save</button></span>'
+            '<button class="tb-score-save" type="button" data-action="save-score" data-team="' + esc(tr.id) + '" title="Save score" aria-label="Save score"><i class="fa-solid fa-floppy-disk"></i></button></span>'
         : '<span class="tb-score tb-score-na" title="Assign members first"><i class="fa-solid fa-trophy"></i>—</span>';
       return '<div class="tb-card' + (full ? ' tb-full' : '') + (canFit ? ' tb-target' : '') + '">' +
-        '<div class="tb-head"><h3>' + teamShort(L) + '</h3>' + scoreCtl + headExtra +
+        '<div class="tb-head"><h3 title="' + teamShort(L) + '">' + L + '</h3>' + scoreCtl + headExtra +
         '</div><div class="tb-slots">' + slots + '</div></div>';
     }).join('');
 
