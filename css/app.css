@@ -1461,7 +1461,13 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
 
 /* large octagon preview in the hollow of the C (no outline) */
 .oct-preview {
-  position: absolute; pointer-events: auto; z-index: 20;
+  /* pointer-events:none — the preview is a display surface, not a link. At
+     2.9 tile-widths it overlaps the inner C cells, and with z-index:20 it used
+     to swallow hover/click from any small tile beneath it (so whoever landed on
+     that cell couldn't be hovered/opened). Letting events pass through hands
+     them back to the real .oct tile underneath. (The .oct-pv-view button
+     re-enables its own clicks.) */
+  position: absolute; pointer-events: none; z-index: 20;
   clip-path: var(--oct); opacity: 0.7;
   transition: opacity 0.45s ease, filter 0.45s ease;
 }
