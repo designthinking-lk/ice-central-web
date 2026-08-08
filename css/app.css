@@ -3275,6 +3275,10 @@ html.is-mobile.m-on .projects-wrap { padding-top: 64px; }
 /* narrower than the viewport so the stacked deck's right-hand fan never touches
    the screen edge */
 html.is-mobile.m-on .projects-grid { grid-template-columns: 1fr; gap: 16px; max-width: min(82vw, 360px); margin: 0 auto; }
+/* detail below the deck: content-driven height (no huge empty box before a
+   description is added), and no close button — mobile has no grid to return to */
+html.is-mobile.m-on .proj-detail { bottom: auto !important; height: auto !important; }
+html.is-mobile.m-on .proj-close { display: none; }
 
 /* ---- Skills on mobile: full-bleed sphere; detail is a bottom sheet ---- */
 html.is-mobile.m-on .skills3d-wrap { top: 52px; }

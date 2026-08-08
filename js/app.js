@@ -4972,7 +4972,7 @@
         }
       }
     }
-    var vyaw = 0, vpitch = 0, zoom = 1, calmUntil = 0, selected = -1;
+    var vyaw = 0, vpitch = 0, zoom = 1, calmUntil = 0, selected = -1, gyroActive = false;
     var dragging = false, moved = 0, lastX = 0, lastY = 0, mx = -1, my = -1, hover = -1;
     var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var theme = {}, themeTick = 0;
@@ -4998,8 +4998,10 @@
       if (!dragging) return;
       var dX = e.clientX - lastX, dY = e.clientY - lastY;
       moved += Math.abs(dX) + Math.abs(dY);
-      vyaw = dX * 0.005; vpitch = -dY * 0.005; // Y inverted — pull down to tilt up
-      preRot(vyaw, 1); preRot(vpitch, 0);
+      if (!gyroActive) { // gyro owns the rotation when active
+        vyaw = dX * 0.005; vpitch = -dY * 0.005; // Y inverted — pull down to tilt up
+        preRot(vyaw, 1); preRot(vpitch, 0);
+      }
       lastX = e.clientX; lastY = e.clientY;
     });
     canvas.addEventListener('pointerup', function () {
@@ -5032,17 +5034,27 @@
     // with the ambient spin. iOS needs a permission tap (the app-bar motion btn);
     // Android grants silently, so we auto-enable there.
     if (isMobile()) {
-      var gyroOn = false, lastB = null, lastG = null;
+      // Rebuild the view matrix ABSOLUTELY from the device orientation each event:
+      // yaw = compass heading (turn your body → look around), pitch = beta (tilt).
+      // Absolute (not deltas) so there's no drift or gimbal jumping. Roll ignored
+      // so the field stays upright.
+      var GYAW = 1; // flip to -1 if turning feels reversed on a device
       function onOrient(ev) {
-        if (ev.beta == null) return;
-        if (lastB != null) { preRot((ev.gamma - lastG) * 0.02, 1); preRot(-(ev.beta - lastB) * 0.02, 0); calmUntil = 0; }
-        lastB = ev.beta; lastG = ev.gamma;
+        if (ev.alpha == null && ev.beta == null) return;
+        var scr = ((screen.orientation && screen.orientation.angle) || window.orientation || 0);
+        var heading = (typeof ev.webkitCompassHeading === 'number') ? -ev.webkitCompassHeading : (ev.alpha || 0);
+        var yaw = GYAW * (heading + scr) * Math.PI / 180;
+        var pitch = Math.max(-1.3, Math.min(1.3, ((ev.beta == null ? 90 : ev.beta) - 90) * Math.PI / 180));
+        var cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+        // R = Rx(pitch)·Ry(yaw): forward (+Z) tracks where the phone points
+        R = [cy, 0, sy, sp * sy, cp, -sp * cy, -cp * sy, sp, cp * cy];
       }
       canvas.__enableGyro = function () {
-        if (gyroOn) return;
+        if (gyroActive) return;
+        function attach() { gyroActive = true; window.addEventListener('deviceorientation', onOrient); }
         if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) {
-          DeviceOrientationEvent.requestPermission().then(function (s) { if (s === 'granted') { gyroOn = true; window.addEventListener('deviceorientation', onOrient); } }).catch(function () {});
-        } else if (window.DeviceOrientationEvent) { gyroOn = true; window.addEventListener('deviceorientation', onOrient); }
+          DeviceOrientationEvent.requestPermission().then(function (s) { if (s === 'granted') attach(); }).catch(function () {});
+        } else if (window.DeviceOrientationEvent) { attach(); }
       };
       if (!(typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission)) canvas.__enableGyro();
     }
@@ -5059,7 +5071,7 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
 
-      if (!dragging) {
+      if (!dragging && !gyroActive) {
         var spin = (reduceMotion || Date.now() < calmUntil) ? 0 : 0.0008;
         preRot(spin + vyaw, 1); preRot(vpitch, 0);
         vyaw *= 0.95; vpitch *= 0.95;
