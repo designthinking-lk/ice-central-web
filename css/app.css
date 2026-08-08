@@ -3165,7 +3165,11 @@ html.is-mobile.m-on .mletter-bg { position: absolute; top: 10px; right: 16px; fo
   color: rgba(128,128,150,0.09); letter-spacing: -0.04em; pointer-events: none; }
 html.is-mobile.m-on .mletter-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: min(86vw, 360px); }
 html.is-mobile.m-on .moct { position: relative; aspect-ratio: 1; clip-path: url(#octr); overflow: hidden;
-  display: flex; align-items: center; justify-content: center; }
+  display: flex; align-items: center; justify-content: center;
+  /* uniform octagon outline hugging the clip (like desktop .oct-in) so filled
+     and empty slots read as the same complete shape */
+  filter: drop-shadow(0 0 0.8px var(--oct-outline)) drop-shadow(0 0 0.8px var(--oct-outline)); }
+html.is-mobile.m-on .moct-gap { filter: none; }
 html.is-mobile.m-on .moct.k-m { background: linear-gradient(150deg, #3a1a8a, #6100FF); }
 html.is-mobile.m-on .moct.k-p { background: linear-gradient(150deg, #0a5f6b, #00D7EE); }
 html.is-mobile.m-on .moct.k-cat { background: linear-gradient(150deg, #7a4405, #F5910A); }
