@@ -3125,3 +3125,127 @@ html.is-wallet .wallet-view { margin: 0 auto; }
    shrink to fit on tighter ones, and tighten the gap a touch. */
 .projects-grid { max-width: 1320px; gap: 18px; }
 /* ============================ END EXPERIMENT ============================== */
+
+/* ======================= MOBILE LAYER (is-mobile.m-on) =======================
+   Additive: every selector below is scoped to html.is-mobile.m-on, so none of
+   it applies on desktop. Enabled per-route via MOBILE_ROUTES in app.js. */
+html.is-mobile.m-on { overflow: hidden; }
+html.is-mobile.m-on .mobile-gate { display: none; }
+html.is-mobile.m-on .shell { display: flex; }
+html.is-mobile.m-on .sidebar,
+html.is-mobile.m-on .topbar,
+html.is-mobile.m-on .fab-stack,
+html.is-mobile.m-on .site-credit,
+html.is-mobile.m-on .brand,
+html.is-mobile.m-on .shell::before { display: none; }
+html.is-mobile.m-on .view { padding: 0; }
+html.is-mobile.m-on .hive-stage { display: none; } /* desktop wordmark hidden on phones */
+html.is-mobile.m-on .hive { pointer-events: auto; }
+html.is-mobile.m-on .mhive { pointer-events: auto; } /* re-enable under body.hive-full */
+
+html.is-mobile.m-on .mhive { position: absolute; inset: 0; z-index: 2; }
+html.is-mobile.m-on .mtop { position: absolute; top: 0; left: 0; right: 0; height: 52px; z-index: 20;
+  display: flex; align-items: center; gap: 8px; padding: 0 14px; }
+html.is-mobile.m-on .mbrand { font-weight: 800; font-size: 17px; letter-spacing: -0.01em; color: var(--text); }
+html.is-mobile.m-on .mbrand b { color: #00D7EE; }
+html.is-mobile.m-on .mtop-sp { flex: 1; }
+html.is-mobile.m-on .mic { width: 34px; height: 34px; border-radius: 50%; padding: 0; display: flex;
+  align-items: center; justify-content: center; background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); font-size: 14px; cursor: pointer; }
+html.is-mobile.m-on .mic .avatar { width: 30px; height: 30px; }
+
+html.is-mobile.m-on .mhive-scroll { position: absolute; top: 52px; bottom: 0; left: 0; right: 0;
+  overflow-y: auto; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+html.is-mobile.m-on .mhive-scroll::-webkit-scrollbar { display: none; }
+html.is-mobile.m-on .mletter { height: 100%; scroll-snap-align: start; position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; }
+html.is-mobile.m-on .mletter-bg { position: absolute; top: 10px; right: 16px; font-size: 64px; font-weight: 800;
+  color: rgba(128,128,150,0.09); letter-spacing: -0.04em; pointer-events: none; }
+html.is-mobile.m-on .mletter-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: min(86vw, 360px); }
+html.is-mobile.m-on .moct { position: relative; aspect-ratio: 1; clip-path: url(#octr); overflow: hidden;
+  display: flex; align-items: center; justify-content: center; }
+html.is-mobile.m-on .moct.k-m { background: linear-gradient(150deg, #3a1a8a, #6100FF); }
+html.is-mobile.m-on .moct.k-p { background: linear-gradient(150deg, #0a5f6b, #00D7EE); }
+html.is-mobile.m-on .moct.k-cat { background: linear-gradient(150deg, #7a4405, #F5910A); }
+html.is-mobile.m-on .moct-gap { visibility: hidden; }
+html.is-mobile.m-on .moct-empty { background: var(--surface); }
+html.is-mobile.m-on .moct img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) contrast(1.05) brightness(1.02); }
+html.is-mobile.m-on .moct.k-m::after,
+html.is-mobile.m-on .moct.k-p::after,
+html.is-mobile.m-on .moct.k-cat::after { content: ""; position: absolute; inset: 0; mix-blend-mode: color; opacity: 0.85; }
+html.is-mobile.m-on .moct.k-m::after { background: #6100FF; }
+html.is-mobile.m-on .moct.k-p::after { background: #00D7EE; }
+html.is-mobile.m-on .moct.k-cat::after { background: #F5910A; }
+html.is-mobile.m-on .moct-ini { position: relative; z-index: 2; font-weight: 700; color: #fff; font-size: 15px; }
+html.is-mobile.m-on .moct-on { position: absolute; right: 12%; bottom: 12%; width: 12px; height: 12px;
+  border-radius: 50%; background: #2fd15a; border: 2px solid var(--bg); z-index: 3; }
+html.is-mobile.m-on body.mine-on .moct.is-mine,
+html.is-mobile.m-on .moct.is-mine.mine-glow { filter: drop-shadow(0 0 3px #F5910A) drop-shadow(0 0 3px #F5910A); }
+html.is-mobile.m-on .mhive-scroll.dimmed .moct[data-uid]:not(.team) { opacity: 0.16; filter: grayscale(0.6); }
+html.is-mobile.m-on .mhint { position: absolute; bottom: 74px; left: 0; right: 0; text-align: center;
+  color: var(--text-muted); font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; }
+html.is-mobile.m-on .mhint-caret { margin-left: 5px; animation: mbob 1.6s ease-in-out infinite; }
+@keyframes mbob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+
+html.is-mobile.m-on .mfab { position: absolute; left: 50%; transform: translateX(-50%); bottom: 18px; z-index: 22;
+  display: flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 999px; font-weight: 700;
+  font-size: 13px; color: #fff; border: 0; cursor: pointer; background: linear-gradient(120deg, #6100FF, #00D7EE);
+  box-shadow: 0 10px 24px -8px rgba(97,0,255,0.6); }
+html.is-mobile.m-on .madmin { position: absolute; left: 16px; bottom: 24px; z-index: 22; display: flex;
+  align-items: center; gap: 7px; color: #00D7EE; font-weight: 700; font-size: 12.5px; text-decoration: none; }
+html.is-mobile.m-on .mgrab { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 22px;
+  height: 104px; z-index: 21; display: flex; align-items: center; justify-content: center; color: #fff;
+  background: linear-gradient(120deg, rgba(97,0,255,0.55), rgba(0,215,238,0.4));
+  clip-path: polygon(0 0, 100% 14%, 100% 86%, 0 100%); cursor: pointer; }
+html.is-mobile.m-on .mgrab i { font-size: 11px; opacity: 0.9; }
+
+html.is-mobile.m-on .mslidenav { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
+html.is-mobile.m-on .mslidenav .mscrim { position: absolute; inset: 0; background: rgba(8,6,16,0.5);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1); backdrop-filter: blur(12px) saturate(1.1);
+  opacity: 0; transition: opacity 0.32s ease; }
+html.is-mobile.m-on .moctnav { position: absolute; top: 50%; left: -116px; width: 232px; height: 232px;
+  transform: translate(-100%, -50%); transition: transform 0.36s cubic-bezier(0.2,0.8,0.2,1); clip-path: url(#octr);
+  background: linear-gradient(150deg, rgba(40,28,74,0.96), rgba(16,13,26,0.97));
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 0 20px 0 128px; }
+html.is-mobile.m-on .mslidenav.open { pointer-events: auto; }
+html.is-mobile.m-on .mslidenav.open .mscrim { opacity: 1; }
+html.is-mobile.m-on .mslidenav.open .moctnav { transform: translate(0, -50%); }
+html.is-mobile.m-on .mnav { display: flex; align-items: center; gap: 10px; color: var(--text-muted);
+  font-weight: 700; font-size: 13.5px; text-decoration: none; }
+html.is-mobile.m-on .mnav i { width: 20px; text-align: center; font-size: 16px; }
+html.is-mobile.m-on .mnav.on { color: #fff; }
+html.is-mobile.m-on .mnav.on i { color: #00D7EE; }
+
+html.is-mobile.m-on .moverlay { position: absolute; inset: 0; z-index: 45; background: rgba(8,6,16,0.62);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2); backdrop-filter: blur(20px) saturate(1.2);
+  padding: 56px 20px 24px; display: flex; flex-direction: column; gap: 22px;
+  opacity: 0; visibility: hidden; transition: opacity 0.25s ease; overflow-y: auto; }
+html.is-mobile.m-on .moverlay.on { opacity: 1; visibility: visible; }
+html.is-mobile.m-on .movclose { position: absolute; top: 16px; right: 16px; width: 36px; height: 36px;
+  border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 15px; cursor: pointer; }
+html.is-mobile.m-on .movlabel { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--text-muted); font-weight: 700; margin-bottom: 10px; }
+html.is-mobile.m-on .mseg { display: flex; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 999px; padding: 4px; gap: 4px; }
+html.is-mobile.m-on .mseg button { flex: 1; border: 0; background: transparent; color: var(--text-muted);
+  font-weight: 700; font-size: 14px; padding: 11px 0; border-radius: 999px; cursor: pointer; }
+html.is-mobile.m-on .mseg button.on { background: linear-gradient(120deg, #6100FF, #00D7EE); color: #fff; }
+html.is-mobile.m-on .mtchips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+html.is-mobile.m-on .mtchip { aspect-ratio: 1; border: 0; color: #fff; font-weight: 800; font-size: 22px;
+  clip-path: url(#octr); background: var(--surface); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px; cursor: pointer; }
+html.is-mobile.m-on .mtchip small { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.7); }
+html.is-mobile.m-on .mtchip.on { background: linear-gradient(150deg, #6100FF, #00D7EE); }
+html.is-mobile.m-on .mlegend { display: flex; gap: 16px; justify-content: center; font-size: 12px; color: var(--text-muted); }
+html.is-mobile.m-on .mdot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+html.is-mobile.m-on .mdot.m { background: #6100FF; } html.is-mobile.m-on .mdot.p { background: #00D7EE; } html.is-mobile.m-on .mdot.cat { background: #F5910A; }
+html.is-mobile.m-on .mspotbar { position: absolute; top: 60px; left: 12px; right: 12px; z-index: 23; display: none;
+  align-items: center; justify-content: space-between; padding: 9px 14px; border-radius: 999px; color: #fff;
+  font-weight: 700; font-size: 12.5px; background: linear-gradient(120deg, rgba(97,0,255,0.92), rgba(0,215,238,0.85)); }
+html.is-mobile.m-on .mspotbar.on { display: flex; }
+html.is-mobile.m-on .mspotbar button { background: rgba(255,255,255,0.25); border: 0; color: #fff; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) {
+  html.is-mobile.m-on .mhint-caret { animation: none; }
+  html.is-mobile.m-on .moctnav, html.is-mobile.m-on .mslidenav .mscrim, html.is-mobile.m-on .moverlay { transition: none; }
+}

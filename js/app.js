@@ -5923,6 +5923,8 @@
     // #/wallet is phone-first — keep the .is-wallet flag in sync so its CSS
     // bypasses the mobile gate and shows only the handoff view.
     document.documentElement.classList.toggle('is-wallet', /^#\/(wallet|pcard)/.test(hash));
+    // Mobile: bypass the "open on desktop" gate only on routes we've built for phones.
+    document.documentElement.classList.toggle('m-on', mobileRouteOn());
     closeMenu();
     // Stop a profile-backdrop video when navigating away (route() also re-runs on
     // in-place data refreshes — those keep the same hash, so playback survives).
@@ -5960,8 +5962,9 @@
   }
 
   function wireViewExtras(hash, m) {
-    // people wordmark: build tiles from live data, then scale to fit
-    if ($('#word')) requestAnimationFrame(buildWordmark);
+    // people hive: desktop builds the horizontal wordmark; mobile builds the
+    // vertical I/C/E scroll experience instead (desktop path untouched).
+    if ($('#word')) requestAnimationFrame(isMobile() ? buildMobileHive : buildWordmark);
     // skills constellation
     var sc = $('#skillsCanvas');
     if (sc) initSkillsGraph(sc);
@@ -6020,6 +6023,167 @@
         }
       });
     }
+  }
+
+  /* ======================= MOBILE LAYER (additive) =======================
+     Everything here runs ONLY when <html>.is-mobile and the route is in
+     MOBILE_ROUTES. All CSS is scoped `html.is-mobile.m-on` and all JS is guarded
+     by isMobile(), so the desktop experience is never touched. Screens are
+     enabled one at a time by adding their hash to MOBILE_ROUTES. */
+  function isMobile() { return document.documentElement.classList.contains('is-mobile'); }
+  var MOBILE_ROUTES = { '#/people': 1 }; // add '#/projects','#/skills' as each ships
+  function mobileRouteOn() {
+    var h = (location.hash || '#/').split('?')[0];
+    return isMobile() && !!MOBILE_ROUTES[h];
+  }
+  // Exact desktop I/C/E formation (WORD_LETTERS): 7 rows x 5 cols each.
+  var MWORD = [
+    ['I', ['01110', '00100', '00100', '00100', '00100', '00100', '01110']],
+    ['C', ['01111', '10000', '10000', '10000', '10000', '10000', '01111']],
+    ['E', ['11111', '10000', '10000', '11110', '10000', '10000', '11111']],
+  ];
+  function mKind(u) { return isCatalyst(u) ? 'cat' : (hasRoleU(u, 'mentor') ? 'm' : 'p'); }
+
+  // Build the vertical mobile hive (one letter per screen, scroll-snap) plus the
+  // mobile chrome: top bar, options sheet, octagon nav, spotlight, bottom Admin.
+  function buildMobileHive() {
+    var hive = $('.hive'); if (!hive || !isMobile()) return;
+    var d = state.data; if (!d) return;
+    var sig = dataSig(d) + '|' + (mineOn() ? 'me' : 'we');
+    if (hive.getAttribute('data-msig') === sig) return; // unchanged → keep scroll pos
+    hive.setAttribute('data-msig', sig);
+
+    var members = (d.users || []).filter(isCommunityMember);
+    var cats = (d.users || []).filter(isCatalyst);
+    var online = d.online || [];
+    var mt = myTeam(); var mineIds = {}; if (mt) (mt.members || []).forEach(function (id) { mineIds[id] = 1; });
+
+    // per-letter filled-cell lists, users assigned round-robin across I/C/E
+    var letters = MWORD.map(function (p) {
+      var grid = p[1], cells = [], map = {};
+      for (var r = 0; r < grid.length; r++) for (var c = 0; c < grid[r].length; c++)
+        if (grid[r][c] === '1') { var cell = { r: r, c: c }; cells.push(cell); map[r + '-' + c] = cell; }
+      return { L: p[0], grid: grid, cells: cells, map: map };
+    });
+    var maxLen = Math.max.apply(null, letters.map(function (x) { return x.cells.length; }));
+    var q = members.slice();
+    for (var rk = 0; rk < maxLen; rk++) for (var li = 0; li < letters.length; li++) {
+      var lt = letters[li]; if (lt.cells[rk] && q.length) lt.cells[rk].u = q.shift();
+    }
+    // catalysts fill remaining empty cells (guests scattered among the letters)
+    var cq = cats.slice();
+    letters.forEach(function (lt) { lt.cells.forEach(function (cell) { if (!cell.u && cq.length) cell.u = cq.shift(); }); });
+
+    function tile(u) {
+      if (!u) return '<div class="moct moct-empty"></div>';
+      var on = online.indexOf(u.id) !== -1;
+      return '<a class="moct k-' + mKind(u) + (mineIds[u.id] ? ' is-mine' : '') + '" href="#/profile/' + esc(u.id) + '" data-uid="' + esc(u.id) + '" title="' + esc(u.name) + '">' +
+        (u.image ? '<img src="' + esc(u.image) + '" alt="" loading="lazy">' : '<span class="moct-ini">' + esc(initials(u.name)) + '</span>') +
+        (on ? '<span class="moct-on"></span>' : '') + '</a>';
+    }
+    var panes = letters.map(function (lt, i) {
+      var rows = lt.grid.map(function (row, r) {
+        var cs = '';
+        for (var c = 0; c < row.length; c++) cs += (row[c] === '1') ? tile(lt.map[r + '-' + c].u) : '<div class="moct moct-gap"></div>';
+        return cs;
+      }).join('');
+      var hint = i < letters.length - 1
+        ? 'Scroll for ' + letters[i + 1].L + ' <i class="fa-solid fa-chevron-down mhint-caret"></i>'
+        : 'That’s everyone';
+      return '<section class="mletter"><span class="mletter-bg">' + lt.L + '</span>' +
+        '<div class="mletter-grid">' + rows + '</div><div class="mhint">' + hint + '</div></section>';
+    }).join('');
+
+    // counts for the legend
+    var nM = members.filter(function (u) { return hasRoleU(u, 'mentor'); }).length;
+    var nP = members.filter(function (u) { return hasRoleU(u, 'participant'); }).length;
+    var nC = cats.length;
+    var teams = homeTeams();
+    var chips = teams.map(function (t) {
+      var mem = (t.members || []).length;
+      return '<button class="mtchip' + (state.teamFilter === t.id ? ' on' : '') + '" data-mteam="' + esc(t.id) + '">' +
+        esc(String(t.name).replace(/^team\s+/i, '')) + '<small>' + (mem ? mem + ' members' : 'open') + '</small></button>';
+    }).join('');
+
+    // account button reuses the existing delegated handlers (user/guest menu)
+    var acct = signedIn()
+      ? (d.me
+        ? '<button class="mic" data-action="user-menu" aria-label="Account">' + avatar(d.me, 'avatar-sm') + '</button>'
+        : '<button class="mic" data-action="guest-menu" aria-label="Account"><i class="fa-solid fa-user"></i></button>')
+      : '<button class="mic" data-action="sign-in" aria-label="Sign in"><i class="fa-brands fa-google"></i></button>';
+
+    var old = hive.querySelector('.mhive'); if (old) old.remove();
+    var mob = document.createElement('div');
+    mob.className = 'mhive';
+    mob.innerHTML =
+      '<header class="mtop"><span class="mbrand">ICE<b>2026</b></span><span class="mtop-sp"></span>' +
+        '<button class="mic" data-action="toggle-theme" aria-label="Night mode"><i class="fa-solid fa-moon"></i></button>' + acct + '</header>' +
+      '<div class="mhive-scroll' + (state.teamFilter ? ' dimmed' : '') + '" id="mHiveScroll">' + panes + '</div>' +
+      '<div class="mspotbar" id="mSpotbar"><span id="mSpotTxt"></span><button id="mSpotClear" aria-label="Clear"><i class="fa-solid fa-xmark"></i></button></div>' +
+      '<button class="mfab" id="mFab"><i class="fa-solid fa-sliders"></i> View options</button>' +
+      (d.isAdmin ? '<a class="madmin" href="#/admin"><i class="fa-solid fa-gear"></i> Admin</a>' : '') +
+      '<div class="mgrab" id="mGrab" aria-label="Menu"><i class="fa-solid fa-chevron-right"></i></div>' +
+      '<div class="mslidenav" id="mNav"><div class="mscrim" id="mNavScrim"></div>' +
+        '<nav class="moctnav">' +
+          '<a class="mnav on" href="#/people"><i class="fa-solid fa-users"></i>People</a>' +
+          '<a class="mnav" href="#/projects"><i class="fa-solid fa-diagram-project"></i>Projects</a>' +
+          '<a class="mnav" href="#/skills"><i class="fa-solid fa-wand-magic-sparkles"></i>Skills</a>' +
+        '</nav></div>' +
+      '<div class="moverlay" id="mOverlay"><button class="movclose" id="mOvClose"><i class="fa-solid fa-xmark"></i></button>' +
+        '<div class="movsec"><div class="movlabel">Highlight</div><div class="mseg" id="mSeg">' +
+          '<button data-mine="0" class="' + (mineOn() ? '' : 'on') + '">We</button>' +
+          '<button data-mine="1" class="' + (mineOn() ? 'on' : '') + '">Me</button></div></div>' +
+        '<div class="movsec"><div class="movlabel">Filter by team · ' + teams.length + ' teams</div>' +
+          '<div class="mtchips">' + chips + '</div></div>' +
+        '<div class="mlegend"><span><i class="mdot m"></i>' + nM + ' mentor' + (nM === 1 ? '' : 's') + '</span>' +
+          '<span><i class="mdot p"></i>' + nP + ' participant' + (nP === 1 ? '' : 's') + '</span>' +
+          (nC ? '<span><i class="mdot cat"></i>' + nC + ' catalyst' + (nC === 1 ? '' : 's') + '</span>' : '') + '</div>' +
+      '</div>';
+    hive.appendChild(mob);
+    wireMobileHive(mob);
+    if (state.teamFilter) mSpotTeam(teamById_(state.teamFilter), true);
+  }
+
+  function teamById_(id) { var t = null; homeTeams().forEach(function (x) { if (x.id === id) t = x; }); return t; }
+
+  function mSpotTeam(team, silent) {
+    var scroll = $('#mHiveScroll'); if (!scroll) return;
+    var mem = {}; if (team) (team.members || []).forEach(function (id) { mem[id] = 1; });
+    $all('.moct[data-uid]', scroll).forEach(function (o) { o.classList.toggle('team', !!mem[o.getAttribute('data-uid')]); });
+    scroll.classList.toggle('dimmed', !!team);
+    var bar = $('#mSpotbar');
+    if (team) {
+      $('#mSpotTxt').textContent = 'Spotlighting ' + team.name + ' · ' + (team.members || []).length + ' member' + ((team.members || []).length === 1 ? '' : 's');
+      bar.classList.add('on');
+      if (!silent) { var f = scroll.querySelector('.moct.team'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    } else if (bar) bar.classList.remove('on');
+  }
+
+  function wireMobileHive(mob) {
+    var nav = mob.querySelector('#mNav'), ov = mob.querySelector('#mOverlay');
+    mob.querySelector('#mGrab').onclick = function () { nav.classList.add('open'); };
+    mob.querySelector('#mNavScrim').onclick = function () { nav.classList.remove('open'); };
+    mob.querySelector('#mFab').onclick = function () { ov.classList.add('on'); };
+    mob.querySelector('#mOvClose').onclick = function () { ov.classList.remove('on'); };
+    var clear = mob.querySelector('#mSpotClear');
+    if (clear) clear.onclick = function () { state.teamFilter = null; mSpotTeam(null); mob.querySelectorAll('.mtchip').forEach(function (x) { x.classList.remove('on'); }); };
+    mob.querySelectorAll('.mtchip').forEach(function (b) {
+      b.onclick = function () {
+        var id = b.getAttribute('data-mteam');
+        state.teamFilter = (state.teamFilter === id) ? null : id;
+        mob.querySelectorAll('.mtchip').forEach(function (x) { x.classList.toggle('on', x === b && state.teamFilter === id); });
+        ov.classList.remove('on');
+        mSpotTeam(state.teamFilter ? teamById_(id) : null);
+      };
+    });
+    mob.querySelectorAll('#mSeg button').forEach(function (b) {
+      b.onclick = function () {
+        var on = b.getAttribute('data-mine') === '1';
+        setMine(on);
+        mob.querySelectorAll('#mSeg button').forEach(function (x) { x.classList.toggle('on', x === b); });
+        document.body.classList.toggle('mine-on', on);
+      };
+    });
   }
 
   // -------------------------------------------------------------- actions
