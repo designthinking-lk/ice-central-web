@@ -3296,3 +3296,11 @@ html.is-mobile.m-on .skills-side .ss-empty { display: none; }
 html.is-mobile.m-on .skills-side::before { content: ""; display: block; width: 38px; height: 4px;
   border-radius: 2px; background: var(--border-strong); margin: 2px auto 12px; }
 @media (prefers-reduced-motion: reduce) { html.is-mobile.m-on .skills-side { transition: none; } }
+
+/* ---- mobile-optimized aurora: bigger soft blobs sized for portrait so the
+   People / Projects / Skills backgrounds glow like desktop (same palette +
+   drift animation, just scaled for a tall narrow screen) ---- */
+html.is-mobile.m-on .aurora span { filter: blur(56px); opacity: 0.6; }
+html.is-mobile.m-on .aurora span:nth-child(1) { width: 86vw; height: 86vw; left: -22vw; top: -6vh; }
+html.is-mobile.m-on .aurora span:nth-child(2) { width: 78vw; height: 78vw; right: -24vw; top: 24vh; }
+html.is-mobile.m-on .aurora span:nth-child(3) { width: 96vw; height: 96vw; left: 2vw; bottom: -16vh; }
