@@ -3285,6 +3285,13 @@ html.is-mobile.m-on .proj-detail { bottom: auto !important; height: auto !import
    flow so the card grows with content (QR, media, etc.) — no inner scrollbar */
 html.is-mobile.m-on .proj-d-inner { flex: none; overflow: visible !important; padding: 22px 20px; }
 html.is-mobile.m-on .proj-close { display: none; }
+/* "Share your project card" wallet overlay: on desktop it's an absolute panel
+   filling the fixed-height detail; on mobile let it FLOW so the card grows to
+   the QR + buttons (no crop, no inner scroll). Fully hide the underlying detail
+   so it doesn't reserve height. */
+html.is-mobile.m-on .proj-detail.pcard-open .proj-d-inner,
+html.is-mobile.m-on .proj-detail.pcard-open .proj-d-footer { display: none; }
+html.is-mobile.m-on .proj-wallet-overlay { position: relative; inset: auto; overflow: visible; padding-top: 30px; }
 
 /* ---- Skills on mobile: full-bleed sphere; detail is a bottom sheet ---- */
 html.is-mobile.m-on .skills3d-wrap { top: 52px; }
