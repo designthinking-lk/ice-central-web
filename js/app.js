@@ -524,6 +524,7 @@
         chips = toolsBarHtml();
       }
       if (tb.innerHTML !== chips) tb.innerHTML = chips;
+      if (isPeople) paintLegend(); // show the current cycling item immediately (no blank gap)
     }
     // Tools moves its controls into the app bar, so hide the We/Me toggle there.
     document.body.classList.toggle('view-tools', isTools);
@@ -1243,12 +1244,40 @@
     var mentors = all.filter(function (u) { return hasRoleU(u, 'mentor'); }).length;
     var participants = all.filter(function (u) { return hasRoleU(u, 'participant'); }).length;
     var catalysts = all.filter(isCatalyst).length;
-    return '<div class="topbar-legend">' +
+    return '<div class="topbar-legend cycle">' +
       '<span><span class="dot mentor"></span>' + mentors + ' mentor' + (mentors === 1 ? '' : 's') + '</span>' +
       '<span><span class="dot participant"></span>' + participants + ' participant' + (participants === 1 ? '' : 's') + '</span>' +
       (catalysts ? '<span><span class="dot catalyst"></span>' + catalysts + ' catalyst' + (catalysts === 1 ? '' : 's') + '</span>' : '') +
       '</div>';
   }
+
+  // The People app-bar legend cycles its role counts one at a time (2s each,
+  // looping) so it stays compact. CSS grid-stacks the spans (container sizes to
+  // the widest, no layout shift); JS toggles which one is visible. A single
+  // persistent interval re-queries the DOM each tick, so it survives topbar
+  // re-renders; paintLegend() is also called right after each render so the
+  // first item shows immediately instead of a blank 2s gap.
+  var legendIdx = 0;
+  function legendReducedMotion_() {
+    try { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
+  }
+  function paintLegend() {
+    var items = document.querySelectorAll('.topbar-legend.cycle > span');
+    if (!items.length) return;
+    if (items.length < 2 || legendReducedMotion_()) {
+      items.forEach(function (s) { s.classList.add('on'); });
+      return;
+    }
+    var active = legendIdx % items.length;
+    items.forEach(function (s, i) { s.classList.toggle('on', i === active); });
+  }
+  setInterval(function () {
+    if (legendReducedMotion_()) return; // static under reduced-motion
+    var items = document.querySelectorAll('.topbar-legend.cycle > span');
+    if (items.length < 2) return;
+    legendIdx = (legendIdx + 1) % items.length;
+    paintLegend();
+  }, 2000);
 
   // Landing (#/): chrome only, empty middle apart from the feature video from
   // the last workshop — fades in after a beat, edges masked into the page.

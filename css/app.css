@@ -2413,6 +2413,17 @@ body.hive-full .nav a { pointer-events: auto; }
   display: flex; align-items: center; gap: 16px;
   font-size: 13px; font-weight: 600; color: var(--text-body); white-space: nowrap; flex: none;
 }
+/* Cycling legend: stack all counts in one grid cell so the container sizes to
+   the widest item (no layout shift) and only the .on item is visible. JS
+   advances .on every 2s; the fade is CSS. */
+.topbar-legend.cycle { display: grid; gap: 0; justify-items: start; }
+.topbar-legend.cycle > span { grid-area: 1 / 1; opacity: 0; transition: opacity .45s ease; pointer-events: none; }
+.topbar-legend.cycle > span.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  /* no cycling — lay the counts out side by side, all visible */
+  .topbar-legend.cycle { display: flex; gap: 16px; }
+  .topbar-legend.cycle > span { opacity: 1; }
+}
 .topbar-legend .dot { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 7px; vertical-align: -1px; }
 .topbar-legend .dot.mentor { background: #6100FF; }
 .topbar-legend .dot.participant { background: #00D7EE; }
