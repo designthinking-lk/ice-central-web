@@ -4804,6 +4804,7 @@
   function selectSkillPanel(name) {
     var side = $('#skillsSide');
     if (!side) return;
+    side.classList.add('has-sel'); // mobile: slide the bottom sheet up (no-op on desktop)
     var users = ((state.data && state.data.users) || []).filter(function (u) {
       return (u.skills || []).indexOf(name) !== -1;
     });
@@ -4988,6 +4989,7 @@
 
     canvas.addEventListener('pointerdown', function (e) {
       dragging = true; moved = 0; lastX = e.clientX; lastY = e.clientY;
+      var rr = canvas.getBoundingClientRect(); mx = e.clientX - rr.left; my = e.clientY - rr.top; // so a touch tap has a hit-point
       canvas.setPointerCapture(e.pointerId);
     });
     canvas.addEventListener('pointermove', function (e) {
@@ -5004,9 +5006,19 @@
       dragging = false;
       vyaw = vpitch = 0;             // no inertia glide — release means stop
       calmUntil = Date.now() + 2000; // hold still for 2 s before the idle spin resumes
-      if (moved < 6 && hover !== -1) {
-        selected = hover;
-        selectSkillPanel(nodes[hover].name);
+      if (moved < 6) {
+        var pick = hover;
+        if (pick === -1 && mx >= 0) { // touch tap: no prior hover, so pick nearest now
+          var bd = 1e9;
+          for (var i = 0; i < nodes.length; i++) {
+            if (!proj[i]) continue;
+            var pr = (nodes[i].count > 0 ? 10 + Math.sqrt(nodes[i].count) * 7 : 5) * proj[i].f + 8;
+            var dx = proj[i].x - mx, dy = proj[i].y - my, dd = dx * dx + dy * dy;
+            if (dd < pr * pr && dd < bd) { bd = dd; pick = i; }
+          }
+        }
+        if (pick !== -1) { selected = pick; selectSkillPanel(nodes[pick].name); }
+        else if (isMobile()) { var ss = $('#skillsSide'); if (ss) ss.classList.remove('has-sel'); } // tap empty → close sheet
       }
     });
     canvas.addEventListener('pointerleave', function () { mx = my = -1; });
@@ -5014,6 +5026,26 @@
       e.preventDefault();
       zoom = Math.max(0.5, Math.min(2.2, zoom * (e.deltaY > 0 ? 0.94 : 1.06)));
     }, { passive: false });
+
+    // Gyroscope: on a phone, tilting the device orbits the sphere so skills feel
+    // like they hang in the air around you. Deltas (not absolutes) so it blends
+    // with the ambient spin. iOS needs a permission tap (the app-bar motion btn);
+    // Android grants silently, so we auto-enable there.
+    if (isMobile()) {
+      var gyroOn = false, lastB = null, lastG = null;
+      function onOrient(ev) {
+        if (ev.beta == null) return;
+        if (lastB != null) { preRot((ev.gamma - lastG) * 0.02, 1); preRot(-(ev.beta - lastB) * 0.02, 0); calmUntil = 0; }
+        lastB = ev.beta; lastG = ev.gamma;
+      }
+      canvas.__enableGyro = function () {
+        if (gyroOn) return;
+        if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) {
+          DeviceOrientationEvent.requestPermission().then(function (s) { if (s === 'granted') { gyroOn = true; window.addEventListener('deviceorientation', onOrient); } }).catch(function () {});
+        } else if (window.DeviceOrientationEvent) { gyroOn = true; window.addEventListener('deviceorientation', onOrient); }
+      };
+      if (!(typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission)) canvas.__enableGyro();
+    }
 
     var proj = new Array(nodes.length);
     function frame() {
@@ -5032,9 +5064,11 @@
         preRot(spin + vyaw, 1); preRot(vpitch, 0);
         vyaw *= 0.95; vpitch *= 0.95;
       }
-      // the maze owns the left ~2/3; the side panel lives in the right third
-      var cx = W * 0.34;
-      var scale = Math.min(W * 0.62, H) * 0.34 * zoom, camd = 3.2;
+      // desktop: sphere owns the left ~2/3, side panel the right third. mobile:
+      // full-width, centred (the detail is a bottom sheet).
+      var mob = isMobile();
+      var cx = mob ? W * 0.5 : W * 0.34;
+      var scale = Math.min(mob ? W * 0.94 : W * 0.62, H) * 0.34 * zoom, camd = 3.2;
       for (var i = 0; i < nodes.length; i++) {
         var n = nodes[i];
         var x1 = R[0] * n.x + R[1] * n.y + R[2] * n.z;
@@ -5925,6 +5959,7 @@
     document.documentElement.classList.toggle('is-wallet', /^#\/(wallet|pcard)/.test(hash));
     // Mobile: bypass the "open on desktop" gate only on routes we've built for phones.
     document.documentElement.classList.toggle('m-on', mobileRouteOn());
+    document.body.classList.toggle('m-chromed', isMobile() && /^#\/(projects|skills)/.test(hash));
     closeMenu();
     // Stop a profile-backdrop video when navigating away (route() also re-runs on
     // in-place data refreshes — those keep the same hash, so playback survives).
@@ -5967,7 +6002,14 @@
     if ($('#word')) requestAnimationFrame(isMobile() ? buildMobileHive : buildWordmark);
     // skills constellation
     var sc = $('#skillsCanvas');
-    if (sc) initSkillsGraph(sc);
+    if (sc) {
+      initSkillsGraph(sc);
+      if (isMobile()) {
+        injectMobileChrome('#/skills', '<button class="mic" id="mGyroBtn" aria-label="Turn on motion"><i class="fa-solid fa-mobile-screen-button"></i></button>');
+        var gb = $('#mGyroBtn');
+        if (gb) gb.onclick = function () { var c = $('#skillsCanvas'); if (c && c.__enableGyro) c.__enableGyro(); gb.classList.add('on'); };
+      }
+    }
     // landing video: fade in on actual playback
     var fv = $('.feature-video');
     if (fv) initLandingVideo(fv);
@@ -6002,7 +6044,7 @@
     if ($('#walletView')) initWalletHandoff();
     if ($('#pcardView')) initProjectCardHandoff();
     // projects: draw the QR on any card with a valid website
-    if ($('#projectsGrid')) renderProjectCardQRs();
+    if ($('#projectsGrid')) { renderProjectCardQRs(); if (isMobile()) injectMobileChrome('#/projects'); }
     // shared project deep-link (#/projects/<slot>): auto-open that project card
     var projDeep = hash.match(/^#\/projects\/(\d+)$/);
     if (projDeep && $('#projectsGrid') && projSel == null) {
@@ -6031,7 +6073,7 @@
      by isMobile(), so the desktop experience is never touched. Screens are
      enabled one at a time by adding their hash to MOBILE_ROUTES. */
   function isMobile() { return document.documentElement.classList.contains('is-mobile'); }
-  var MOBILE_ROUTES = { '#/people': 1 }; // add '#/projects','#/skills' as each ships
+  var MOBILE_ROUTES = { '#/people': 1, '#/projects': 1, '#/skills': 1 };
   function mobileRouteOn() {
     var h = (location.hash || '#/').split('?')[0];
     return isMobile() && !!MOBILE_ROUTES[h];
@@ -6081,18 +6123,22 @@
     var floatCat = cq.length ? cq.shift() : null;
 
     function tile(u) {
-      if (!u) return '<div class="moct moct-empty"></div>';
       var on = online.indexOf(u.id) !== -1;
       return '<a class="moct k-' + mKind(u) + (mineIds[u.id] ? ' is-mine' : '') + '" href="#/profile/' + esc(u.id) + '" data-uid="' + esc(u.id) + '" title="' + esc(u.name) + '">' +
         (u.image ? '<img src="' + esc(u.image) + '" alt="" loading="lazy">' : '<span class="moct-ini">' + esc(initials(u.name)) + '</span>') +
         (on ? '<span class="moct-on"></span>' : '') + '</a>';
     }
+    // empty placeholder octagon (default avatar), like desktop's open slots
+    function emptyTile(kind) {
+      return '<div class="moct moct-empty' + (kind === 'cat' ? ' k-cat-empty' : '') + '"><span class="moct-slot"><i class="fa-solid fa-' + (kind === 'cat' ? 'bolt' : 'user') + '"></i></span></div>';
+    }
+    var resSet = {}; reserved.forEach(function (rc) { resSet[rc.li + '-' + rc.r + '-' + rc.c] = 1; });
     var panes = letters.map(function (lt, i) {
       var rows = lt.grid.map(function (row, r) {
         var cs = '';
         for (var c = 0; c < row.length; c++) {
-          if (row[c] === '1') cs += tile(lt.map[r + '-' + c].u);
-          else { var rcat = resMap[i + '-' + r + '-' + c]; cs += rcat ? tile(rcat) : '<div class="moct moct-gap"></div>'; }
+          if (row[c] === '1') { var mu = lt.map[r + '-' + c].u; cs += mu ? tile(mu) : emptyTile('p'); }
+          else { var key = i + '-' + r + '-' + c; cs += resMap[key] ? tile(resMap[key]) : (resSet[key] ? emptyTile('cat') : '<div class="moct moct-gap"></div>'); }
         }
         return cs;
       }).join('');
@@ -6155,6 +6201,38 @@
   }
 
   function teamById_(id) { var t = null; homeTeams().forEach(function (x) { if (x.id === id) t = x; }); return t; }
+
+  // Shared mobile chrome (top bar + octagon nav) reused by Projects & Skills so
+  // every mobile screen has the same hamburger nav / brand / account controls.
+  function mAcctHtml() {
+    var d = state.data;
+    return signedIn()
+      ? (d && d.me
+        ? '<button class="mic" data-action="user-menu" aria-label="Account">' + avatar(d.me, 'avatar-sm') + '</button>'
+        : '<button class="mic" data-action="guest-menu" aria-label="Account"><i class="fa-solid fa-user"></i></button>')
+      : '<button class="mic" data-action="sign-in" aria-label="Sign in"><i class="fa-brands fa-google"></i></button>';
+  }
+  function mobileNavHtml(active) {
+    function it(href, icon, label) { return '<a class="mnav' + (active === href ? ' on' : '') + '" href="' + href + '"><i class="fa-solid ' + icon + '"></i>' + label + '</a>'; }
+    return '<div class="mslidenav" data-mnav><div class="mscrim" data-mnavclose></div><nav class="moctnav">' +
+      it('#/people', 'fa-users', 'People') + it('#/projects', 'fa-diagram-project', 'Projects') + it('#/skills', 'fa-wand-magic-sparkles', 'Skills') + '</nav></div>';
+  }
+  function injectMobileChrome(active, rightExtra) {
+    var view = $('#view'); if (!view || !isMobile()) return null;
+    if (view.querySelector('.mchrome')) return view.querySelector('.mchrome');
+    var wrap = document.createElement('div'); wrap.className = 'mchrome';
+    wrap.innerHTML =
+      '<header class="mtop"><button class="mham" data-mham aria-label="Menu"><i class="fa-solid fa-bars"></i></button>' +
+      '<span class="mbrand">ICE<b>2026</b></span><span class="mtop-sp"></span>' + (rightExtra || '') +
+      '<button class="mic" data-action="toggle-theme" aria-label="Night mode"><i class="fa-solid fa-moon"></i></button>' +
+      mAcctHtml() + '</header>' + mobileNavHtml(active);
+    view.appendChild(wrap);
+    var nav = wrap.querySelector('[data-mnav]');
+    wrap.querySelector('[data-mham]').onclick = function () { nav.classList.add('open'); };
+    wrap.querySelector('[data-mnavclose]').onclick = function () { nav.classList.remove('open'); };
+    document.body.classList.add('m-chromed'); // pad the view below the fixed bar
+    return wrap;
+  }
 
   function mSpotTeam(team, silent) {
     var scroll = $('#mHiveScroll'); if (!scroll) return;
