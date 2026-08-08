@@ -3272,7 +3272,9 @@ html.is-mobile.m-on .mic.on { background: linear-gradient(120deg,#6100FF,#00D7EE
 
 /* ---- Projects on mobile: single-column credit cards below the bar ---- */
 html.is-mobile.m-on .projects-wrap { padding-top: 64px; }
-html.is-mobile.m-on .projects-grid { grid-template-columns: 1fr; gap: 16px; max-width: 480px; padding: 0 16px; }
+/* narrower than the viewport so the stacked deck's right-hand fan never touches
+   the screen edge */
+html.is-mobile.m-on .projects-grid { grid-template-columns: 1fr; gap: 16px; max-width: min(82vw, 360px); margin: 0 auto; }
 
 /* ---- Skills on mobile: full-bleed sphere; detail is a bottom sheet ---- */
 html.is-mobile.m-on .skills3d-wrap { top: 52px; }

@@ -5074,8 +5074,23 @@
         var x1 = R[0] * n.x + R[1] * n.y + R[2] * n.z;
         var y2 = R[3] * n.x + R[4] * n.y + R[5] * n.z;
         var z2 = R[6] * n.x + R[7] * n.y + R[8] * n.z;
-        var f = camd / (camd - z2);
-        proj[i] = { x: cx + x1 * scale * f, y: H / 2 + y2 * scale * f, f: f, z: z2 };
+        if (mob) {
+          // Inside-out: the phone is the CENTRE of the sphere, skills surround you
+          // in 3D. Show only the front cone and project rectilinearly, so turning
+          // the device (gyro) or dragging looks around the full 360°.
+          var len = Math.sqrt(n.x * n.x + n.y * n.y + n.z * n.z) || 1;
+          var vz = z2 / len;
+          if (vz > 0.34) {
+            var focal = Math.min(W, H) * 0.62 * zoom;
+            proj[i] = { x: cx + (x1 / len) / vz * focal, y: H / 2 - (y2 / len) / vz * focal,
+              f: Math.min(1 / vz, 2.2), z: vz, vis: true, edge: Math.min(1, (vz - 0.34) / 0.28) };
+          } else {
+            proj[i] = { x: -9999, y: -9999, f: 0, z: vz, vis: false, edge: 0 };
+          }
+        } else {
+          var f = camd / (camd - z2);
+          proj[i] = { x: cx + x1 * scale * f, y: H / 2 + y2 * scale * f, f: f, z: z2, vis: true, edge: 1 };
+        }
       }
       // hover pick (nearest projected node)
       hover = -1;
@@ -5089,7 +5104,7 @@
       }
       canvas.style.cursor = dragging ? 'grabbing' : (hover !== -1 ? 'pointer' : 'grab');
 
-      edges.forEach(function (e) {
+      if (!mob) edges.forEach(function (e) {
         var A = proj[e.a], B = proj[e.b];
         var depth = Math.max(0.08, ((A.f + B.f) / 2 - 0.7) * 1.1);
         var hot = hover !== -1 && (e.a === hover || e.b === hover);
@@ -5102,10 +5117,12 @@
       var order = nodes.map(function (_, i) { return i; }).sort(function (a, b) { return proj[a].z - proj[b].z; });
       order.forEach(function (i3) {
         var n = nodes[i3], p = proj[i3];
+        if (mob && !p.vis) return; // behind the camera in the inside-out view
         var real = n.count > 0;
         // popularity drives size: 1 person → 17px radius, 4 → 24, 9 → 31 …
         var r = (real ? 10 + Math.sqrt(n.count) * 7 : 4.5) * p.f;
-        var depth = Math.max(0.15, (p.f - 0.7) * 1.4);
+        var ef = mob ? p.edge : 1; // fade nodes as they near the cone edge
+        var depth = Math.max(0.15, (p.f - 0.7) * 1.4) * ef;
         ctx.globalAlpha = Math.min(1, depth + (hover === i3 ? 0.4 : 0));
         ctx.fillStyle = real ? theme.accent : theme.faint;
         ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
@@ -6044,7 +6061,15 @@
     if ($('#walletView')) initWalletHandoff();
     if ($('#pcardView')) initProjectCardHandoff();
     // projects: draw the QR on any card with a valid website
-    if ($('#projectsGrid')) { renderProjectCardQRs(); if (isMobile()) injectMobileChrome('#/projects'); }
+    if ($('#projectsGrid')) {
+      renderProjectCardQRs();
+      if (isMobile()) {
+        injectMobileChrome('#/projects');
+        // mobile skips the grid overview — jump straight into the stacked deck
+        var pDeep = /^#\/projects\/(\d+)$/.test(hash);
+        if (projSel == null && !pDeep) requestAnimationFrame(function () { if (projSel == null) openProject(Math.max(0, myTeamSlot()), false); });
+      }
+    }
     // shared project deep-link (#/projects/<slot>): auto-open that project card
     var projDeep = hash.match(/^#\/projects\/(\d+)$/);
     if (projDeep && $('#projectsGrid') && projSel == null) {
