@@ -1890,8 +1890,11 @@ body.hive-full .hive {
   background: transparent; pointer-events: none;
 }
 body.hive-full .hive .oct { pointer-events: auto; }
-/* the nav/switcher boxes (z-index 1) span the rail and would swallow hover on
-   the hive tiles beneath — pass the pointer through except on the controls */
+/* the sidebar rail (z-index 50, 176px, transparent) and its nav boxes span the
+   left edge and would swallow hover/click on the hive tiles beneath — notably
+   the leftmost tile of the "I", which sits entirely inside the rail. Pass the
+   pointer through the whole rail, re-enabling only the actual controls. */
+body.hive-full .sidebar { pointer-events: none; }
 body.hive-full .nav { pointer-events: none; }
 body.hive-full .nav a { pointer-events: auto; }
 
