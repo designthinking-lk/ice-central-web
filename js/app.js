@@ -6050,7 +6050,7 @@
     if (isMobile()) {
       var mh = hash.split('?')[0];
       if (/^#\/?$/.test(mh)) { injectMobileChrome(''); initLandingTilt(); }
-      else if (/^#\/(about|tools|announcements)$/.test(mh)) injectMobileChrome('');
+      else if (/^#\/(about|tools|announcements|program)$/.test(mh)) injectMobileChrome('');
       else if (/^#\/(team|profile)\//.test(mh) || /^#\/me$/.test(mh)) injectMobileChrome('#/people');
     }
     // profile page: auto-play the member's own clip as a full-screen backdrop
@@ -6127,13 +6127,13 @@
     if (!isMobile()) return false;
     var h = (location.hash || '#/').split('?')[0];
     return /^#\/?$/.test(h)                                        // landing
-      || /^#\/(people|projects|skills|about|announcements|tools|me)$/.test(h)
+      || /^#\/(people|projects|skills|about|announcements|tools|me|program)$/.test(h)
       || /^#\/(team|profile|projects)\//.test(h);                  // parameterized
   }
   // Reflow views reuse their desktop markup (single-column) under the shared
   // mobile chrome, so their .view needs top padding to clear the fixed app bar.
   function mReflowRoute(h) {
-    return /^#\/(about|announcements|tools|me)$/.test(h) || /^#\/(team|profile)\//.test(h);
+    return /^#\/(about|announcements|tools|me|program)$/.test(h) || /^#\/(team|profile)\//.test(h);
   }
   // Exact desktop I/C/E formation (WORD_LETTERS): 7 rows x 5 cols each.
   var MWORD = [

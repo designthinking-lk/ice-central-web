@@ -3334,3 +3334,20 @@ html.is-mobile.m-on .feature-video video {
   transition: transform 0.08s linear;
 }
 html.is-mobile.m-on .feature-video.show { opacity: 0.9; }
+
+/* ---- Program on mobile: stack the 3 days vertically and turn the
+   duration-scaled flex timeline into a plain stacked agenda (each event a
+   content-height card) — the desktop side-by-side timeline stays untouched ---- */
+html.is-mobile.m-on .program-grid { flex-direction: column; gap: 22px; }
+html.is-mobile.m-on .pg-day { flex: none; width: 100%; }
+html.is-mobile.m-on .pg-day-head { text-align: left; font-size: 15px; padding: 0 2px 8px;
+  border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+html.is-mobile.m-on .pg-day-body { display: block; height: auto; min-height: 0; padding-top: 0; }
+html.is-mobile.m-on .pg-event { flex: none !important; min-height: 0; height: auto;
+  padding: 11px 14px; margin-bottom: 8px; }
+html.is-mobile.m-on .pg-ev-title { white-space: normal; font-size: 14px; }
+html.is-mobile.m-on .pg-ev-meta { white-space: normal; font-size: 12px; }
+html.is-mobile.m-on .pg-group { display: block; min-height: 0; }
+html.is-mobile.m-on .pg-group .pg-event { flex: none; }
+html.is-mobile.m-on .pg-gap { display: none; }
+html.is-mobile.m-on .pg-skeleton { min-height: 46px; }
