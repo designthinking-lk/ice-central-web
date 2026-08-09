@@ -1410,11 +1410,21 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
   position: absolute; cursor: pointer; padding: 5px; background: transparent;
   clip-path: var(--oct);
   transition: opacity 0.3s ease, filter 0.3s ease, transform 0.2s ease;
+  /* Off-screen tiles (wide wordmark / mobile scroll) skip their expensive
+     paint stack (clip-path + filters + blend) until scrolled into view.
+     Tiles carry explicit inline width/height, so no contain-intrinsic-size
+     is needed and the wordmark geometry is unaffected. */
+  content-visibility: auto;
 }
 .oct:hover { transform: scale(1.1); z-index: 9; }
 .oct-in {
   width: 100%; height: 100%; position: relative; overflow: hidden;
   clip-path: var(--oct); background: #222;
+  /* Confine the mix-blend-mode duotone (.oct-in::after) to this tile's own
+     grayscale image instead of blending against the whole page backdrop —
+     visually identical (the image is opaque and fills the tile) but lets the
+     tile paint once into a cached layer that the fade can composite cheaply. */
+  isolation: isolate;
 }
 /* subtle outline hugging the octagon (a normal border can't follow a clip-path,
    but a drop-shadow follows the clipped alpha) — so a white-background photo
@@ -1455,8 +1465,12 @@ tr.invite-row .invite-noname { color: var(--text-faint); }
 @media (prefers-reduced-motion: reduce) { .word .oct, .word .oct-preview { animation: none; } }
 
 /* hover focus: dim everyone else, spotlight the hovered person */
-.word.focus .oct { opacity: 0.26; filter: saturate(0.8); }
-.word.focus .oct.active { opacity: 1; filter: none; transform: scale(1.12); z-index: 9; }
+/* Dim non-hovered tiles with opacity only. At 0.26 opacity the previous
+   `filter: saturate(0.8)` was imperceptible but forced a paint-bound filter
+   repaint on every tile on each hover — dropping it keeps the look while
+   letting the dim run purely on the compositor. */
+.word.focus .oct { opacity: 0.26; }
+.word.focus .oct.active { opacity: 1; transform: scale(1.12); z-index: 9; }
 .word.focus .oct.active .oct-in::after { opacity: 0.35; transition: opacity 0.3s ease; }
 
 /* large octagon preview in the hollow of the C (no outline) */
