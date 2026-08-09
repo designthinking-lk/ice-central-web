@@ -4118,6 +4118,9 @@
     if (strip && multiCol) {
       strip.style.left = cards[0].offsetLeft + 'px';
       strip.style.top = (fT + cards[0].offsetHeight + 46) + 'px';
+      // bound the width to the space left of the detail card so the People/Skills
+      // chips wrap onto more lines instead of sliding under the detail panel
+      strip.style.width = Math.max(220, detail.offsetLeft - cards[0].offsetLeft - 28) + 'px';
       strip.hidden = false;
       strip.innerHTML = projMembersStripHtml(slot);
     }
