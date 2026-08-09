@@ -5991,7 +5991,7 @@
     document.documentElement.classList.toggle('is-wallet', /^#\/(wallet|pcard)/.test(hash));
     // Mobile: bypass the "open on desktop" gate only on routes we've built for phones.
     document.documentElement.classList.toggle('m-on', mobileRouteOn());
-    document.body.classList.toggle('m-chromed', isMobile() && /^#\/(projects|skills)/.test(hash));
+    document.documentElement.classList.toggle('m-reflow', isMobile() && mReflowRoute(hash.split('?')[0]));
     closeMenu();
     // Stop a profile-backdrop video when navigating away (route() also re-runs on
     // in-place data refreshes — those keep the same hash, so playback survives).
@@ -6045,6 +6045,14 @@
     // landing video: fade in on actual playback
     var fv = $('.feature-video');
     if (fv) initLandingVideo(fv);
+    // shared mobile chrome for the reflow + landing views (people builds its own
+    // chrome in buildMobileHive; projects/skills inject in their branches above)
+    if (isMobile()) {
+      var mh = hash.split('?')[0];
+      if (/^#\/?$/.test(mh)) { injectMobileChrome(''); initLandingTilt(); }
+      else if (/^#\/(about|tools|announcements)$/.test(mh)) injectMobileChrome('');
+      else if (/^#\/(team|profile)\//.test(mh) || /^#\/me$/.test(mh)) injectMobileChrome('#/people');
+    }
     // profile page: auto-play the member's own clip as a full-screen backdrop
     // (skip a needless restart when a data refresh re-routes to the same profile)
     var pmatch = hash.match(/^#\/profile\/([\w-]+)$/);
@@ -6113,10 +6121,19 @@
      by isMobile(), so the desktop experience is never touched. Screens are
      enabled one at a time by adding their hash to MOBILE_ROUTES. */
   function isMobile() { return document.documentElement.classList.contains('is-mobile'); }
-  var MOBILE_ROUTES = { '#/people': 1, '#/projects': 1, '#/skills': 1 };
+  // Routes with a mobile layout (bypass the "open on desktop" gate). #/register
+  // stays gated on purpose; #/program and #/admin are desktop-only for now.
   function mobileRouteOn() {
+    if (!isMobile()) return false;
     var h = (location.hash || '#/').split('?')[0];
-    return isMobile() && !!MOBILE_ROUTES[h];
+    return /^#\/?$/.test(h)                                        // landing
+      || /^#\/(people|projects|skills|about|announcements|tools|me)$/.test(h)
+      || /^#\/(team|profile|projects)\//.test(h);                  // parameterized
+  }
+  // Reflow views reuse their desktop markup (single-column) under the shared
+  // mobile chrome, so their .view needs top padding to clear the fixed app bar.
+  function mReflowRoute(h) {
+    return /^#\/(about|announcements|tools|me)$/.test(h) || /^#\/(team|profile)\//.test(h);
   }
   // Exact desktop I/C/E formation (WORD_LETTERS): 7 rows x 5 cols each.
   var MWORD = [
@@ -6241,6 +6258,43 @@
   }
 
   function teamById_(id) { var t = null; homeTeams().forEach(function (x) { if (x.id === id) t = x; }); return t; }
+
+  // Landing hero: on a phone the video already COVERs the viewport (fills height,
+  // crops sides in portrait). Bind device tilt to a gentle parallax pan — gamma
+  // (roll) → x, beta (pitch) → y — low-pass filtered so it eases, not jitters.
+  // Adapted from ahlab-org hero-parallax. iOS asks permission on the first tap.
+  function initLandingTilt() {
+    var fv = $('.feature-video video'); if (!fv || fv.__tilt) return;
+    fv.__tilt = true;
+    var tx = 0, ty = 0, cx = 0, cy = 0, raf = false;
+    function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+    function apply() {
+      raf = false;
+      cx += (tx - cx) * 0.16; cy += (ty - cy) * 0.16;
+      fv.style.setProperty('--tx', cx.toFixed(1) + 'px');
+      fv.style.setProperty('--ty', cy.toFixed(1) + 'px');
+      if (Math.abs(tx - cx) > 0.3 || Math.abs(ty - cy) > 0.3) { raf = true; requestAnimationFrame(apply); }
+    }
+    function onOrient(e) {
+      if (e.gamma == null && e.beta == null) return;
+      var rx = clamp((e.gamma || 0) / 22, -1, 1);
+      var ry = clamp(((e.beta == null ? 90 : e.beta) - 90) / 22, -1, 1);
+      tx = -rx * (window.innerWidth * 0.06);   // tilt → content pans the opposite way
+      ty = -ry * (window.innerHeight * 0.045);
+      if (!raf) { raf = true; requestAnimationFrame(apply); }
+    }
+    function attach() {
+      window.addEventListener('deviceorientation', onOrient, { passive: true });
+      window.addEventListener('deviceorientationabsolute', onOrient, { passive: true });
+    }
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      var g = function () {
+        document.removeEventListener('touchend', g, true); document.removeEventListener('click', g, true);
+        DeviceOrientationEvent.requestPermission().then(function (r) { if (r === 'granted') attach(); }).catch(function () {});
+      };
+      document.addEventListener('touchend', g, true); document.addEventListener('click', g, true);
+    } else { attach(); }
+  }
 
   // Shared mobile chrome (top bar + octagon nav) reused by Projects & Skills so
   // every mobile screen has the same hamburger nav / brand / account controls.

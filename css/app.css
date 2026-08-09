@@ -3314,3 +3314,23 @@ html.is-mobile.m-on .aurora span { filter: blur(56px); opacity: 0.6; }
 html.is-mobile.m-on .aurora span:nth-child(1) { width: 86vw; height: 86vw; left: -22vw; top: -6vh; }
 html.is-mobile.m-on .aurora span:nth-child(2) { width: 78vw; height: 78vw; right: -24vw; top: 24vh; }
 html.is-mobile.m-on .aurora span:nth-child(3) { width: 96vw; height: 96vw; left: 2vw; bottom: -16vh; }
+
+/* ---- reflow views (About / Team / Tools / Announcements / Profile / My card):
+   reuse the desktop single-column markup under the shared chrome; pad below the
+   fixed app bar and give the content side breathing room ---- */
+html.is-mobile.m-on.m-reflow .view { padding: 56px 13px 34px; }
+/* profile: stack the two-column body */
+html.is-mobile.m-on .pv-body { flex-direction: column; }
+html.is-mobile.m-on .pv-main, html.is-mobile.m-on .pv-side { flex: none; width: 100%; }
+/* page headers + announcement header rows wrap instead of squeezing */
+html.is-mobile.m-on .page-head { flex-wrap: wrap; }
+html.is-mobile.m-on .ann-head { flex-wrap: wrap; }
+
+/* ---- landing hero: portrait video COVERs the screen (crops sides), with a
+   gentle tilt-parallax pan driven by initLandingTilt (--tx/--ty) ---- */
+html.is-mobile.m-on .feature-video { -webkit-mask-image: none; mask-image: none; }
+html.is-mobile.m-on .feature-video video {
+  transform: translate(calc(-50% + var(--tx, 0px)), calc(-50% + var(--ty, 0px))) scale(1.14);
+  transition: transform 0.08s linear;
+}
+html.is-mobile.m-on .feature-video.show { opacity: 0.9; }
