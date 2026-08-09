@@ -3214,14 +3214,27 @@ html.is-mobile.m-on .mgrab { position: absolute; left: 0; top: 50%; transform: t
 html.is-mobile.m-on .mgrab i { font-size: 11px; opacity: 0.9; }
 
 html.is-mobile.m-on .mslidenav { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
-html.is-mobile.m-on .mslidenav .mscrim { position: absolute; inset: 0; background: rgba(8,6,16,0.5);
-  -webkit-backdrop-filter: blur(12px) saturate(1.1); backdrop-filter: blur(12px) saturate(1.1);
+/* heavier blur + darken so the cards behind the open menu read as faint outlines,
+   not a distracting frosted photo */
+html.is-mobile.m-on .mslidenav .mscrim { position: absolute; inset: 0; background: rgba(8,6,16,0.72);
+  -webkit-backdrop-filter: blur(26px) saturate(1.1); backdrop-filter: blur(26px) saturate(1.1);
   opacity: 0; transition: opacity 0.32s ease; }
-html.is-mobile.m-on .moctnav { position: absolute; top: 50%; left: -116px; width: 232px; height: 232px;
+html.is-mobile.m-on .moctnav { position: absolute; top: 50%; left: -84px; width: 300px; height: 300px;
   transform: translate(-100%, -50%); transition: transform 0.36s cubic-bezier(0.2,0.8,0.2,1); clip-path: url(#octr);
-  background: linear-gradient(150deg, rgba(40,28,74,0.96), rgba(16,13,26,0.97));
+  background: linear-gradient(150deg, rgba(40,28,74,0.97), rgba(16,13,26,0.98));
   -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
-  display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 0 20px 0 128px; }
+  display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 0 18px 0 100px; }
+html.is-mobile.m-on .mnav-cols { display: flex; gap: 16px; }
+html.is-mobile.m-on .mnav-main, html.is-mobile.m-on .mnav-sec { display: flex; flex-direction: column; gap: 11px; }
+html.is-mobile.m-on .mnav2 { display: flex; align-items: center; gap: 7px; color: var(--text-muted);
+  font-weight: 600; font-size: 12px; text-decoration: none; }
+html.is-mobile.m-on .mnav2 i { width: 16px; text-align: center; font-size: 13px; opacity: 0.85; }
+html.is-mobile.m-on .mnav2.on { color: #fff; }
+html.is-mobile.m-on .mnav2.on i { color: #00D7EE; }
+html.is-mobile.m-on .mnav-admin { display: flex; align-items: center; gap: 8px; color: #00D7EE;
+  font-weight: 700; font-size: 12.5px; text-decoration: none; }
+html.is-mobile.m-on .mnav-admin i { width: 16px; text-align: center; }
+html.is-mobile.m-on .mbrand { text-decoration: none; }
 html.is-mobile.m-on .mslidenav.open { pointer-events: auto; }
 html.is-mobile.m-on .mslidenav.open .mscrim { opacity: 1; }
 html.is-mobile.m-on .mslidenav.open .moctnav { transform: translate(0, -50%); }
@@ -3318,7 +3331,7 @@ html.is-mobile.m-on .aurora span:nth-child(3) { width: 96vw; height: 96vw; left:
 /* ---- reflow views (About / Team / Tools / Announcements / Profile / My card):
    reuse the desktop single-column markup under the shared chrome; pad below the
    fixed app bar and give the content side breathing room ---- */
-html.is-mobile.m-on.m-reflow .view { padding: 56px 13px 34px; }
+html.is-mobile.m-on.m-reflow .view { padding: 56px 13px calc(52px + env(safe-area-inset-bottom, 0px)); }
 /* profile: stack the two-column body */
 html.is-mobile.m-on .pv-body { flex-direction: column; }
 html.is-mobile.m-on .pv-main, html.is-mobile.m-on .pv-side { flex: none; width: 100%; }

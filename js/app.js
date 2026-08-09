@@ -6229,19 +6229,13 @@
     mob.className = 'mhive';
     mob.innerHTML =
       '<header class="mtop">' +
-        '<button class="mham" id="mHam" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>' +
-        '<span class="mbrand">ICE<b>2026</b></span><span class="mtop-sp"></span>' +
+        '<button class="mham" data-mham aria-label="Menu"><i class="fa-solid fa-bars"></i></button>' +
+        '<a class="mbrand" href="#/">ICE<b>2026</b></a><span class="mtop-sp"></span>' +
         '<button class="mic" id="mOptBtn" aria-label="View options"><i class="fa-solid fa-sliders"></i></button>' +
         '<button class="mic" data-action="toggle-theme" aria-label="Night mode"><i class="fa-solid fa-moon"></i></button>' + acct + '</header>' +
       '<div class="mhive-scroll' + (state.teamFilter ? ' dimmed' : '') + '" id="mHiveScroll">' + panes + '</div>' +
       '<div class="mspotbar" id="mSpotbar"><span id="mSpotTxt"></span><button id="mSpotClear" aria-label="Clear"><i class="fa-solid fa-xmark"></i></button></div>' +
-      (d.isAdmin ? '<a class="madmin" href="#/admin"><i class="fa-solid fa-gear"></i> Admin</a>' : '') +
-      '<div class="mslidenav" id="mNav"><div class="mscrim" id="mNavScrim"></div>' +
-        '<nav class="moctnav">' +
-          '<a class="mnav on" href="#/people"><i class="fa-solid fa-users"></i>People</a>' +
-          '<a class="mnav" href="#/projects"><i class="fa-solid fa-diagram-project"></i>Projects</a>' +
-          '<a class="mnav" href="#/skills"><i class="fa-solid fa-wand-magic-sparkles"></i>Skills</a>' +
-        '</nav></div>' +
+      mobileNavHtml('#/people') +
       '<div class="moverlay" id="mOverlay"><button class="movclose" id="mOvClose"><i class="fa-solid fa-xmark"></i></button>' +
         '<div class="movsec"><div class="movlabel">Highlight</div><div class="mseg" id="mSeg">' +
           '<button data-mine="0" class="' + (mineOn() ? '' : 'on') + '">We</button>' +
@@ -6277,10 +6271,12 @@
     }
     function onOrient(e) {
       if (e.gamma == null && e.beta == null) return;
-      var rx = clamp((e.gamma || 0) / 22, -1, 1);
-      var ry = clamp(((e.beta == null ? 90 : e.beta) - 90) / 22, -1, 1);
-      tx = -rx * (window.innerWidth * 0.06);   // tilt → content pans the opposite way
-      ty = -ry * (window.innerHeight * 0.045);
+      var rx = clamp((e.gamma || 0) / 18, -1, 1);
+      var ry = clamp(((e.beta == null ? 90 : e.beta) - 90) / 18, -1, 1);
+      // the portrait video is much wider than the screen, so a big horizontal
+      // pan reveals its cropped sides; vertical room comes from scale(1.14)
+      tx = -rx * (window.innerWidth * 0.22);   // tilt → content pans the opposite way
+      ty = -ry * (window.innerHeight * 0.06);
       if (!raf) { raf = true; requestAnimationFrame(apply); }
     }
     function attach() {
@@ -6307,9 +6303,20 @@
       : '<button class="mic" data-action="sign-in" aria-label="Sign in"><i class="fa-brands fa-google"></i></button>';
   }
   function mobileNavHtml(active) {
-    function it(href, icon, label) { return '<a class="mnav' + (active === href ? ' on' : '') + '" href="' + href + '"><i class="fa-solid ' + icon + '"></i>' + label + '</a>'; }
+    var d = state.data;
+    var canMember = !!(d && (d.isAdmin || (d.me && hasAccess(d.me))));
+    function m(href, icon, label) { return '<a class="mnav' + (active === href ? ' on' : '') + '" href="' + href + '"><i class="fa-solid ' + icon + '"></i>' + label + '</a>'; }
+    function s(href, icon, label) { return '<a class="mnav2' + (active === href ? ' on' : '') + '" href="' + href + '"><i class="fa-solid ' + icon + '"></i>' + label + '</a>'; }
+    // primary nav on the left; secondary (About/Program/Tools) on the right;
+    // Admin pinned at the bottom (admins only). Program/Tools are members-only.
     return '<div class="mslidenav" data-mnav><div class="mscrim" data-mnavclose></div><nav class="moctnav">' +
-      it('#/people', 'fa-users', 'People') + it('#/projects', 'fa-diagram-project', 'Projects') + it('#/skills', 'fa-wand-magic-sparkles', 'Skills') + '</nav></div>';
+      '<div class="mnav-cols">' +
+        '<div class="mnav-main">' + m('#/people', 'fa-users', 'People') + m('#/projects', 'fa-diagram-project', 'Projects') + m('#/skills', 'fa-wand-magic-sparkles', 'Skills') + '</div>' +
+        '<div class="mnav-sec">' + s('#/about', 'fa-circle-question', 'About') +
+          (canMember ? s('#/program', 'fa-calendar-days', 'Program') + s('#/tools', 'fa-toolbox', 'Tools') : '') + '</div>' +
+      '</div>' +
+      (d && d.isAdmin ? '<a class="mnav-admin" href="#/admin"><i class="fa-solid fa-gear"></i>Admin</a>' : '') +
+      '</nav></div>';
   }
   function injectMobileChrome(active, rightExtra) {
     var view = $('#view'); if (!view || !isMobile()) return null;
@@ -6317,7 +6324,7 @@
     var wrap = document.createElement('div'); wrap.className = 'mchrome';
     wrap.innerHTML =
       '<header class="mtop"><button class="mham" data-mham aria-label="Menu"><i class="fa-solid fa-bars"></i></button>' +
-      '<span class="mbrand">ICE<b>2026</b></span><span class="mtop-sp"></span>' + (rightExtra || '') +
+      '<a class="mbrand" href="#/">ICE<b>2026</b></a><span class="mtop-sp"></span>' + (rightExtra || '') +
       '<button class="mic" data-action="toggle-theme" aria-label="Night mode"><i class="fa-solid fa-moon"></i></button>' +
       mAcctHtml() + '</header>' + mobileNavHtml(active);
     view.appendChild(wrap);
@@ -6342,9 +6349,9 @@
   }
 
   function wireMobileHive(mob) {
-    var nav = mob.querySelector('#mNav'), ov = mob.querySelector('#mOverlay');
-    mob.querySelector('#mHam').onclick = function () { nav.classList.add('open'); };
-    mob.querySelector('#mNavScrim').onclick = function () { nav.classList.remove('open'); };
+    var nav = mob.querySelector('[data-mnav]'), ov = mob.querySelector('#mOverlay');
+    mob.querySelector('[data-mham]').onclick = function () { nav.classList.add('open'); };
+    mob.querySelector('[data-mnavclose]').onclick = function () { nav.classList.remove('open'); };
     mob.querySelector('#mOptBtn').onclick = function () { ov.classList.add('on'); };
     mob.querySelector('#mOvClose').onclick = function () { ov.classList.remove('on'); };
     var clear = mob.querySelector('#mSpotClear');
