@@ -82,6 +82,13 @@
         // as transient and retry, rather than surfacing a hard failure.
         if (!res.ok) throw new Error('http_' + res.status);
         data = JSON.parse(await res.text());
+        // Server flagged a transient upstream outage (Google Sheets 5xx) that
+        // it already retried and gave up on — safe to retry the whole call.
+        // After the budget, fall through to surface its friendly message.
+        if (data && data.ok === false && data.retryable && attempt < 3) {
+          await new Promise(function (r) { setTimeout(r, 500 * (attempt + 1)); });
+          continue;
+        }
         break;
       } catch (netErr) {
         if (attempt >= 3) {
