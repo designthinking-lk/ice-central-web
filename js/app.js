@@ -4613,10 +4613,10 @@
 
       '<div class="ab-stats">' +
       '<div class="stat"><b>30</b><span>participants</span></div>' +
-      '<div class="stat"><b>6</b><span>universities</span></div>' +
-      '<div class="stat"><b>14</b><span>facilitators</span></div>' +
+      '<div class="stat"><b>7</b><span>universities</span></div>' +
+      '<div class="stat"><b>16</b><span>facilitators</span></div>' +
       '<div class="stat"><b>40</b><span>hours in 3 days</span></div>' +
-      '<span class="ab-stats-note">ICE2025</span>' +
+      '<span class="ab-stats-note">ICE2026</span>' +
       '</div>' +
 
       '<section class="ab-section">' +
