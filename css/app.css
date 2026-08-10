@@ -226,7 +226,7 @@ button { font-family: inherit; }
 /* fixed-height bottom zone — its contents can come and go without moving
    the centred links */
 .nav-bottom {
-  flex: none; height: 96px;
+  flex: none; min-height: 96px;
   display: flex; flex-direction: column; justify-content: flex-end;
   gap: 4px; align-items: flex-start;
 }
@@ -2620,36 +2620,22 @@ body.idle .fab-stack {
 /* Program colour legend — Google Calendar colorId mapped to activity category.
    --pg-accent (per category, theme-aware) drives both the event's inset bar and
    the matching filter chip; the soft tint is the event background. */
-.pg-cat-collective   { --pg-accent: #ea580c; }
-.pg-cat-discussion   { --pg-accent: #16a34a; }
-.pg-cat-handson      { --pg-accent: #2563eb; }
-.pg-cat-refreshment  { --pg-accent: #64748b; }
-.pg-cat-talk         { --pg-accent: #d9a00c; }
-.pg-cat-presentation { --pg-accent: #e11d48; }
-.pg-cat-finale       { --pg-accent: #9333ea; }
-:root[data-theme="dark"] .pg-cat-collective   { --pg-accent: #fb923c; }
-:root[data-theme="dark"] .pg-cat-discussion   { --pg-accent: #4ade80; }
-:root[data-theme="dark"] .pg-cat-handson      { --pg-accent: #60a5fa; }
-:root[data-theme="dark"] .pg-cat-refreshment  { --pg-accent: #cbd5e1; }
-:root[data-theme="dark"] .pg-cat-talk         { --pg-accent: #fcd34d; }
-:root[data-theme="dark"] .pg-cat-presentation { --pg-accent: #fb7185; }
-:root[data-theme="dark"] .pg-cat-finale       { --pg-accent: #c084fc; }
+.pg-cat-collective   { --pg-accent: #ea580c; --pg-tint: rgba(234, 88, 12, 0.10); }
+.pg-cat-discussion   { --pg-accent: #16a34a; --pg-tint: rgba(22, 163, 74, 0.11); }
+.pg-cat-handson      { --pg-accent: #2563eb; --pg-tint: rgba(37, 99, 235, 0.10); }
+.pg-cat-refreshment  { --pg-accent: #64748b; --pg-tint: rgba(100, 116, 139, 0.12); }
+.pg-cat-talk         { --pg-accent: #d9a00c; --pg-tint: rgba(217, 160, 12, 0.16); }
+.pg-cat-presentation { --pg-accent: #e11d48; --pg-tint: rgba(225, 29, 72, 0.10); }
+.pg-cat-finale       { --pg-accent: #9333ea; --pg-tint: rgba(147, 51, 234, 0.11); }
+:root[data-theme="dark"] .pg-cat-collective   { --pg-accent: #fb923c; --pg-tint: rgba(234, 88, 12, 0.18); }
+:root[data-theme="dark"] .pg-cat-discussion   { --pg-accent: #4ade80; --pg-tint: rgba(34, 197, 94, 0.16); }
+:root[data-theme="dark"] .pg-cat-handson      { --pg-accent: #60a5fa; --pg-tint: rgba(59, 130, 246, 0.18); }
+:root[data-theme="dark"] .pg-cat-refreshment  { --pg-accent: #cbd5e1; --pg-tint: rgba(148, 163, 184, 0.15); }
+:root[data-theme="dark"] .pg-cat-talk         { --pg-accent: #fcd34d; --pg-tint: rgba(234, 179, 8, 0.16); }
+:root[data-theme="dark"] .pg-cat-presentation { --pg-accent: #fb7185; --pg-tint: rgba(244, 63, 94, 0.18); }
+:root[data-theme="dark"] .pg-cat-finale       { --pg-accent: #c084fc; --pg-tint: rgba(168, 85, 247, 0.20); }
 
-.pg-event.pg-cat-collective   { background: rgba(234, 88, 12, 0.10); }
-.pg-event.pg-cat-discussion   { background: rgba(22, 163, 74, 0.11); }
-.pg-event.pg-cat-handson      { background: rgba(37, 99, 235, 0.10); }
-.pg-event.pg-cat-refreshment  { background: rgba(100, 116, 139, 0.12); }
-.pg-event.pg-cat-talk         { background: rgba(217, 160, 12, 0.16); }
-.pg-event.pg-cat-presentation { background: rgba(225, 29, 72, 0.10); }
-.pg-event.pg-cat-finale       { background: rgba(147, 51, 234, 0.11); }
-:root[data-theme="dark"] .pg-event.pg-cat-collective   { background: rgba(234, 88, 12, 0.18); }
-:root[data-theme="dark"] .pg-event.pg-cat-discussion   { background: rgba(34, 197, 94, 0.16); }
-:root[data-theme="dark"] .pg-event.pg-cat-handson      { background: rgba(59, 130, 246, 0.18); }
-:root[data-theme="dark"] .pg-event.pg-cat-refreshment  { background: rgba(148, 163, 184, 0.15); }
-:root[data-theme="dark"] .pg-event.pg-cat-talk         { background: rgba(234, 179, 8, 0.16); }
-:root[data-theme="dark"] .pg-event.pg-cat-presentation { background: rgba(244, 63, 94, 0.18); }
-:root[data-theme="dark"] .pg-event.pg-cat-finale       { background: rgba(168, 85, 247, 0.20); }
-.pg-event.pg-real[class*="pg-cat-"] { box-shadow: inset 3px 0 0 var(--pg-accent); }
+.pg-event.pg-real[class*="pg-cat-"] { background: var(--pg-tint); box-shadow: inset 3px 0 0 var(--pg-accent); }
 
 /* smooth fades when filtering / time state changes */
 .pg-event { transition: opacity 0.2s ease, filter 0.2s ease; }
@@ -2661,22 +2647,20 @@ body.idle .fab-stack {
 /* filtered out: faded further back than "past" so the picked category pops */
 .pg-event.pg-dim { opacity: 0.18 !important; filter: grayscale(0.7); }
 
-/* filter / legend bar — footer below the grid, so it never shifts the calendar */
-.pg-filters { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 1080px; margin: 20px auto 0; }
+/* filter chips — stacked under the Admin nav item; each filled with its own
+   category colour (same tint as the calendar events), no dot. */
+.nav-filters { display: flex; flex-direction: column; gap: 5px; align-self: stretch; margin-top: 8px; }
+.nav-filters[hidden] { display: none; }
 .pg-filter {
-  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
-  font-size: 12px; font-weight: 600; color: var(--text-muted);
-  background: var(--bg-subtle); border: 1px solid var(--border);
-  border-radius: 999px; padding: 4px 11px; line-height: 1.4;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  display: flex; align-items: center; gap: 6px; width: 100%; cursor: pointer; text-align: left;
+  font-size: 11.5px; font-weight: 600; color: var(--text);
+  background: var(--pg-tint); border: 1px solid transparent;
+  border-radius: 8px; padding: 5px 9px; line-height: 1.3;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.pg-filter:hover { background: var(--bg); border-color: var(--border-strong); color: var(--text); }
-.pg-filter .pg-fdot { width: 8px; height: 8px; border-radius: 50%; background: var(--pg-accent); flex: none; }
-.pg-filter b { font-weight: 700; color: var(--text); opacity: 0.7; }
-.pg-filter.on {
-  color: var(--text); border-color: var(--pg-accent);
-  background: color-mix(in srgb, var(--pg-accent) 16%, var(--bg-subtle));
-}
+.pg-filter:hover { border-color: var(--pg-accent); }
+.pg-filter b { margin-left: auto; font-weight: 700; opacity: 0.85; }
+.pg-filter.on { border-color: var(--pg-accent); box-shadow: inset 0 0 0 1px var(--pg-accent); }
 .pg-filter.on b { opacity: 1; }
 
 /* ------------------------------------------------------------------- tools */

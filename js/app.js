@@ -537,6 +537,10 @@
     document.body.classList.toggle('hive-full', isPeople);
     // landing: chrome floats transparent over the full-screen feature video
     document.body.classList.toggle('landing-bg', /^#\/?$/.test(location.hash || '#/'));
+    // Program filter chips (populated by initProgram) sit under the Admin nav
+    // item — surface them only on the program view.
+    var npf = $('#navProgramFilters');
+    if (npf) npf.hidden = !/^#\/program$/.test(location.hash || '#/') || !npf.innerHTML;
     // active nav
     var hash = location.hash || '#/';
     $all('#nav a, .fab-stack a').forEach(function (a) {
@@ -4782,27 +4786,25 @@
         ['finale', 'Finale'],
       ];
       (function buildProgramFilters() {
-        var wrap = $('.program-wrap');
-        if (!wrap || $('.pg-filters')) return;
+        var box = $('#navProgramFilters'); // lives in the sidebar, under the Admin nav item
+        if (!box) return;
         var counts = {};
         r.events.forEach(function (ev) {
           var c = ev.allDay ? '' : PG_COLOR_CAT[ev.color];
           if (c) counts[c] = (counts[c] || 0) + 1;
         });
-        var chips = PG_CAT_META.filter(function (m) { return counts[m[0]]; }).map(function (m) {
+        box.innerHTML = PG_CAT_META.filter(function (m) { return counts[m[0]]; }).map(function (m) {
           return '<button type="button" class="pg-filter pg-cat-' + m[0] + '" data-cat="' + m[0] + '">' +
-            '<span class="pg-fdot"></span>' + esc(m[1]) + '<b>' + counts[m[0]] + '</b></button>';
+            esc(m[1]) + '<b>' + counts[m[0]] + '</b></button>';
         }).join('');
-        if (!chips) return;
-        var bar = document.createElement('div');
-        bar.className = 'pg-filters';
-        bar.innerHTML = chips;
-        wrap.appendChild(bar); // footer below the grid — keeps the calendar's original placement
-        bar.addEventListener('click', function (e) {
+        box.hidden = !box.innerHTML;
+        if (box.dataset.bound) return; // attach the toggle handler only once (the box persists)
+        box.dataset.bound = '1';
+        box.addEventListener('click', function (e) {
           var btn = e.target.closest('.pg-filter');
           if (!btn) return;
           btn.classList.toggle('on');
-          var active = $all('.pg-filter.on').map(function (b) { return b.getAttribute('data-cat'); });
+          var active = $all('#navProgramFilters .pg-filter.on').map(function (b) { return b.getAttribute('data-cat'); });
           var grid = $('.program-grid');
           if (grid) grid.classList.toggle('pg-has-filter', active.length > 0);
           $all('.program-grid .pg-event.pg-real').forEach(function (el) {
