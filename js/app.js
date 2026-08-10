@@ -4797,7 +4797,7 @@
         var bar = document.createElement('div');
         bar.className = 'pg-filters';
         bar.innerHTML = chips;
-        wrap.insertBefore(bar, wrap.firstChild);
+        wrap.appendChild(bar); // footer below the grid — keeps the calendar's original placement
         bar.addEventListener('click', function (e) {
           var btn = e.target.closest('.pg-filter');
           if (!btn) return;

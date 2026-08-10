@@ -2661,8 +2661,8 @@ body.idle .fab-stack {
 /* filtered out: faded further back than "past" so the picked category pops */
 .pg-event.pg-dim { opacity: 0.18 !important; filter: grayscale(0.7); }
 
-/* filter / legend bar above the grid */
-.pg-filters { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 1080px; margin: 0 auto 16px; }
+/* filter / legend bar — footer below the grid, so it never shifts the calendar */
+.pg-filters { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 1080px; margin: 20px auto 0; }
 .pg-filter {
   display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
   font-size: 12px; font-weight: 600; color: var(--text-muted);
