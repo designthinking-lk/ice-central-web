@@ -2586,8 +2586,7 @@ body.idle .fab-stack {
 /* View-only 3-day agenda: fixed-height flex columns. Cards grow with their
    event's duration but keep a readable minimum; flexbox renormalizes so all
    columns fill the same height — no overlap, no scroll, however dense. */
-/* --pg-shift: lift the calendar AND the filter row by the same amount, so the
-   filters line up with the sidebar Admin button while keeping their spacing. */
+/* --pg-shift: lift the calendar so it isn't crowded by the bottom filter row. */
 :root { --pg-shift: 20px; }
 .program-wrap { max-width: 1080px; margin: calc(6px - var(--pg-shift)) auto 30px; }
 .program-grid { display: flex; gap: 16px; }
@@ -2654,7 +2653,9 @@ body.idle .fab-stack {
    just right of the sidebar's Admin button; shown only on the program view.
    Each is filled with its category colour (same tint as the calendar events). */
 .pg-filterbar {
-  position: fixed; left: 190px; bottom: calc(20px + var(--pg-shift)); z-index: 40;
+  /* bottom tuned so the pills' vertical centre lines up with the taller Admin /
+     About / Program / Tools buttons (fab row sits at bottom:22, ~39px tall). */
+  position: fixed; left: 190px; bottom: 28px; z-index: 40;
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   max-width: calc(100vw - 220px);
 }
