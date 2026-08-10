@@ -4730,10 +4730,15 @@
         });
       }
       function toMin(t) { return +t.slice(11, 13) * 60 + +t.slice(14, 16); }
+      // Google Calendar colorId → program category (drives the colour legend).
+      var PG_COLOR_CAT = { '6': 'collective', '2': 'discussion', '7': 'handson',
+        '8': 'refreshment', '5': 'talk', '4': 'presentation', '3': 'finale' };
       function card(ev, grow) {
         // Timings are intentionally hidden — the agenda shows event names only
         // (location still helps people find the room, so it stays).
-        return '<div class="pg-event pg-real"' + (grow ? ' style="flex-grow:' + grow + '"' : '') + '>' +
+        var cat = PG_COLOR_CAT[ev.color] || '';
+        return '<div class="pg-event pg-real' + (cat ? ' pg-cat-' + cat : '') + '"' +
+          (grow ? ' style="flex-grow:' + grow + '"' : '') + '>' +
           '<div class="pg-ev-title">' + esc(ev.title) + '</div>' +
           (ev.location ? '<div class="pg-ev-meta">' + esc(ev.location) + '</div>' : '') + '</div>';
       }
