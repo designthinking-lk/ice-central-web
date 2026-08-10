@@ -2654,10 +2654,14 @@ body.idle .fab-stack {
    Each is filled with its category colour (same tint as the calendar events). */
 .pg-filterbar {
   /* bottom tuned so the pills' vertical centre lines up with the taller Admin /
-     About / Program / Tools buttons (fab row sits at bottom:22, ~39px tall). */
-  position: fixed; left: 190px; bottom: 28px; z-index: 40;
+     About / Program / Tools buttons (fab row sits at bottom:22, ~39px tall).
+     left tracks the Day-1 column's left edge: the grid (max-width 1080, centred)
+     lives inside the view's 208px left padding, so its left edge is
+     208px + half of whatever slack remains once the viewport exceeds 1320px. */
+  position: fixed; bottom: 28px; z-index: 40;
+  left: calc(208px + max(0px, (100vw - 1320px) / 2));
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-  max-width: calc(100vw - 220px);
+  max-width: min(1080px, calc(100vw - 240px));
 }
 .pg-filterbar[hidden] { display: none; }
 .pg-filter {
