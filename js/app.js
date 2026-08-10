@@ -1163,21 +1163,19 @@
         if (Cl[rr][cc] === '0') { sc += Co + cc; sr += rr; n++; }
       }
     }
-    // Four RESERVED slots for catalysts (special guests). Three fill currently-
+    // Three RESERVED slots for catalysts (special guests). All fill currently-
     // empty cells that sit INSIDE a letter's existing column span, so the ICE
     // bounding box — and therefore the whole formation's size and centring — is
-    // unchanged. The fourth floats just off the formation's bottom-right; it's
-    // positioned in buildWordmark relative to the measured box (and excluded
-    // from that measurement) so it, too, never nudges the letters.
+    // unchanged.
     //   1. C top-left corner   (row 0, C col 0)
     //   2. C bottom-left corner (row 6, C col 0)
     //   3. E middle-branch end  (row 3, E col 4)
-    //   4. floating bottom-right accent
+    // (A fourth, floating bottom-right accent slot once sat beside the Suranga
+    // preview hexagon; it was retired when the catalyst roster settled at three.)
     var reserved = [
       { r: 0, c: origins[1] + 0, letter: 1 },
       { r: 6, c: origins[1] + 0, letter: 1 },
       { r: 3, c: origins[2] + 4, letter: 2 },
-      { floating: true },
     ];
     return { cells: cells, hollow: { col: sc / n, row: sr / n }, reserved: reserved };
   }
@@ -1474,13 +1472,11 @@
     });
 
     // Reserved catalyst slots — always shown (empty until a catalyst joins) so
-    // the four opened slots are visible. The first three are grid-anchored to
-    // currently-empty cells inside a letter's span; the fourth floats just off
-    // the formation's bottom-right. All four are positioned from the measured
-    // box but excluded from it, so none of them shift the ICE letters. Extra
-    // catalysts beyond four have no slot (only four exist).
-    // Preview hexagon geometry — computed here so the 4th (floating) catalyst
-    // slot can be tucked beside it. Parked in the C's hollow, nudged right so its
+    // the opened slots are visible. All three are grid-anchored to currently-
+    // empty cells inside a letter's span, positioned from the measured box but
+    // excluded from it, so none of them shift the ICE letters. Extra catalysts
+    // beyond three have no slot (only three exist).
+    // Preview hexagon geometry — parked in the C's hollow, nudged right so its
     // right edge lines up with the C letter's right-most edge (letter index 1).
     var pw = w * 2.9, ph = pw;
     var cRight = -1e9;
@@ -1491,21 +1487,8 @@
     (built.reserved || []).forEach(function (slot, ri) {
       var el = makeTile(catalysts[ri], 'cat');
       el.classList.add('oct-reserved');
-      var left, top;
-      if (slot.floating) {
-        el.classList.add('oct-float');
-        // Sits in the C–E gap just to the lower-right of the large preview
-        // hexagon, so it reads as beside it without covering the portrait.
-        // Tunable via these two factors; the extra + w drops it one tile-height
-        // lower so it clears the hexagon completely.
-        left = (pvCenterX + pw * 0.64) - minX - w / 2;
-        top = (pvCenterY + pw * 0.22) - minY - w / 2 + w;
-      } else {
-        left = (slot.c * w) - minX;
-        top = (slot.r * w) - minY;
-      }
-      el.style.left = left + 'px';
-      el.style.top = top + 'px';
+      el.style.left = ((slot.c * w) - minX) + 'px';
+      el.style.top = ((slot.r * w) - minY) + 'px';
       el.style.animationDelay = '1.1s';     // fade in just after the E group
       word.appendChild(el);
     });
