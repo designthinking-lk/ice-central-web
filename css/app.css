@@ -2586,7 +2586,10 @@ body.idle .fab-stack {
 /* View-only 3-day agenda: fixed-height flex columns. Cards grow with their
    event's duration but keep a readable minimum; flexbox renormalizes so all
    columns fill the same height — no overlap, no scroll, however dense. */
-.program-wrap { max-width: 1080px; margin: 6px auto 30px; }
+/* --pg-shift: lift the calendar AND the filter row by the same amount, so the
+   filters line up with the sidebar Admin button while keeping their spacing. */
+:root { --pg-shift: 20px; }
+.program-wrap { max-width: 1080px; margin: calc(6px - var(--pg-shift)) auto 30px; }
 .program-grid { display: flex; gap: 16px; }
 .pg-day { flex: 1; min-width: 0; }
 .pg-day-head {
@@ -2651,7 +2654,7 @@ body.idle .fab-stack {
    just right of the sidebar's Admin button; shown only on the program view.
    Each is filled with its category colour (same tint as the calendar events). */
 .pg-filterbar {
-  position: fixed; left: 190px; bottom: 20px; z-index: 40;
+  position: fixed; left: 190px; bottom: calc(20px + var(--pg-shift)); z-index: 40;
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   max-width: calc(100vw - 220px);
 }
