@@ -4738,6 +4738,9 @@
         // (location still helps people find the room, so it stays).
         var cat = PG_COLOR_CAT[ev.color] || '';
         return '<div class="pg-event pg-real' + (cat ? ' pg-cat-' + cat : '') + '"' +
+          (cat ? ' data-cat="' + cat + '"' : '') +
+          (ev.start ? ' data-start="' + esc(ev.start) + '"' : '') +
+          (ev.end ? ' data-end="' + esc(ev.end) + '"' : '') +
           (grow ? ' style="flex-grow:' + grow + '"' : '') + '>' +
           '<div class="pg-ev-title">' + esc(ev.title) + '</div>' +
           (ev.location ? '<div class="pg-ev-meta">' + esc(ev.location) + '</div>' : '') + '</div>';
@@ -4769,6 +4772,67 @@
         });
         body.innerHTML = html; // configured: empty days go clean, not skeleton
       });
+
+      // ---- category filter chips (also serve as the colour legend) ----------
+      // Each chip shows a per-category count; toggling chips dims the events
+      // that don't match, so a viewer can isolate e.g. all Talks at a glance.
+      var PG_CAT_META = [
+        ['collective', 'Collective'], ['discussion', 'Discussion'], ['handson', 'Hands-on'],
+        ['talk', 'Talks'], ['presentation', 'Presentations'], ['refreshment', 'Breaks'],
+        ['finale', 'Finale'],
+      ];
+      (function buildProgramFilters() {
+        var wrap = $('.program-wrap');
+        if (!wrap || $('.pg-filters')) return;
+        var counts = {};
+        r.events.forEach(function (ev) {
+          var c = ev.allDay ? '' : PG_COLOR_CAT[ev.color];
+          if (c) counts[c] = (counts[c] || 0) + 1;
+        });
+        var chips = PG_CAT_META.filter(function (m) { return counts[m[0]]; }).map(function (m) {
+          return '<button type="button" class="pg-filter pg-cat-' + m[0] + '" data-cat="' + m[0] + '">' +
+            '<span class="pg-fdot"></span>' + esc(m[1]) + '<b>' + counts[m[0]] + '</b></button>';
+        }).join('');
+        if (!chips) return;
+        var bar = document.createElement('div');
+        bar.className = 'pg-filters';
+        bar.innerHTML = chips;
+        wrap.insertBefore(bar, wrap.firstChild);
+        bar.addEventListener('click', function (e) {
+          var btn = e.target.closest('.pg-filter');
+          if (!btn) return;
+          btn.classList.toggle('on');
+          var active = $all('.pg-filter.on').map(function (b) { return b.getAttribute('data-cat'); });
+          var grid = $('.program-grid');
+          if (grid) grid.classList.toggle('pg-has-filter', active.length > 0);
+          $all('.program-grid .pg-event.pg-real').forEach(function (el) {
+            var hit = !active.length || active.indexOf(el.getAttribute('data-cat')) !== -1;
+            el.classList.toggle('pg-dim', active.length > 0 && !hit);
+          });
+        });
+      })();
+
+      // ---- time state: past slots dim, the running slot gets a ring ----------
+      // Re-evaluated every minute; the timer self-cancels once the program view
+      // is torn down. A single timer is kept across navigations.
+      function markProgramTime() {
+        var grid = $('.program-grid');
+        if (!grid) return false;
+        var now = Date.now();
+        $all('.pg-event.pg-real', grid).forEach(function (el) {
+          var s = el.getAttribute('data-start'), e = el.getAttribute('data-end');
+          var ended = e && Date.parse(e) <= now;
+          var live = !ended && s && Date.parse(s) <= now && e && Date.parse(e) > now;
+          el.classList.toggle('pg-past', !!ended);
+          el.classList.toggle('pg-live', !!live);
+        });
+        return true;
+      }
+      markProgramTime();
+      if (window.__icePgTick) clearInterval(window.__icePgTick);
+      window.__icePgTick = setInterval(function () {
+        if (!markProgramTime()) { clearInterval(window.__icePgTick); window.__icePgTick = null; }
+      }, 60000);
     }).catch(function () { /* skeleton stays */ });
   }
 
