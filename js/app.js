@@ -1299,8 +1299,8 @@
       '<a class="li-year" href="https://ice2026.designthinking.lk/" target="_blank" rel="noopener">ICE2026</a>' +
       '<div class="li-stats">' +
       '<span class="stat"><b>30</b><span>participants</span></span>' +
-      '<span class="stat"><b>6</b><span>universities</span></span>' +
-      '<span class="stat"><b>14</b><span>facilitators</span></span>' +
+      '<span class="stat"><b>7</b><span>universities</span></span>' +
+      '<span class="stat"><b>16</b><span>facilitators</span></span>' +
       '<span class="stat"><b>40</b><span>hours in 3 days</span></span>' +
       '</div>' +
       '</div></div>';
