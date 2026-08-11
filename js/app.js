@@ -4434,6 +4434,8 @@
 
   function renderToolsGrid() {
     var g = $('#toolsGrid'); if (!g || !toolsData) return;
+    // While the add/edit form is open, it stands alone — don't repeat the list beneath it.
+    if (toolsUI.form) { g.innerHTML = ''; return; }
     var list = (toolsData.tools || []).filter(function (t) { return toolsUI.filter === 'all' || t.scope === toolsUI.filter; });
     if (!list.length) {
       g.innerHTML = '<div class="empty" style="grid-column:1/-1"><i class="fa-solid fa-toolbox"></i>' +
@@ -4459,9 +4461,10 @@
           '<span class="tc-actions"><button class="btn btn-danger btn-sm" data-action="tool-del-yes" data-id="' + esc(t.id) + '"><span class="label">Remove</span><span class="spin"></span></button>' +
           '<button class="btn btn-ghost btn-sm" data-action="tool-del-no">Cancel</button></span></div>'
       : '';
+    var scopeLabel = sc.label + (t.scope === 'team' && t.teamName ? ' · ' + esc(t.teamName) : '');
     return '<div class="tool-card scope-' + t.scope + (t.canManage ? ' has-manage' : '') + '" data-id="' + esc(t.id) + '">' +
       '<div class="tool-top"><div class="tool-title">' + esc(t.title) + '</div>' +
-      '<span class="tool-scope"><i class="' + sc.icon + '"></i>' + sc.label + '</span>' + manage + '</div>' +
+      '<span class="tool-scope"><i class="' + sc.icon + '"></i>' + scopeLabel + '</span>' + manage + '</div>' +
       (t.description ? '<div class="tool-desc">' + esc(t.description) + '</div>' : '') +
       '<div class="tool-foot">' + chips + '</div>' + confirm + '</div>';
   }
@@ -4489,6 +4492,8 @@
     var canGlobal = !!(toolsData && toolsData.canAddGlobal);
     var canTeam = !!(toolsData && toolsData.canAddTeam);
     var scope = editing ? d.scope : (canTeam ? 'team' : 'global');
+    var isAdmin = !!(state.data && state.data.isAdmin);
+    var allTeams = (toolsData && toolsData.allTeams) || [];
     var teamName = (toolsData && toolsData.myTeam && toolsData.myTeam.name) || 'your team';
     var scopeUI;
     if (editing) {
@@ -4502,13 +4507,27 @@
           '<input type="radio" name="toolScope" value="' + v + '"' + (scope === v ? ' checked' : '') + (locked ? ' disabled' : '') + '>' +
           '<span class="tf-box"><span class="tf-nm"><i class="' + ic + '"></i>' + nm + '</span><span class="tf-hint">' + hint + '</span></span></label>';
       }
+      var teamHint = (isAdmin && allTeams.length) ? 'Choose a team below' : esc(teamName);
       scopeUI = '<div class="tf-field"><label>Who is it for?</label><div class="tf-scope">' +
-        opt('team', 'fa-solid fa-user-group', 'Team', esc(teamName), !canTeam) +
+        opt('team', 'fa-solid fa-user-group', 'Team', teamHint, !canTeam) +
         opt('global', 'fa-solid fa-globe', 'Global', canGlobal ? 'Everyone in ' + esc(eventName()) : 'Organizers &amp; mentors only', !canGlobal) +
         '</div></div>';
     }
+    // Admins aren't bound to a single team — let them target any team when the
+    // tool is team-scoped. Field is hidden unless the Team scope is selected.
+    var teamPick = '';
+    if (!editing && isAdmin && allTeams.length) {
+      var myTid = (toolsData && toolsData.myTeam && toolsData.myTeam.id) || '';
+      teamPick = '<div class="tf-field" id="tfTeamField"' + (scope === 'team' ? '' : ' hidden') + '>' +
+        '<label for="tfTeam">Which team?</label>' +
+        '<select class="tf-input" id="tfTeam">' +
+        allTeams.map(function (tm) {
+          return '<option value="' + esc(tm.id) + '"' + (tm.id === myTid ? ' selected' : '') + '>' + esc(tm.name) + '</option>';
+        }).join('') +
+        '</select></div>';
+    }
     return '<div class="tool-form">' +
-      '<div class="tf-main">' + scopeUI +
+      '<div class="tf-main">' + scopeUI + teamPick +
       '<div class="tf-field"><div class="tf-lblrow"><label for="tfTitle">Title</label><span class="tf-count" id="tfcTitle"></span></div>' +
       '<input class="tf-input" id="tfTitle" maxlength="44" placeholder="e.g. Staging API token" value="' + esc(d.title || '') + '"></div>' +
       '<div class="tf-field"><div class="tf-lblrow"><label for="tfDesc">Description <span class="tf-optl">— optional</span></label><span class="tf-count" id="tfcDesc"></span></div>' +
@@ -4534,6 +4553,7 @@
     var editing = toolsUI.form && toolsUI.form.editing;
     return {
       scope: editing ? editing.scope : (scopeEl ? scopeEl.value : 'team'),
+      teamId: ($('#tfTeam') || {}).value || '',   // admin-only; ignored server-side otherwise
       title: ($('#tfTitle') || {}).value ? $('#tfTitle').value.trim() : '',
       description: ($('#tfDesc') || {}).value ? $('#tfDesc').value.trim() : '',
       url: ($('#tfUrl') || {}).value ? $('#tfUrl').value.trim() : '',
@@ -4555,12 +4575,19 @@
       if (save) save.disabled = !ok;
       if (hint) hint.textContent = !f.title ? 'A title is required.'
         : !ok ? 'Add at least one of description, link or secret.' : 'Ready to save.';
+      // Admin team picker only makes sense for team-scoped tools.
+      var tfield = $('#tfTeamField');
+      if (tfield) tfield.hidden = (f.scope !== 'team');
+      var tsel = $('#tfTeam');
+      var teamName = f.scope === 'team' && tsel ? (tsel.options[tsel.selectedIndex] || {}).text : '';
       var pv = $('#toolPreview');
-      if (pv) pv.innerHTML = toolCardHTML({ scope: f.scope, title: f.title || 'Untitled tool', description: f.description, url: f.url, secret: f.secret, canManage: false });
+      if (pv) pv.innerHTML = toolCardHTML({ scope: f.scope, title: f.title || 'Untitled tool', description: f.description, url: f.url, secret: f.secret, teamName: teamName, canManage: false });
     }
     [ttl, desc, url, sec].forEach(function (el) { el.addEventListener('input', upd); });
     var scopeInputs = document.querySelectorAll('input[name=toolScope]');
     [].forEach.call(scopeInputs, function (el) { el.addEventListener('change', upd); });
+    var teamSel = $('#tfTeam');
+    if (teamSel) teamSel.addEventListener('change', upd);
     var rev = $('#tfReveal');
     if (rev) rev.addEventListener('click', function () {
       var p = sec.type === 'password'; sec.type = p ? 'text' : 'password';
