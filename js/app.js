@@ -1296,7 +1296,7 @@
       // playback handshake reveals the footage (initLandingVideo crossfades it)
       '<div class="landing-loader"></div>' +
       '<div class="landing-intro">' +
-      '<a class="li-year" href="https://www.ice2025.com/" target="_blank" rel="noopener">ICE2025</a>' +
+      '<a class="li-year" href="https://ice2026.designthinking.lk/" target="_blank" rel="noopener">ICE2026</a>' +
       '<div class="li-stats">' +
       '<span class="stat"><b>30</b><span>participants</span></span>' +
       '<span class="stat"><b>6</b><span>universities</span></span>' +
