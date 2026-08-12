@@ -284,7 +284,7 @@ button { font-family: inherit; }
 .btn:active { transform: translateY(1px); }
 .btn-primary { background: var(--color-accent); color: #fff; }
 .btn-primary:hover { background: var(--color-accent-dark); color: #fff; }
-.btn-gradient { background: linear-gradient(90deg, #00D7EE 0%, #2E6BF6 55%, #6100FF 100%); color: #fff; box-shadow: 0 4px 16px -4px rgba(97, 0, 255, 0.45); }
+.btn-gradient { background: linear-gradient(90deg, #00D7EE 0%, #2E6BF6 55%, #6100FF 100%); color: #fff; border: none; box-shadow: 0 4px 16px -4px rgba(97, 0, 255, 0.45); }
 .btn-gradient:hover { filter: brightness(1.06); color: #fff; }
 /* gentle attention pulse for the app-bar "Complete registration" CTA */
 @keyframes cta-pulse {
