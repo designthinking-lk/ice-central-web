@@ -3462,8 +3462,10 @@ html.is-mobile.m-on .pg-skeleton { min-height: 46px; }
 }
 /* Stage floats borderless over the drifting aurora backdrop (.aurora child),
    which sits at z-index:0 while the diagram/legend/footer ride above it. */
-.smap-stage { position:relative; background:transparent; border:none; border-radius:var(--radius-lg); box-shadow:none; overflow:hidden; }
-.smap-stage > .aurora { z-index:0; }
+.smap-stage { position:relative; z-index:1; background:transparent; border:none; border-radius:var(--radius-lg); overflow:hidden; }
+/* Aurora spans the whole viewport behind the page (fixed, negative z so it sits
+   behind the sidebar and all UI — the main column is transparent to the body bg). */
+.smap-aurora { position:fixed; inset:0; z-index:-1; }
 .smap-legend, .smap-canvas, .smap-foot { position:relative; z-index:1; }
 .smap-legend { display:flex; flex-wrap:wrap; gap:7px 16px; padding:10px 16px 2px; }
 .smap-lg { display:inline-flex; align-items:center; gap:7px; font-size:11.5px; color:var(--text-muted); font-weight:600; }
