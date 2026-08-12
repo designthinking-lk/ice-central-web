@@ -6060,17 +6060,8 @@
     }
     return '' +
       '<div class="smap" id="systemMap">' +
-        '<div class="smap-head">' +
-          '<div>' +
-            '<h1 class="smap-title">Platform Systems Map</h1>' +
-            '<div class="smap-sub">Every service, and the data moving between them — live.</div>' +
-          '</div>' +
-          '<div class="smap-ctrls">' +
-            '<span class="smap-live" id="smapLive"><span class="beat"></span>Live</span>' +
-            '<button class="smap-btn" id="smapPlay" type="button"><span id="smapPlayTxt">Pause flows</span></button>' +
-          '</div>' +
-        '</div>' +
         '<div class="smap-stage">' +
+          '<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>' +
           '<div class="smap-legend" id="smapLegend"></div>' +
           '<div class="smap-canvas" id="smapCanvas">' +
             '<div class="smap-bands" id="smapBands"></div>' +
@@ -6115,19 +6106,19 @@
       { x:74, label:'Google Workspace' }, { x:93, label:'External' }
     ];
     var NODES = [
-      { id:'client', x:8,  y:50, icon:'globe',   name:'Visitor',        tag:'Browser · PWA',        stat:'online',        statLabel:'online',  desc:'The participant’s browser. Installable PWA; talks only to the edge and the two Apps Script endpoints.' },
-      { id:'edge',   x:28, y:38, icon:'cloud',   name:'Cloudflare Worker', tag:'routing · /vid · OG', desc:'Front door. Routes each project subdomain, proxies Drive video through /vid, and renders share-card images.' },
-      { id:'pages',  x:28, y:66, icon:'code',    name:'GitHub Pages',   tag:'static SPA host',      desc:'Serves the static single-page app. No server — logic runs in the browser or Apps Script.' },
-      { id:'auth',   x:50, y:15, icon:'key',     name:'Auth',           tag:'Apps Script · OAuth',  desc:'Separate Apps Script web app. Runs Google sign-in and hands the SPA a verified identity token.' },
-      { id:'api',    x:50, y:50, icon:'server',  name:'Central API',    tag:'Apps Script · Code.js', desc:'The core. Every read/write, provisioning, wallet and invite action flows through this one deployment.' },
-      { id:'applefn',x:50, y:85, icon:'wallet',  name:'Apple Wallet fn', tag:'Node function',       desc:'Node function that signs .pkpass bundles for Apple Wallet, invoked by the Central API on score updates.' },
-      { id:'sheets', x:74, y:9,  icon:'grid',    name:'Sheets',         tag:'registry · project DB', stat:'members',      statLabel:'members', desc:'The database. A central registry plus one sheet per project holds users, teams, projects and invites.' },
-      { id:'drive',  x:74, y:31, icon:'folder',  name:'Drive',          tag:'uploads · video',      stat:'videos',        statLabel:'videos',  desc:'Stores profile media and 1080p intro/pitch videos; streamed back to the browser via the edge /vid proxy.' },
-      { id:'admin',  x:74, y:53, icon:'users',   name:'Admin SDK',      tag:'@designthinking.lk',   desc:'Mints firstname@designthinking.lk accounts into the ICE org unit when a registration completes.' },
-      { id:'gmail',  x:74, y:75, icon:'mail',    name:'Gmail',          tag:'invites · passwords',  stat:'invitesPending', statLabel:'pending', desc:'Sends branded invites, onboarding notes and temporary passwords from the verified send-as alias.' },
-      { id:'cal',    x:74, y:96, icon:'calendar',name:'Calendar',       tag:'program events',       desc:'Backs the Program view — session times and colour-coded tracks, kept in sync by the Central API.' },
-      { id:'gwallet',x:93, y:33, icon:'wallet',  name:'Google Wallet',  tag:'passes',               stat:'walletPushes',  statLabel:'pushes',  desc:'Google Wallet API. The Central API pushes the live member pass and updates scores on it.' },
-      { id:'ghorg',  x:93, y:70, icon:'github',  name:'GitHub org',     tag:'auto-invite',          stat:'githubInvited', statLabel:'invited', desc:'Registrants are auto-invited to the designthinking-lk GitHub org once their profile is complete.' }
+      { id:'client', x:8,  y:49, icon:'globe',   name:'Visitor',        tag:'Browser · PWA',        stat:'online',        statLabel:'online',  desc:'The participant’s browser. Installable PWA; talks only to the edge and the two Apps Script endpoints.' },
+      { id:'edge',   x:28, y:39, icon:'cloud',   name:'Cloudflare Worker', tag:'routing · /vid · OG', desc:'Front door. Routes each project subdomain, proxies Drive video through /vid, and renders share-card images.' },
+      { id:'pages',  x:28, y:63, icon:'code',    name:'GitHub Pages',   tag:'static SPA host',      desc:'Serves the static single-page app. No server — logic runs in the browser or Apps Script.' },
+      { id:'auth',   x:50, y:19, icon:'key',     name:'Auth',           tag:'Apps Script · OAuth',  desc:'Separate Apps Script web app. Runs Google sign-in and hands the SPA a verified identity token.' },
+      { id:'api',    x:50, y:49, icon:'server',  name:'Central API',    tag:'Apps Script · Code.js', desc:'The core. Every read/write, provisioning, wallet and invite action flows through this one deployment.' },
+      { id:'applefn',x:50, y:79, icon:'wallet',  name:'Apple Wallet fn', tag:'Node function',       desc:'Node function that signs .pkpass bundles for Apple Wallet, invoked by the Central API on score updates.' },
+      { id:'sheets', x:74, y:14, icon:'grid',    name:'Sheets',         tag:'registry · project DB', stat:'members',      statLabel:'members', desc:'The database. A central registry plus one sheet per project holds users, teams, projects and invites.' },
+      { id:'drive',  x:74, y:33, icon:'folder',  name:'Drive',          tag:'uploads · video',      stat:'videos',        statLabel:'videos',  desc:'Stores profile media and 1080p intro/pitch videos; streamed back to the browser via the edge /vid proxy.' },
+      { id:'admin',  x:74, y:51, icon:'users',   name:'Admin SDK',      tag:'@designthinking.lk',   desc:'Mints firstname@designthinking.lk accounts into the ICE org unit when a registration completes.' },
+      { id:'gmail',  x:74, y:70, icon:'mail',    name:'Gmail',          tag:'invites · passwords',  stat:'invitesPending', statLabel:'pending', desc:'Sends branded invites, onboarding notes and temporary passwords from the verified send-as alias.' },
+      { id:'cal',    x:74, y:88, icon:'calendar',name:'Calendar',       tag:'program events',       desc:'Backs the Program view — session times and colour-coded tracks, kept in sync by the Central API.' },
+      { id:'gwallet',x:93, y:34, icon:'wallet',  name:'Google Wallet',  tag:'passes',               stat:'walletPushes',  statLabel:'pushes',  desc:'Google Wallet API. The Central API pushes the live member pass and updates scores on it.' },
+      { id:'ghorg',  x:93, y:66, icon:'github',  name:'GitHub org',     tag:'auto-invite',          stat:'githubInvited', statLabel:'invited', desc:'Registrants are auto-invited to the designthinking-lk GitHub org once their profile is complete.' }
     ];
     var EDGES = [
       ['client','edge','request'], ['edge','pages','request'], ['client','auth','auth'],
@@ -6280,7 +6271,7 @@
     }
     function applyPulse(data) {
       lastPulseAt = Date.now();
-      liveEl.classList.remove('stale');
+      if (liveEl) liveEl.classList.remove('stale');
       var counts = data.counts || {};
       // node numbers
       $all('.smap-nnum', canvas).forEach(function (el) {
@@ -6317,7 +6308,7 @@
       }).catch(function () {
         // Endpoint not reachable (e.g. API not yet redeployed) — keep the
         // schematic animating, just mark the live badge as stale.
-        if (Date.now() - lastPulseAt > 45000) liveEl.classList.add('stale');
+        if (liveEl && Date.now() - lastPulseAt > 45000) liveEl.classList.add('stale');
       });
     }
 
