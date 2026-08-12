@@ -444,6 +444,12 @@
     if (navTools) navTools.hidden = !canMember;
     if (navProgram) navProgram.hidden = !canMember;
     if (navAdmin) navAdmin.hidden = !d.isAdmin;
+    // Systems Map: a quiet app-bar button beside the theme toggle, admins only.
+    var sysmapBtn = $('#sysmapBtn');
+    if (sysmapBtn) {
+      sysmapBtn.hidden = !d.isAdmin;
+      sysmapBtn.classList.toggle('active', /^#\/systemmap$/.test(location.hash || ''));
+    }
     // Un-invited signed-in accounts are locked to the switch-account gate: hide
     // the sidebar nav and floating tools so nothing members-only is reachable.
     document.body.classList.toggle('access-locked', isLockedOut());
@@ -6040,6 +6046,329 @@
 
   // ---------------------------------------------------------------- router
 
+  // ====================================================================
+  // Systems Map (#/systemmap) — admin-only live architecture diagram.
+  // A schematic of every platform service with animated packets flowing
+  // along the real data paths; node counts, "active" glow and packet
+  // bursts are driven by the admin_pulse endpoint (real activity, polled).
+  // ====================================================================
+  var smapState = { raf: 0, timer: 0, seenTs: null, mo: null };
+
+  function viewSystemMap() {
+    if (!(state.data && state.data.isAdmin)) {
+      return '<div class="empty" style="margin-top:40px"><i class="fa-solid fa-lock"></i> Admins only. <a href="#/">Go home</a></div>';
+    }
+    return '' +
+      '<div class="smap" id="systemMap">' +
+        '<div class="smap-head">' +
+          '<div>' +
+            '<h1 class="smap-title">Platform Systems Map</h1>' +
+            '<div class="smap-sub">Every service, and the data moving between them — live.</div>' +
+          '</div>' +
+          '<div class="smap-ctrls">' +
+            '<span class="smap-live" id="smapLive"><span class="beat"></span>Live</span>' +
+            '<button class="smap-btn" id="smapPlay" type="button"><span id="smapPlayTxt">Pause flows</span></button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="smap-stage">' +
+          '<div class="smap-legend" id="smapLegend"></div>' +
+          '<div class="smap-canvas" id="smapCanvas">' +
+            '<div class="smap-bands" id="smapBands"></div>' +
+            '<svg class="smap-wires" id="smapWires" preserveAspectRatio="none"></svg>' +
+          '</div>' +
+          '<div class="smap-foot" id="smapFoot">' +
+            '<span class="smap-feedico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M16 16l4 4"/></svg></span>' +
+            '<span class="hint" id="smapFeed">Hover a service to trace its connections.</span>' +
+            '<span class="smap-ago" id="smapAgo"></span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function initSystemMap() {
+    var canvas = $('#smapCanvas');
+    if (!canvas) return;
+    // Tear down any previous run (re-entry on data refresh / re-route).
+    if (smapState.raf) cancelAnimationFrame(smapState.raf);
+    if (smapState.timer) clearInterval(smapState.timer);
+    if (smapState.mo) { smapState.mo.disconnect(); smapState.mo = null; }
+    smapState.seenTs = null;
+
+    var ICON = {
+      globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18"/>',
+      cloud:'<path d="M7 18a4 4 0 01-.5-7.97A5 5 0 0116 9.5a3.5 3.5 0 01.5 8.5z"/>',
+      code:'<path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/>',
+      key:'<circle cx="8" cy="8" r="4"/><path d="M11 11l7 7M16 16l2-2M14 14l2-2"/>',
+      server:'<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
+      wallet:'<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M17 14.5h.01"/>',
+      grid:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>',
+      folder:'<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',
+      users:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0111 0M16 6.5a3 3 0 010 5.8M17 14.5a5.5 5.5 0 013.5 4.5"/>',
+      mail:'<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M4 7l8 6 8-6"/>',
+      calendar:'<rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9h18M8 3v3M16 3v3"/>',
+      github:'<path d="M9 19c-4 1.2-4-2-6-2.5M15 21v-3.3c0-.9.2-1.6-.5-2.2 2.4-.3 4.5-1.2 4.5-5a3.9 3.9 0 00-1-2.7 3.6 3.6 0 00-.1-2.7s-.9-.3-3 1a10 10 0 00-5 0c-2.1-1.3-3-1-3-1a3.6 3.6 0 00-.1 2.7A3.9 3.9 0 005 8c0 3.8 2.1 4.7 4.5 5-.6.6-.6 1.2-.5 2.2V21"/>'
+    };
+    function icon(n) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + ICON[n] + '</svg>'; }
+
+    var BANDS = [
+      { x:8,  label:'Client' }, { x:28, label:'Edge' }, { x:50, label:'Logic' },
+      { x:74, label:'Google Workspace' }, { x:93, label:'External' }
+    ];
+    var NODES = [
+      { id:'client', x:8,  y:50, icon:'globe',   name:'Visitor',        tag:'Browser · PWA',        stat:'online',        statLabel:'online',  desc:'The participant’s browser. Installable PWA; talks only to the edge and the two Apps Script endpoints.' },
+      { id:'edge',   x:28, y:38, icon:'cloud',   name:'Cloudflare Worker', tag:'routing · /vid · OG', desc:'Front door. Routes each project subdomain, proxies Drive video through /vid, and renders share-card images.' },
+      { id:'pages',  x:28, y:66, icon:'code',    name:'GitHub Pages',   tag:'static SPA host',      desc:'Serves the static single-page app. No server — logic runs in the browser or Apps Script.' },
+      { id:'auth',   x:50, y:15, icon:'key',     name:'Auth',           tag:'Apps Script · OAuth',  desc:'Separate Apps Script web app. Runs Google sign-in and hands the SPA a verified identity token.' },
+      { id:'api',    x:50, y:50, icon:'server',  name:'Central API',    tag:'Apps Script · Code.js', desc:'The core. Every read/write, provisioning, wallet and invite action flows through this one deployment.' },
+      { id:'applefn',x:50, y:85, icon:'wallet',  name:'Apple Wallet fn', tag:'Node function',       desc:'Node function that signs .pkpass bundles for Apple Wallet, invoked by the Central API on score updates.' },
+      { id:'sheets', x:74, y:9,  icon:'grid',    name:'Sheets',         tag:'registry · project DB', stat:'members',      statLabel:'members', desc:'The database. A central registry plus one sheet per project holds users, teams, projects and invites.' },
+      { id:'drive',  x:74, y:31, icon:'folder',  name:'Drive',          tag:'uploads · video',      stat:'videos',        statLabel:'videos',  desc:'Stores profile media and 1080p intro/pitch videos; streamed back to the browser via the edge /vid proxy.' },
+      { id:'admin',  x:74, y:53, icon:'users',   name:'Admin SDK',      tag:'@designthinking.lk',   desc:'Mints firstname@designthinking.lk accounts into the ICE org unit when a registration completes.' },
+      { id:'gmail',  x:74, y:75, icon:'mail',    name:'Gmail',          tag:'invites · passwords',  stat:'invitesPending', statLabel:'pending', desc:'Sends branded invites, onboarding notes and temporary passwords from the verified send-as alias.' },
+      { id:'cal',    x:74, y:96, icon:'calendar',name:'Calendar',       tag:'program events',       desc:'Backs the Program view — session times and colour-coded tracks, kept in sync by the Central API.' },
+      { id:'gwallet',x:93, y:33, icon:'wallet',  name:'Google Wallet',  tag:'passes',               stat:'walletPushes',  statLabel:'pushes',  desc:'Google Wallet API. The Central API pushes the live member pass and updates scores on it.' },
+      { id:'ghorg',  x:93, y:70, icon:'github',  name:'GitHub org',     tag:'auto-invite',          stat:'githubInvited', statLabel:'invited', desc:'Registrants are auto-invited to the designthinking-lk GitHub org once their profile is complete.' }
+    ];
+    var EDGES = [
+      ['client','edge','request'], ['edge','pages','request'], ['client','auth','auth'],
+      ['client','api','request'], ['edge','drive','data'], ['api','sheets','data'],
+      ['api','drive','data'], ['api','cal','data'], ['api','admin','auth'],
+      ['admin','gmail','email'], ['api','gmail','email'], ['api','gwallet','pass'],
+      ['api','applefn','pass'], ['api','ghorg','sync']
+    ];
+    var FLOW = {
+      request:{ v:'--f-request', label:'Request' }, auth:{ v:'--f-auth', label:'Auth' },
+      data:{ v:'--f-data', label:'Data' }, email:{ v:'--f-email', label:'Notify' },
+      pass:{ v:'--f-pass', label:'Wallet pass' }, sync:{ v:'--f-sync', label:'Sync' },
+      error:{ v:'--f-error', label:'Error' }
+    };
+
+    var smapEl = $('#systemMap');
+    var wires = $('#smapWires');
+    var bandsEl = $('#smapBands');
+    var legend = $('#smapLegend');
+    var feedEl = $('#smapFeed');
+    var agoEl = $('#smapAgo');
+    var liveEl = $('#smapLive');
+    var nodeById = {};
+
+    function cssv(v) { return getComputedStyle(smapEl).getPropertyValue(v).trim() || '#888'; }
+    function flowColor(f) { return cssv((FLOW[f] || FLOW.data).v); }
+
+    // ---- bands ----
+    bandsEl.innerHTML = '';
+    BANDS.forEach(function (b, i) {
+      var left = (i === 0) ? 0 : (BANDS[i-1].x + b.x) / 2;
+      var right = (i === BANDS.length-1) ? 100 : (b.x + BANDS[i+1].x) / 2;
+      var d = document.createElement('div');
+      d.className = 'smap-band'; d.style.left = left + '%'; d.style.width = (right-left) + '%';
+      var lab = document.createElement('div'); lab.className = 'smap-bandlab'; lab.textContent = b.label;
+      d.appendChild(lab); bandsEl.appendChild(d);
+    });
+
+    // ---- legend ----
+    legend.innerHTML = '';
+    ['request','auth','data','email','pass','sync'].forEach(function (k) {
+      var el = document.createElement('span'); el.className = 'smap-lg';
+      el.innerHTML = '<span class="sw" style="background:var(' + FLOW[k].v + ')"></span>' + FLOW[k].label;
+      legend.appendChild(el);
+    });
+
+    // ---- nodes ----
+    $all('.smap-node', canvas).forEach(function (n) { n.remove(); });
+    var pinned = null, focusId = null;
+    NODES.forEach(function (n) {
+      var el = document.createElement('div');
+      el.className = 'smap-node'; el.style.left = n.x + '%'; el.style.top = n.y + '%';
+      el.dataset.id = n.id;
+      el.innerHTML = '<span class="smap-pulse"></span>' +
+        '<div class="smap-nrow"><span class="smap-nico">' + icon(n.icon) + '</span>' +
+        '<div><div class="smap-nname">' + n.name + '</div></div></div>' +
+        '<div class="smap-ntag">' + n.tag + '</div>' +
+        (n.stat ? '<div class="smap-nstat"><span class="smap-nnum" data-stat="' + n.stat + '">–</span><span class="smap-nlbl">' + n.statLabel + '</span></div>' : '');
+      canvas.appendChild(el);
+      n.el = el; nodeById[n.id] = n;
+      el.addEventListener('mouseenter', function () { focusId = n.id; applyFocus(); showDesc(n); });
+      el.addEventListener('mouseleave', function () { if (!pinned) { focusId = null; applyFocus(); resetFeed(); } });
+      el.addEventListener('click', function (e) { e.stopPropagation(); pinned = (pinned === n.id) ? null : n.id; focusId = pinned; applyFocus(); if (pinned) showDesc(n); else resetFeed(); });
+    });
+    canvas.addEventListener('click', function () { pinned = null; focusId = null; applyFocus(); resetFeed(); });
+
+    // ---- wires + packets ----
+    var pathEls = [], packets = [];
+    function center(n) {
+      var cr = canvas.getBoundingClientRect(), r = n.el.getBoundingClientRect();
+      return { x: r.left - cr.left + r.width/2, y: r.top - cr.top + r.height/2 };
+    }
+    function pathD(a, b) {
+      var dx = b.x - a.x, s = (dx >= 0 ? 1 : -1), bias = Math.max(Math.abs(dx)*0.5, 46);
+      return 'M' + a.x + ' ' + a.y + ' C' + (a.x+bias*s) + ' ' + a.y + ' ' + (b.x-bias*s) + ' ' + b.y + ' ' + b.x + ' ' + b.y;
+    }
+    function buildWires() {
+      var cr = canvas.getBoundingClientRect();
+      wires.setAttribute('viewBox', '0 0 ' + cr.width + ' ' + cr.height);
+      wires.innerHTML = ''; pathEls = []; packets = [];
+      EDGES.forEach(function (e, i) {
+        var a = center(nodeById[e[0]]), b = center(nodeById[e[1]]);
+        var col = flowColor(e[2]);
+        var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        p.setAttribute('d', pathD(a, b)); p.setAttribute('fill', 'none');
+        p.setAttribute('stroke', cssv('--border')); p.setAttribute('stroke-width', '1.4');
+        p.dataset.from = e[0]; p.dataset.to = e[1]; p.dataset.flow = e[2]; p.dataset.col = col;
+        wires.appendChild(p); pathEls.push(p);
+        var len = p.getTotalLength() || 1;
+        packets.push({ p:p, dot:mkDot(col), t:0, speed:(60+Math.random()*20)/len, edge:i, hot:false });
+      });
+      applyFocus();
+    }
+    function mkDot(col) {
+      var dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('r', '3'); dot.setAttribute('fill', col);
+      dot.style.filter = 'drop-shadow(0 0 4px ' + col + ')';
+      wires.appendChild(dot); return dot;
+    }
+    // A short-lived bright packet fired when a fresh event lands on an edge.
+    function burst(edgeIdx) {
+      var e = EDGES[edgeIdx]; if (!e) return;
+      var p = pathEls[edgeIdx]; if (!p) return;
+      var col = flowColor(e[2]), len = p.getTotalLength() || 1;
+      var dot = mkDot(col); dot.setAttribute('r', '4.5');
+      packets.push({ p:p, dot:dot, t:0, speed:(150)/len, edge:edgeIdx, once:true });
+    }
+
+    function edgeIndex(from, to) {
+      for (var i = 0; i < EDGES.length; i++) if (EDGES[i][0] === from && EDGES[i][1] === to) return i;
+      return -1;
+    }
+
+    // ---- focus / dim ----
+    function neighbors(id) { var s = {}; s[id] = 1; EDGES.forEach(function (e) { if (e[0] === id) s[e[1]] = 1; if (e[1] === id) s[e[0]] = 1; }); return s; }
+    function applyFocus() {
+      var id = pinned || focusId;
+      NODES.forEach(function (n) { n.el.classList.remove('dim','hot'); });
+      pathEls.forEach(function (p) {
+        var on = !id || p.dataset.from === id || p.dataset.to === id;
+        p.setAttribute('stroke', (on && id) ? p.dataset.col : cssv('--border'));
+        p.setAttribute('stroke-width', (on && id) ? '2' : (p.dataset.heat ? '1.8' : '1.4'));
+        p.style.opacity = (!id || on) ? '1' : '.16';
+      });
+      packets.forEach(function (pk) { var e = EDGES[pk.edge]; pk.dot.style.opacity = (!id || e[0] === id || e[1] === id) ? '1' : '.06'; });
+      if (id) {
+        var nb = neighbors(id);
+        NODES.forEach(function (n) { if (n.id === id) n.el.classList.add('hot'); else if (!nb[n.id]) n.el.classList.add('dim'); });
+      }
+    }
+    function showDesc(n) { feedEl.innerHTML = '<b>' + n.name + '</b> — ' + n.desc; }
+    function resetFeed() { renderFeedLine(); }
+
+    // ---- live data ----
+    var lastEvent = null, lastPulseAt = 0;
+    function renderFeedLine() {
+      if (pinned || focusId) return;
+      if (lastEvent) {
+        feedEl.innerHTML = '<b>' + esc(lastEvent.label) + '</b> <span class="hint">· ' + timeAgo(lastEvent.ts) + '</span>';
+      } else {
+        feedEl.innerHTML = '<span class="hint">Hover a service to trace its connections.</span>';
+      }
+    }
+    function timeAgo(ts) {
+      var s = Math.max(0, Math.floor((Date.now() - Date.parse(ts)) / 1000));
+      if (s < 60) return s + 's ago';
+      if (s < 3600) return Math.floor(s/60) + 'm ago';
+      if (s < 86400) return Math.floor(s/3600) + 'h ago';
+      return Math.floor(s/86400) + 'd ago';
+    }
+    function applyPulse(data) {
+      lastPulseAt = Date.now();
+      liveEl.classList.remove('stale');
+      var counts = data.counts || {};
+      // node numbers
+      $all('.smap-nnum', canvas).forEach(function (el) {
+        var k = el.dataset.stat, v = counts[k];
+        el.textContent = (v == null) ? '–' : String(v);
+      });
+      // active glow
+      var active = {}; (data.active || []).forEach(function (id) { active[id] = 1; });
+      NODES.forEach(function (n) { n.el.classList.toggle('active', !!active[n.id]); });
+      // per-edge heat (recent event in window → brighter line)
+      var recent = data.recent || [];
+      var heat = {};
+      recent.forEach(function (ev) { var i = edgeIndex(ev.from, ev.to); if (i >= 0) heat[i] = (heat[i]||0)+1; });
+      pathEls.forEach(function (p, i) { if (heat[i]) p.dataset.heat = '1'; else delete p.dataset.heat; });
+      packets.forEach(function (pk) {
+        if (pk.once) return;
+        var isHot = !!heat[pk.edge];
+        pk.hot = isHot;
+        pk.dot.setAttribute('r', isHot ? '3.4' : '2.4');
+        pk.dot.style.opacity = isHot ? '1' : '.5';
+      });
+      // fire bursts for events newer than the last we saw
+      var fresh = smapState.seenTs ? recent.filter(function (e) { return e.ts > smapState.seenTs; }) : recent.slice(0, 3);
+      fresh.slice(0, 8).forEach(function (ev) { var i = edgeIndex(ev.from, ev.to); if (i >= 0) burst(i); });
+      if (recent.length) { smapState.seenTs = recent[0].ts; lastEvent = recent[0]; }
+      applyFocus();
+      renderFeedLine();
+    }
+    function fetchPulse() {
+      if (!document.getElementById('smapCanvas')) { stop(); return; }
+      A.api('admin_pulse').then(function (r) {
+        if (!document.getElementById('smapCanvas')) return;
+        applyPulse(r || {});
+      }).catch(function () {
+        // Endpoint not reachable (e.g. API not yet redeployed) — keep the
+        // schematic animating, just mark the live badge as stale.
+        if (Date.now() - lastPulseAt > 45000) liveEl.classList.add('stale');
+      });
+    }
+
+    // ---- animation ----
+    var running = true, reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+    var last = performance.now();
+    function tick(now) {
+      if (!document.getElementById('smapCanvas')) { stop(); return; }
+      var dt = Math.min(now - last, 50); last = now;
+      if (running && !reduce) {
+        for (var i = packets.length - 1; i >= 0; i--) {
+          var pk = packets[i];
+          pk.t += pk.speed * dt / 1000 * 12;
+          if (pk.t > 1) {
+            if (pk.once) { pk.dot.remove(); packets.splice(i, 1); continue; }
+            pk.t -= 1;
+          }
+          try { var len = pk.p.getTotalLength(); var pt = pk.p.getPointAtLength(pk.t * len); pk.dot.setAttribute('cx', pt.x); pk.dot.setAttribute('cy', pt.y); } catch (e) {}
+        }
+      }
+      // tick the "updated Ns ago" label
+      if (agoEl && lastPulseAt) agoEl.textContent = 'updated ' + timeAgo(new Date(lastPulseAt).toISOString());
+      smapState.raf = requestAnimationFrame(tick);
+    }
+    function stop() {
+      if (smapState.raf) cancelAnimationFrame(smapState.raf);
+      if (smapState.timer) clearInterval(smapState.timer);
+      if (smapState.mo) { smapState.mo.disconnect(); smapState.mo = null; }
+      smapState.raf = 0; smapState.timer = 0;
+    }
+
+    // play / pause
+    var playBtn = $('#smapPlay');
+    if (playBtn) playBtn.addEventListener('click', function (e) {
+      e.stopPropagation(); running = !running;
+      $('#smapPlayTxt').textContent = running ? 'Pause flows' : 'Play flows';
+    });
+
+    // rebuild wire geometry + colours on theme change and resize
+    smapState.mo = new MutationObserver(function () { buildWires(); });
+    smapState.mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    var rz;
+    function onResize() { clearTimeout(rz); rz = setTimeout(function () { if (document.getElementById('smapCanvas')) buildWires(); }, 120); }
+    window.addEventListener('resize', onResize);
+
+    buildWires();
+    smapState.raf = requestAnimationFrame(tick);
+    fetchPulse();
+    smapState.timer = setInterval(fetchPulse, 20000);
+  }
+
   var routes = [
     { re: /^#\/?$/, view: viewLanding },
     { re: /^#\/people$/, view: viewHome },
@@ -6059,6 +6388,7 @@
     { re: /^#\/wallet(?:\?.*)?$/, view: viewWallet },
     { re: /^#\/pcard(?:\?.*)?$/, view: viewProjectCard },
     { re: /^#\/admin$/, view: viewAdmin },
+    { re: /^#\/systemmap$/, view: viewSystemMap },
   ];
 
   function route() {
@@ -6160,6 +6490,8 @@
     if ($('.program-grid')) initProgram();
     // tools: load the project/team resources
     if ($('#toolsView')) initTools();
+    // systems map: build the diagram + start the live activity poll
+    if ($('#smapCanvas')) requestAnimationFrame(initSystemMap);
     // wallet: profile QR panel + the phone's #/wallet handoff page
     if ($('#walletPanel')) initWalletPanel();
     if ($('#walletView')) initWalletHandoff();

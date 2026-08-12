@@ -120,6 +120,11 @@
           <span class="mine-dot" aria-hidden="true"></span>
           <span class="mine-label"><span class="mine-off-l">We</span><span class="mine-on-l">Me</span></span>
         </button>
+        <!-- Admin-only: opens the live Systems Map (#/systemmap). Sits quietly
+             beside the theme toggle; shown by renderChrome only for admins. -->
+        <a class="sysmap-toggle" id="sysmapBtn" href="#/systemmap" data-nav="systemmap" aria-label="Systems map" title="Systems map" hidden>
+          <i class="fa-solid fa-diagram-project"></i>
+        </a>
         <button class="theme-toggle" id="themeToggle" type="button" data-action="toggle-theme" aria-label="Toggle night mode" title="Night mode">
           <i class="fa-solid fa-moon"></i>
         </button>
@@ -175,7 +180,7 @@
 
   <!-- subtle build number, visible to everyone (all views + auth states).
        Increment on EVERY deploy so we can eyeball whether a push went live. -->
-  <span class="build-tag" aria-hidden="true">v147</span>
+  <span class="build-tag" aria-hidden="true">v148</span>
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="js/config.js?v=54"></script>
