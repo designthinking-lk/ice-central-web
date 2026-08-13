@@ -6753,17 +6753,21 @@
     var d = state.data;
     var canMember = !!(d && (d.isAdmin || (d.me && hasAccess(d.me))));
     function m(href, icon, label) { return '<a class="mnav' + (active === href ? ' on' : '') + '" href="' + href + '"><i class="fa-solid ' + icon + '"></i>' + label + '</a>'; }
-    function s(href, icon, label) { return '<a class="mnav2' + (active === href ? ' on' : '') + '" href="' + href + '"><i class="fa-solid ' + icon + '"></i>' + label + '</a>'; }
-    // primary nav on the left; secondary (About/Program/Tools) on the right;
-    // Admin pinned at the bottom (admins only). Program/Tools are members-only.
-    return '<div class="mslidenav" data-mnav><div class="mscrim" data-mnavclose></div><nav class="moctnav">' +
-      '<div class="mnav-cols">' +
-        '<div class="mnav-main">' + m('#/people', 'fa-users', 'People') + m('#/projects', 'fa-diagram-project', 'Projects') + m('#/skills', 'fa-wand-magic-sparkles', 'Skills') + '</div>' +
-        '<div class="mnav-sec">' + s('#/about', 'fa-circle-question', 'About') +
-          (canMember ? s('#/program', 'fa-calendar-days', 'Program') + s('#/tools', 'fa-toolbox', 'Tools') : '') + '</div>' +
+    function b(href, icon, label, extra) { return '<a class="mnav2b' + (extra || '') + (active === href ? ' on' : '') + '" href="' + href + '"><i class="fa-solid ' + icon + '"></i><span>' + label + '</span></a>'; }
+    // Primary destinations live inside the half-octagon (mirrors the desktop
+    // sidebar). Secondary items — About/Program/Tools and Admin — sit in a
+    // full-width row pinned to the very bottom of the screen, outside the
+    // octagon. Program/Tools are members-only; Admin is admins-only.
+    return '<div class="mslidenav" data-mnav><div class="mscrim" data-mnavclose></div>' +
+      '<nav class="moctnav">' +
+        m('#/people', 'fa-users', 'People') + m('#/projects', 'fa-diagram-project', 'Projects') + m('#/skills', 'fa-wand-magic-sparkles', 'Skills') +
+      '</nav>' +
+      '<div class="mnav-bottom">' +
+        b('#/about', 'fa-circle-question', 'About') +
+        (canMember ? b('#/program', 'fa-calendar-days', 'Program') + b('#/tools', 'fa-toolbox', 'Tools') : '') +
+        (d && d.isAdmin ? b('#/admin', 'fa-gear', 'Admin', ' admin') : '') +
       '</div>' +
-      (d && d.isAdmin ? '<a class="mnav-admin" href="#/admin"><i class="fa-solid fa-gear"></i>Admin</a>' : '') +
-      '</nav></div>';
+      '</div>';
   }
   function injectMobileChrome(active, rightExtra) {
     var view = $('#view'); if (!view || !isMobile()) return null;
