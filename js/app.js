@@ -5119,29 +5119,72 @@
       zoom = Math.max(0.5, Math.min(2.2, zoom * (e.deltaY > 0 ? 0.94 : 1.06)));
     }, { passive: false });
 
-    // Gyroscope: on a phone, tilting the device orbits the sphere so skills feel
-    // like they hang in the air around you. Deltas (not absolutes) so it blends
-    // with the ambient spin. iOS needs a permission tap (the app-bar motion btn);
-    // Android grants silently, so we auto-enable there.
+    // Gyroscope: on a phone the device becomes the CENTRE of the sphere and the
+    // skills hang fixed in the room around you — raise/turn the phone to look at
+    // them. Rock-stable because the camera orientation is a full quaternion
+    // rebuilt absolutely from the sensor each event (no drift, no gimbal jump,
+    // no magnetometer jitter). This mirrors the proven "code cosmos" 360° viewer:
+    // build a quaternion from all three angles in the sensors' YXZ convention,
+    // tip it to look out the back of the device, then correct for screen rotation.
+    // Only the camera turns — the nodes never move in world space.
+    var DEG = Math.PI / 180;
+    // quaternion kit — components ordered x, y, z, w
+    function qMul(a, b) {
+      return [
+        a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+        a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+        a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+        a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+      ];
+    }
+    function qAxisAngle(ax, ay, az, ang) {
+      var h = ang / 2, s = Math.sin(h);
+      return [ax * s, ay * s, az * s, Math.cos(h)];
+    }
+    // Euler (YXZ order) → quaternion — the convention the orientation sensors use.
+    function qFromEulerYXZ(x, y, z) {
+      var c1 = Math.cos(x / 2), c2 = Math.cos(y / 2), c3 = Math.cos(z / 2);
+      var s1 = Math.sin(x / 2), s2 = Math.sin(y / 2), s3 = Math.sin(z / 2);
+      return [
+        s1 * c2 * c3 + c1 * s2 * s3,
+        c1 * s2 * c3 - s1 * c2 * s3,
+        c1 * c2 * s3 - s1 * s2 * c3,
+        c1 * c2 * c3 + s1 * s2 * s3,
+      ];
+    }
+    var Q_SCREEN = [-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)]; // tip camera to look out the back
+    function deviceCamQuat(alpha, beta, gamma, orient) {
+      var q = qFromEulerYXZ(beta, alpha, -gamma); // raw sensor frame
+      q = qMul(q, Q_SCREEN);                       // look out through the screen
+      q = qMul(q, qAxisAngle(0, 0, 1, -orient));   // correct for screen rotation
+      return q;
+    }
+    // The render pipeline maps a node with the 3×3 matrix R (rows = camera axes,
+    // forward = +Z). That's exactly the conjugate of the camera quaternion with
+    // the forward axis flipped, so build R straight from camQ each event.
+    function camQuatToViewMatrix(q) {
+      var x = -q[0], y = -q[1], z = -q[2], w = q[3]; // conjugate (world → camera)
+      var xx = x * x, yy = y * y, zz = z * z;
+      var xy = x * y, xz = x * z, yz = y * z;
+      var wx = w * x, wy = w * y, wz = w * z;
+      return [
+        1 - 2 * (yy + zz),      2 * (xy - wz),      2 * (xz + wy),
+        2 * (xy + wz),      1 - 2 * (xx + zz),      2 * (yz - wx),
+        // forward row negated so a node the phone points at lands at +Z
+        -(2 * (xz - wy)),   -(2 * (yz + wx)),   -(1 - 2 * (xx + yy)),
+      ];
+    }
     if (isMobile()) {
-      // Rebuild the view matrix ABSOLUTELY from the device orientation each event:
-      // yaw = compass heading (turn your body → look around), pitch = beta (tilt).
-      // Absolute (not deltas) so there's no drift or gimbal jumping. Roll ignored
-      // so the field stays upright.
-      var GYAW = 1; // flip to -1 if turning feels reversed on a device
       function onOrient(ev) {
-        if (ev.alpha == null && ev.beta == null) return;
-        var scr = ((screen.orientation && screen.orientation.angle) || window.orientation || 0);
-        var heading = (typeof ev.webkitCompassHeading === 'number') ? -ev.webkitCompassHeading : (ev.alpha || 0);
-        var yaw = GYAW * (heading + scr) * Math.PI / 180;
-        var pitch = Math.max(-1.3, Math.min(1.3, ((ev.beta == null ? 90 : ev.beta) - 90) * Math.PI / 180));
-        var cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
-        // R = Rx(pitch)·Ry(yaw): forward (+Z) tracks where the phone points
-        R = [cy, 0, sy, sp * sy, cp, -sp * cy, -cp * sy, sp, cp * cy];
+        if (ev.alpha == null && ev.beta == null && ev.gamma == null) return;
+        var orient = ((screen.orientation && screen.orientation.angle != null)
+          ? screen.orientation.angle : (window.orientation || 0)) * DEG;
+        var camQ = deviceCamQuat((ev.alpha || 0) * DEG, (ev.beta || 0) * DEG, (ev.gamma || 0) * DEG, orient);
+        R = camQuatToViewMatrix(camQ);
       }
       canvas.__enableGyro = function () {
         if (gyroActive) return;
-        function attach() { gyroActive = true; window.addEventListener('deviceorientation', onOrient); }
+        function attach() { gyroActive = true; window.addEventListener('deviceorientation', onOrient, true); }
         if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) {
           DeviceOrientationEvent.requestPermission().then(function (s) { if (s === 'granted') attach(); }).catch(function () {});
         } else if (window.DeviceOrientationEvent) { attach(); }
