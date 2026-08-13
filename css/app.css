@@ -3321,6 +3321,15 @@ html.is-mobile.m-on .mnav2b i { font-size: 20px; }
 html.is-mobile.m-on .mnav2b.on { color: #fff; }
 html.is-mobile.m-on .mnav2b.on i { color: #00D7EE; }
 html.is-mobile.m-on .mnav2b.admin, html.is-mobile.m-on .mnav2b.admin i { color: #00D7EE; }
+/* Light theme: the octagon + bottom row were dark-only — flip their fills to the
+   light palette and switch active labels to dark ink. Dark theme keeps its tint
+   (higher specificity than the base rules so these only bite in light mode). */
+html.is-mobile.m-on[data-theme="light"] .moctnav {
+  background: linear-gradient(150deg, rgba(255,255,255,0.98), rgba(240,243,248,0.98)); }
+html.is-mobile.m-on[data-theme="light"] .mnav-bottom {
+  background: linear-gradient(to top, rgba(247,249,252,0.98) 55%, rgba(247,249,252,0)); }
+html.is-mobile.m-on[data-theme="light"] .mnav.on,
+html.is-mobile.m-on[data-theme="light"] .mnav2b.on { color: var(--text); }
 
 html.is-mobile.m-on .moverlay { position: absolute; inset: 0; z-index: 45; background: rgba(8,6,16,0.62);
   -webkit-backdrop-filter: blur(20px) saturate(1.2); backdrop-filter: blur(20px) saturate(1.2);
@@ -3385,7 +3394,10 @@ html.is-mobile.m-on .proj-detail.pcard-open .proj-d-footer { display: none; }
 html.is-mobile.m-on .proj-wallet-overlay { position: relative; inset: auto; overflow: visible; padding-top: 30px; }
 
 /* ---- Skills on mobile: full-bleed sphere; detail is a bottom sheet ---- */
-html.is-mobile.m-on .skills3d-wrap { top: 60px; }
+/* Full-bleed under the fixed app bar so the bar's fade-to-transparent bottom
+   edge blends over the canvas (no hard line where content used to start at 60px)
+   — matches the smooth edge seen while the menu is open. */
+html.is-mobile.m-on .skills3d-wrap { top: 0; }
 html.is-mobile.m-on .skills-side { top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: 62%;
   padding: 14px 18px calc(20px + env(safe-area-inset-bottom, 0)); z-index: 46;
   background: linear-gradient(160deg, rgba(30,22,54,0.94), rgba(12,10,20,0.97));
