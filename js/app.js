@@ -3757,8 +3757,7 @@
   var projStack = [];      // slots front→back while a project is open (for flipping)
   var projEditTab = 'details';         // active edit tab: 'details' | 'about' | 'video'
   var projViewTab = 'details';         // active VIEW tab: 'details' | 'demo'
-  var projWebStatus = 'ok';            // website reachability: 'empty'|'checking'|'ok'|'bad'
-  var projEditDraft = { title: '', description: '', fullDescription: '', website: '' }; // unsaved edits
+  var projEditDraft = { title: '', description: '', fullDescription: '' }; // unsaved edits
   var projEditBaseline = null; // loaded values — Save enables only when the draft differs
 
   function teamProjectsData() {
@@ -3870,6 +3869,10 @@
   function looksLikeUrl(u) { return /^https?:\/\/\S+\.\S+/i.test(u) || /^[\w-]+(\.[\w-]+)+/.test(u); }
   // A valid, reachable project website → the card shows a live-generated QR.
   function projCardUrl(p) { return (p && p.website && truthyStr(p.websiteOk)) ? p.website : ''; }
+  // The project site is auto-derived from the title (must mirror slugForTitle_
+  // on the server): lowercase, keep only a–z0–9, "Smart Mobility" → smartmobility.
+  function siteSlugFor(title) { return String(title || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+  function siteUrlFor(title) { var s = siteSlugFor(title); return s ? 'https://' + s + '.designthinking.lk' : ''; }
   // Small client-side QR (qrcode lib); the container is sized by CSS.
   function renderMiniQr_(el, text) {
     if (!el) return;
@@ -3926,9 +3929,9 @@
           '<input class="proj-title-in" id="projTitleIn" maxlength="40" value="' + esc(projEditDraft.title) + '" placeholder="Project title">' +
           '<label class="proj-lbl">Short description <span class="proj-lbl-hint">— shown on the card, two lines</span></label>' +
           '<textarea class="proj-desc-in" id="projDescIn" maxlength="105" rows="2" placeholder="One-line pitch">' + esc(projEditDraft.description) + '</textarea>' +
-          '<label class="proj-lbl">Project website</label>' +
+          '<label class="proj-lbl">Project website <span class="proj-lbl-hint">— created automatically from the title</span></label>' +
           '<div class="proj-web-row">' +
-            '<input class="proj-web-in" id="projWebIn" type="url" maxlength="300" value="' + esc(projEditDraft.website) + '" placeholder="https://your-project.com">' +
+            '<div class="proj-web-auto" id="projWebAuto"><i class="fa-solid fa-globe"></i><span class="proj-web-url" id="projWebUrl">' + esc(prettyUrl(siteUrlFor(projEditDraft.title)) || '—') + '</span></div>' +
             '<div class="proj-qr-preview" id="projQrPreview" title="Live QR preview"></div>' +
           '</div>';
       }
@@ -4170,66 +4173,49 @@
     var card = $('#projectsGrid .pc-front');
     var h3 = card && card.querySelector('.pc-text h3');
     var pp = card && card.querySelector('.pc-text p');
-    var ti = $('#projTitleIn'), de = $('#projDescIn'), fu = $('#projFullIn'), we = $('#projWebIn');
-    if (ti) ti.oninput = function () { projEditDraft.title = ti.value; if (h3) h3.textContent = ti.value || 'Untitled project'; updateProjSaveState(); };
+    var ti = $('#projTitleIn'), de = $('#projDescIn'), fu = $('#projFullIn');
+    if (ti) {
+      // Keep the title to two words / one space. Block a SECOND space at the
+      // keystroke so nothing is typed (no warning), and sanitise pastes. Then
+      // live-update the derived site URL + its QR preview as the title changes.
+      ti.onbeforeinput = function (ev) {
+        if (ev.data && /\s/.test(ev.data) && /\s/.test(ti.value)) ev.preventDefault();
+      };
+      var syncTitle = function () {
+        // collapse runs of whitespace to one, drop leading space, keep ≤2 words
+        var v = ti.value.replace(/\s+/g, ' ').replace(/^ /, '');
+        var parts = v.split(' ');
+        if (parts.length > 2) v = parts[0] + ' ' + parts.slice(1).join('');
+        if (v !== ti.value) { var pos = ti.selectionStart; ti.value = v; try { ti.setSelectionRange(pos, pos); } catch (e) {} }
+        projEditDraft.title = ti.value;
+        if (h3) h3.textContent = ti.value || 'Untitled project';
+        var u = siteUrlFor(ti.value);
+        var urlEl = $('#projWebUrl'); if (urlEl) urlEl.textContent = prettyUrl(u) || '—';
+        var qp = $('#projQrPreview');
+        if (qp) { if (u) renderMiniQr_(qp, u); else qp.innerHTML = ''; }
+        updateProjSaveState();
+      };
+      ti.oninput = syncTitle;
+      syncTitle(); // render the initial derived URL + QR for the loaded title
+    }
     if (de) de.oninput = function () { projEditDraft.description = de.value; if (pp) pp.textContent = de.value; updateProjSaveState(); };
     if (fu) fu.oninput = function () { projEditDraft.fullDescription = fu.value; updateProjSaveState(); };
-    if (we) {
-      var qp = $('#projQrPreview');
-      var webTimer = null, webSeq = 0;
-      // Validate reachability (server curls the URL). A live QR renders only for a
-      // reachable link; an unreachable one shows a warning where the QR would be
-      // and blocks Save until it's fixed or cleared.
-      var checkWeb = function () {
-        var v = we.value.trim();
-        var enc = v && !/^https?:\/\//i.test(v) ? 'https://' + v : v; // match what we save
-        if (!v || !looksLikeUrl(v)) {
-          projWebStatus = 'empty';
-          if (qp) qp.innerHTML = '';
-          updateProjSaveState();
-          return;
-        }
-        projWebStatus = 'checking';
-        if (qp) qp.innerHTML = '<i class="fa-solid fa-spinner fa-spin proj-qr-check"></i>';
-        updateProjSaveState();
-        var seq = ++webSeq;
-        A.api('check_url', { url: enc }).then(function (r) {
-          if (seq !== webSeq) return; // superseded by a newer keystroke
-          if (r && r.exists) { projWebStatus = 'ok'; if (qp) renderMiniQr_(qp, enc); }
-          else { projWebStatus = 'bad'; if (qp) qp.innerHTML = '<i class="fa-solid fa-triangle-exclamation proj-qr-bad" title="This link didn’t respond — fix it or clear it to save."></i>'; }
-          updateProjSaveState();
-        }).catch(function () {
-          if (seq !== webSeq) return;
-          projWebStatus = 'bad';
-          if (qp) qp.innerHTML = '<i class="fa-solid fa-triangle-exclamation proj-qr-bad" title="Could not verify this link — fix it or clear it to save."></i>';
-          updateProjSaveState();
-        });
-      };
-      we.oninput = function () {
-        projEditDraft.website = we.value;
-        updateProjSaveState();          // reflect dirtiness immediately
-        clearTimeout(webTimer);
-        webTimer = setTimeout(checkWeb, 500); // reachability check refines the gate
-      };
-      checkWeb(); // validate the loaded value immediately
-    }
   }
-  // Enable "Save changes" only when the draft differs from what was loaded — and
-  // never while the website is unreachable. The pitch video is excluded (it
-  // persists immediately on upload/remove, like the profile clip).
+  // Enable "Save changes" only when the draft differs from what was loaded. The
+  // website is auto-derived from the title, so it isn't part of the dirty check.
+  // The pitch video is excluded too (it persists immediately on upload/remove).
   function projEditDirty() {
     var b = projEditBaseline; if (!b) return false;
     var colorNow = projEditColor || b.color;
     return projEditDraft.title !== b.title ||
       projEditDraft.description !== b.description ||
       projEditDraft.fullDescription !== b.fullDescription ||
-      projEditDraft.website !== b.website ||
       colorNow !== b.color;
   }
   function updateProjSaveState() {
     var btn = $('#projDetail [data-action="proj-save"]');
     if (!btn) return;
-    var disable = projWebStatus === 'bad' || !projEditDirty();
+    var disable = !projEditDirty();
     btn.disabled = disable;
     btn.classList.toggle('btn-disabled', disable);
   }
@@ -4237,16 +4223,12 @@
     var ti = $('#projTitleIn'); if (ti) projEditDraft.title = ti.value;
     var de = $('#projDescIn'); if (de) projEditDraft.description = de.value;
     var fu = $('#projFullIn'); if (fu) projEditDraft.fullDescription = fu.value;
-    var we = $('#projWebIn'); if (we) projEditDraft.website = we.value;
   }
   function startProjectEdit(slot) {
     var p = projectBySlot(slot) || {};
     projEdit = true; projEditColor = ''; projEditTab = 'details';
-    // seed from the last saved reachability so Save is gated even before Details
-    // is opened; the live check refines it once the website field is on screen
-    projWebStatus = (p.website && !truthyStr(p.websiteOk)) ? 'bad' : 'ok';
-    projEditDraft = { title: p.title || '', description: p.description || '', fullDescription: p.fullDescription || '', website: p.website || '' };
-    projEditBaseline = { title: projEditDraft.title, description: projEditDraft.description, fullDescription: projEditDraft.fullDescription, website: projEditDraft.website, color: projColorClass(p, slot) };
+    projEditDraft = { title: p.title || '', description: p.description || '', fullDescription: p.fullDescription || '' };
+    projEditBaseline = { title: projEditDraft.title, description: projEditDraft.description, fullDescription: projEditDraft.fullDescription, color: projColorClass(p, slot) };
   }
   function closeProject() {
     var grid = $('#projectsGrid'), detail = $('#projDetail');
@@ -4278,7 +4260,6 @@
       slot: slot, title: projEditDraft.title,
       description: projEditDraft.description,
       fullDescription: projEditDraft.fullDescription,
-      website: projEditDraft.website,
       color: projEditColor || undefined,
     }).then(function (r) {
       if (r && r.teamProjects) { state.data.teamProjects = r.teamProjects; A.writeCache(state.data); }
@@ -4300,7 +4281,7 @@
           renderProjectCardQRs();
         }
       }
-      if (!truthyStr(np.websiteOk) && np.website) toast('Saved — but that website looked broken.', true);
+      if (r && r.warning) toast(r.warning, true);
       else toast('Project saved');
     }).catch(function (err) {
       toast(err.message, true); busy(btn, false);

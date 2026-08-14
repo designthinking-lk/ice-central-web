@@ -2111,6 +2111,15 @@ body.hive-full .nav a { pointer-events: auto; }
 .proj-full-in:focus, .proj-web-in:focus { outline: none; border-color: var(--color-accent); }
 .proj-web-row { display: flex; gap: 12px; align-items: stretch; margin-bottom: 6px; }
 .proj-web-in { flex: 1; min-width: 0; }
+/* read-only auto-derived site URL (title → {slug}.designthinking.lk) */
+.proj-web-auto {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px;
+  box-sizing: border-box; padding: 10px 12px; font: inherit;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg-subtle); color: var(--text);
+}
+.proj-web-auto i { flex: none; color: var(--text-muted); font-size: 13px; }
+.proj-web-url { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .proj-qr-preview { flex: none; width: 46px; height: 46px; border-radius: 8px; box-sizing: border-box; padding: 4px; background: #fff; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
 .proj-qr-preview:empty { background: var(--bg-subtle); border-style: dashed; }
 .proj-qr-preview img { width: 100%; height: auto; display: block; }
