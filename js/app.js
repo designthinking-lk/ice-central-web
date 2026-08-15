@@ -1234,7 +1234,7 @@
     var mine = myTeam();
     return '<div class="hive-teams" id="hiveTeams">' +
       teams.map(function (t, i) {
-        var name = String(t.name || '');
+        var name = teamDisplayName(t.name);
         var cut = name.lastIndexOf(' ') + 1;
         var label = (i === 0 || !cut)
           ? esc(name)
@@ -1355,7 +1355,7 @@
   }
 
   function hiveCaptionText(users, team) {
-    if (team) return 'Showing ' + esc(team.name) + ' — tap the chip again to clear';
+    if (team) return 'Showing ' + esc(teamDisplayName(team.name)) + ' — tap the chip again to clear';
     return users.length ? '' : 'Waiting for people to join — slots fill as they register';
   }
 
@@ -1714,7 +1714,7 @@
         // Team name shown as plain text — the team page is preserved but not
         // linked/accessible from the profile for now.
         ? (myTeams.length ? '<div class="panel pv-teams"><h3><i class="fa-solid fa-people-group"></i>Teams</h3><ul class="link-list">' +
-            myTeams.map(function (t) { return '<li><i class="fa-solid fa-people-group"></i><span style="color:var(--text-body)">' + esc(t.name) + '</span></li>'; }).join('') + '</ul></div>' : '')
+            myTeams.map(function (t) { return '<li><i class="fa-solid fa-people-group"></i><span style="color:var(--text-body)">' + esc(teamDisplayName(t.name)) + '</span></li>'; }).join('') + '</ul></div>' : '')
         : '<div class="panel pub-invite pv-teams"><h3><i class="fa-solid fa-people-group"></i>Teams &amp; projects</h3>' +
             '<p style="color:var(--text-muted);margin:0 0 12px">Sign in to see this member’s team and project, or request an invite to join the ' + esc(eventName()) + ' community.</p>' +
             '<button class="btn btn-gradient btn-sm" data-action="sign-in"><i class="fa-brands fa-google"></i>Sign in</button></div>') +
@@ -1992,8 +1992,8 @@
     var stack = members.slice(0, 5).map(function (m) { return avatar(m, 'avatar-sm'); }).join('');
     return '<a class="card team-card" href="#/team/' + esc(t.id) + '">' +
       '<div class="team-cover">' + (t.coverImage ? '<img src="' + esc(t.coverImage) + '" alt="" loading="lazy">' :
-        '<span class="team-initial">' + esc(initials(t.name)) + '</span>') + '</div>' +
-      '<div class="team-body"><h3 class="team-name">' + esc(t.name) + '</h3>' +
+        '<span class="team-initial">' + esc(initials(teamDisplayName(t.name))) + '</span>') + '</div>' +
+      '<div class="team-body"><h3 class="team-name">' + esc(teamDisplayName(t.name)) + '</h3>' +
       (t.description ? '<p class="team-desc">' + esc(t.description) + '</p>' : '') +
       '<div class="team-meta"><span class="member-stack">' + stack + '</span>' +
       '<span>' + members.length + ' member' + (members.length === 1 ? '' : 's') + '</span></div>' +
@@ -2053,7 +2053,7 @@
       '<div class="info">' +
       (editing
         ? '<input class="input te-name" value="' + esc(t.name) + '" maxlength="100" placeholder="Team name" style="font-family:var(--font-display);font-size:30px;font-weight:800;letter-spacing:-0.02em;margin-bottom:4px">'
-        : '<h1>' + esc(t.name) + '</h1>') +
+        : '<h1>' + esc(teamDisplayName(t.name)) + '</h1>') +
       '<div class="meta-row"><span><i class="fa-solid fa-user-group"></i>' + members.length + ' members</span>' +
       '<span><i class="fa-regular fa-calendar"></i>Created ' + esc(fmtDate(t.createdAt)) + '</span></div>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
@@ -3784,7 +3784,7 @@
     return !!(team && !team.demo && (team.members || []).indexOf(me().id) !== -1);
   }
   function projColorClass(p, slot) { return /^pc-[1-6]$/.test(p && p.color) ? p.color : ('pc-' + (slot + 1)); }
-  function teamLabel(slot) { var t = projectTeam(slot); return t ? t.name : 'Team ' + String.fromCharCode(65 + slot); }
+  function teamLabel(slot) { var t = projectTeam(slot); return t ? teamDisplayName(t.name) : 'Team ' + teamLetterNum(String.fromCharCode(65 + slot)); }
 
   function projectCardHtml(p) {
     var slot = p.slot;
@@ -4448,7 +4448,7 @@
           '<span class="tc-actions"><button class="btn btn-danger btn-sm" data-action="tool-del-yes" data-id="' + esc(t.id) + '"><span class="label">Remove</span><span class="spin"></span></button>' +
           '<button class="btn btn-ghost btn-sm" data-action="tool-del-no">Cancel</button></span></div>'
       : '';
-    var scopeLabel = sc.label + (t.scope === 'team' && t.teamName ? ' · ' + esc(t.teamName) : '');
+    var scopeLabel = sc.label + (t.scope === 'team' && t.teamName ? ' · ' + esc(teamDisplayName(t.teamName)) : '');
     return '<div class="tool-card scope-' + t.scope + (t.canManage ? ' has-manage' : '') + '" data-id="' + esc(t.id) + '">' +
       '<div class="tool-top"><div class="tool-title">' + esc(t.title) + '</div>' +
       '<span class="tool-scope"><i class="' + sc.icon + '"></i>' + scopeLabel + '</span>' + manage + '</div>' +
@@ -4481,7 +4481,7 @@
     var scope = editing ? d.scope : (canTeam ? 'team' : 'global');
     var isAdmin = !!(state.data && state.data.isAdmin);
     var allTeams = (toolsData && toolsData.allTeams) || [];
-    var teamName = (toolsData && toolsData.myTeam && toolsData.myTeam.name) || 'your team';
+    var teamName = teamDisplayName((toolsData && toolsData.myTeam && toolsData.myTeam.name) || '') || 'your team';
     var scopeUI;
     if (editing) {
       var sc = TOOL_SCOPES[scope];
@@ -4509,7 +4509,7 @@
         '<label for="tfTeam">Which team?</label>' +
         '<select class="tf-input" id="tfTeam">' +
         allTeams.map(function (tm) {
-          return '<option value="' + esc(tm.id) + '"' + (tm.id === myTid ? ' selected' : '') + '>' + esc(tm.name) + '</option>';
+          return '<option value="' + esc(tm.id) + '"' + (tm.id === myTid ? ' selected' : '') + '>' + esc(teamDisplayName(tm.name)) + '</option>';
         }).join('') +
         '</select></div>';
     }
@@ -4893,7 +4893,7 @@
         if ((t.members || []).indexOf(u.id) === -1 || seen[t.id]) return;
         seen[t.id] = 1;
         var p = DEMO_PROJECTS[ti];
-        projItems += '<li>' + esc(p ? p.t : t.name) + ' <span class="ss-team">' + esc(t.name) + '</span></li>';
+        projItems += '<li>' + esc(p ? p.t : teamDisplayName(t.name)) + ' <span class="ss-team">' + esc(teamDisplayName(t.name)) + '</span></li>';
       });
     });
     var projHtml = projItems
@@ -5719,11 +5719,20 @@
   // same caps, so a stale board can never oversubscribe a team).
   var TEAM_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
   var TEAM_CAP = { participant: 5, mentor: 2 };
-  // Team labels for the board are letter-based (Team A … Team F), matching the
-  // data/name and the public hive. The compact quick-assign buttons show just
-  // the bare letter (A … F).
-  function teamNum(L) { return L; }
-  function teamShort(L) { return 'Team ' + L; }
+  // Competition teams are stored and keyed by letter (Team A … Team F) in the
+  // data and backend, but shown to everyone as numbers. This remap is purely
+  // cosmetic — ids, keys and stored names stay letter-based. (2026 notation.)
+  var TEAM_LETTER_NUM = { A: '3', B: '1', C: '6', D: '5', E: '2', F: '4' };
+  function teamLetterNum(L) { return TEAM_LETTER_NUM[String(L || '').toUpperCase()] || L; }
+  // Rewrite a stored team name ("Team A") to its display form ("Team 3").
+  // Custom-named teams (anything but exactly "Team <A–F>") are left untouched.
+  function teamDisplayName(name) {
+    return String(name == null ? '' : name)
+      .replace(/^(\s*Team\s+)([A-Fa-f])(\s*)$/, function (_, pre, L, post) { return pre + teamLetterNum(L) + post; });
+  }
+  // The compact quick-assign buttons show just the bare number.
+  function teamNum(L) { return teamLetterNum(L); }
+  function teamShort(L) { return 'Team ' + teamLetterNum(L); }
 
   // Participant chip → participant slot; mentor chip (or admin-only) → mentor slot.
   function teamSlot(u) { return hasRoleU(u, 'participant') ? 'participant' : 'mentor'; }
@@ -5836,7 +5845,7 @@
         '<input type="number" class="tb-score-in" value="' + score + '"' + scoreKey + ' aria-label="' + teamShort(L) + ' score">' +
         '<button class="tb-score-save" type="button" data-action="save-score"' + scoreKey + ' title="Save score" aria-label="Save score"><i class="fa-solid fa-floppy-disk"></i></button></span>';
       return '<div class="tb-card' + (full ? ' tb-full' : '') + (canFit ? ' tb-target' : '') + '">' +
-        '<div class="tb-head"><h3 title="' + teamShort(L) + '">' + L + '</h3>' + scoreCtl + headExtra +
+        '<div class="tb-head"><h3 title="' + teamShort(L) + '">' + teamNum(L) + '</h3>' + scoreCtl + headExtra +
         '</div><div class="tb-slots">' + slots + '</div></div>';
     }).join('');
 
@@ -6642,7 +6651,7 @@
     var chips = teams.map(function (t) {
       var mem = (t.members || []).length;
       return '<button class="mtchip' + (state.teamFilter === t.id ? ' on' : '') + '" data-mteam="' + esc(t.id) + '">' +
-        esc(String(t.name).replace(/^team\s+/i, '')) + '<small>' + (mem ? mem + ' members' : 'open') + '</small></button>';
+        esc(teamDisplayName(t.name).replace(/^team\s+/i, '')) + '<small>' + (mem ? mem + ' members' : 'open') + '</small></button>';
     }).join('');
 
     // account button reuses the existing delegated handlers (user/guest menu)
@@ -6774,7 +6783,7 @@
     scroll.classList.toggle('dimmed', !!team);
     var bar = $('#mSpotbar');
     if (team) {
-      $('#mSpotTxt').textContent = 'Spotlighting ' + team.name + ' · ' + (team.members || []).length + ' member' + ((team.members || []).length === 1 ? '' : 's');
+      $('#mSpotTxt').textContent = 'Spotlighting ' + teamDisplayName(team.name) + ' · ' + (team.members || []).length + ' member' + ((team.members || []).length === 1 ? '' : 's');
       bar.classList.add('on');
       if (!silent) { var f = scroll.querySelector('.moct.team'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     } else if (bar) bar.classList.remove('on');
