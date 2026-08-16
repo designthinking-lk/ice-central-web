@@ -3111,12 +3111,11 @@
   }
 
   // ---- People data export (mentors/admins) ----------------------------------
-  // The "Data" fab packs, for every person on the platform, their profile photo
-  // plus a JSON file (their own description + an LLM-written persona) into a
-  // single zip and downloads it. Files share the person's dash-joined name, e.g.
-  // "Jane-Doe.jpg" + "Jane-Doe.json". Personas come from the same cached backend
-  // `persona` action the card uses; photos are pulled through the Drive media
-  // proxy (CORS-open) so the browser can read the bytes to zip them.
+  // The "Data" fab downloads a single JSON file describing every person on the
+  // platform — their own description (bio) + an LLM-written persona + their photo
+  // URL (not the bytes: downloading 46 images was the slow part). Personas come
+  // from the same cached backend `persona` action the card uses; they're the only
+  // per-person round trip, so we run them with bounded concurrency to keep it fast.
 
   // Dash-join a display name into a filesystem-safe slug, keeping unicode letters.
   function dataSlug(name) {
@@ -3125,36 +3124,6 @@
     catch (e) { s = s.replace(/[^\w\s-]/g, ''); }        // engines without \p{}
     s = s.replace(/[\s_]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     return s || 'person';
-  }
-
-  // Pull a Drive fileId out of a profile-photo URL (mirrors the backend helper).
-  function dataDriveId(url) {
-    var s = String(url || '');
-    var m = s.match(/lh3\.googleusercontent\.com\/d\/([\w-]+)/) ||
-            s.match(/drive\.google\.com\/(?:file\/d\/|uc\?[^#]*\bid=)([\w-]+)/) ||
-            s.match(/[?&]id=([\w-]+)/) ||
-            s.match(/\/d\/([\w-]+)/);
-    return m ? m[1] : null;
-  }
-
-  // Fetch a person's photo bytes. Drive-hosted photos go through the media proxy
-  // (adds CORS + serves the bytes server-side); anything else is tried directly.
-  // Returns { bytes, ext } or null when unreadable.
-  async function dataFetchPhoto(url) {
-    if (!url) return null;
-    var id = dataDriveId(url);
-    var src = id ? (MEDIA_PROXY + id) : url;
-    try {
-      var r = await fetch(src);
-      if (!r.ok) return null;
-      var buf = await r.arrayBuffer();
-      var bytes = new Uint8Array(buf);
-      if (bytes.length < 100) return null; // too small to be a real image
-      var ext = (bytes[0] === 0x89 && bytes[1] === 0x50) ? '.png'
-              : (bytes[0] === 0x47 && bytes[1] === 0x49) ? '.gif'
-              : (bytes[0] === 0x52 && bytes[1] === 0x49) ? '.webp' : '.jpg';
-      return { bytes: bytes, ext: ext };
-    } catch (e) { return null; }
   }
 
   // Ask the backend for this person's LLM persona (cached server-side by content
@@ -3173,57 +3142,23 @@
     } catch (e) { return ''; }
   }
 
-  // Minimal store-only ZIP writer (no compression — JPEG/PNG are already packed
-  // and the JSON is tiny). files: [{ name, bytes: Uint8Array }] -> Uint8Array.
-  var __crcTable = null;
-  function dataCrc32(bytes) {
-    if (!__crcTable) {
-      __crcTable = new Uint32Array(256);
-      for (var n = 0; n < 256; n++) {
-        var c = n;
-        for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
-        __crcTable[n] = c >>> 0;
+  // Run fn over items with at most `limit` in flight; results keep input order.
+  async function dataMapLimit(items, limit, fn, onProgress) {
+    var results = new Array(items.length);
+    var next = 0, done = 0;
+    async function worker() {
+      while (true) {
+        var i = next++;
+        if (i >= items.length) return;
+        results[i] = await fn(items[i], i);
+        done++;
+        if (onProgress) onProgress(done, items.length);
       }
     }
-    var crc = 0xFFFFFFFF;
-    for (var i = 0; i < bytes.length; i++) crc = (crc >>> 8) ^ __crcTable[(crc ^ bytes[i]) & 0xFF];
-    return (crc ^ 0xFFFFFFFF) >>> 0;
-  }
-  function dataZip(files) {
-    var enc = new TextEncoder();
-    var parts = [], central = [], offset = 0;
-    function u16(v) { return new Uint8Array([v & 255, (v >>> 8) & 255]); }
-    function u32(v) { return new Uint8Array([v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]); }
-    var dosTime = 0, dosDate = ((2026 - 1980) << 9) | (1 << 5) | 1; // fixed 2026-01-01
-    function push(list, p) { list.push(p); offset += p.length; }
-    files.forEach(function (f) {
-      var nameB = enc.encode(f.name);
-      var crc = dataCrc32(f.bytes);
-      var size = f.bytes.length;
-      var start = offset;
-      push(parts, u32(0x04034b50)); push(parts, u16(20)); push(parts, u16(0)); push(parts, u16(0));
-      push(parts, u16(dosTime)); push(parts, u16(dosDate));
-      push(parts, u32(crc)); push(parts, u32(size)); push(parts, u32(size));
-      push(parts, u16(nameB.length)); push(parts, u16(0));
-      push(parts, nameB); push(parts, f.bytes);
-      central.push({ nameB: nameB, crc: crc, size: size, start: start });
-    });
-    var centralStart = offset;
-    central.forEach(function (c) {
-      push(parts, u32(0x02014b50)); push(parts, u16(20)); push(parts, u16(20));
-      push(parts, u16(0)); push(parts, u16(0)); push(parts, u16(dosTime)); push(parts, u16(dosDate));
-      push(parts, u32(c.crc)); push(parts, u32(c.size)); push(parts, u32(c.size));
-      push(parts, u16(c.nameB.length)); push(parts, u16(0)); push(parts, u16(0));
-      push(parts, u16(0)); push(parts, u16(0)); push(parts, u32(0)); push(parts, u32(c.start));
-      push(parts, c.nameB);
-    });
-    var centralSize = offset - centralStart;
-    push(parts, u32(0x06054b50)); push(parts, u16(0)); push(parts, u16(0));
-    push(parts, u16(files.length)); push(parts, u16(files.length));
-    push(parts, u32(centralSize)); push(parts, u32(centralStart)); push(parts, u16(0));
-    var out = new Uint8Array(offset), pos = 0;
-    parts.forEach(function (p) { out.set(p, pos); pos += p.length; });
-    return out;
+    var pool = [];
+    for (var w = 0; w < Math.min(limit, items.length); w++) pool.push(worker());
+    await Promise.all(pool);
+    return results;
   }
 
   function dataDownloadBlob(blob, filename) {
@@ -3241,48 +3176,48 @@
     if (!users.length) { toast('No people to export yet.', true); return; }
     dataExportBusy = true;
     busy(btn, true);
-    var enc = new TextEncoder();
-    var files = [], used = {}, index = [], noPhoto = 0;
     toast('Preparing people data… 0/' + users.length);
     try {
-      for (var i = 0; i < users.length; i++) {
-        var u = users[i];
-        var base = dataSlug(u.name), slug = base, n = 2;
-        while (used[slug.toLowerCase()]) slug = base + '-' + (n++);
-        used[slug.toLowerCase()] = 1;
+      var used = {};
+      var people = await dataMapLimit(users, 6, async function (u) {
         var persona = await dataFetchPersona(u);
-        var photo = await dataFetchPhoto(u.image);
-        var photoName = photo ? (slug + photo.ext) : null;
-        if (photo) files.push({ name: photoName, bytes: photo.bytes });
-        else noPhoto++;
-        var record = {
+        return {
           name: u.name || '',
+          slug: '',                   // filled below, after order is fixed
           roles: rolesOf(u),
           affiliation: u.affiliation || '',
           expertise: u.expertise || '',
-          description: u.bio || '',   // the person's own description (their bio)
+          description: u.bio || '',    // the person's own description (their bio)
           persona: persona,           // LLM-written persona
           skills: u.skills || [],
           links: u.links || [],
-          photo: photoName,
+          imageUrl: u.image || '',
         };
-        files.push({ name: slug + '.json', bytes: enc.encode(JSON.stringify(record, null, 2)) });
-        index.push({ name: record.name, slug: slug, json: slug + '.json', photo: photoName });
-        toast('Preparing people data… ' + (i + 1) + '/' + users.length);
-      }
-      files.push({ name: '_index.json', bytes: enc.encode(JSON.stringify({
+      }, function (done, total) {
+        toast('Preparing people data… ' + done + '/' + total);
+      });
+      // Assign a unique dash-joined slug per person (handy if these are ever split
+      // into one file each, named by person).
+      people.forEach(function (p) {
+        var base = dataSlug(p.name), slug = base, n = 2;
+        while (used[slug.toLowerCase()]) slug = base + '-' + (n++);
+        used[slug.toLowerCase()] = 1;
+        p.slug = slug;
+      });
+      var noPersona = people.filter(function (p) { return !p.persona; }).length;
+      var noPhoto = people.filter(function (p) { return !p.imageUrl; }).length;
+      var payload = {
         project: A.getProject(),
-        count: users.length,
-        people: index,
-      }, null, 2)) });
-      files.push({ name: 'README.txt', bytes: enc.encode(
-        'ICE people data export — ' + A.getProject() + '\n\n' +
-        'One <Name>.json + <Name>.<ext> photo per person.\n' +
-        'Each JSON has the person\'s own description (bio) and an LLM-written persona.\n' +
-        '_index.json lists every person and their file names.\n') });
-      var zip = dataZip(files);
-      dataDownloadBlob(new Blob([zip], { type: 'application/zip' }), 'ice-people-data-' + A.getProject() + '.zip');
-      toast('Downloaded ' + users.length + ' people' + (noPhoto ? ' (' + noPhoto + ' without a photo)' : '') + '.');
+        exportedAt: new Date().toISOString(),
+        count: people.length,
+        people: people,
+      };
+      dataDownloadBlob(
+        new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
+        'ice-people-data-' + A.getProject() + '.json');
+      toast('Downloaded ' + people.length + ' people' +
+        (noPersona ? ' (' + noPersona + ' without a persona)' : '') +
+        (noPhoto ? ' (' + noPhoto + ' without a photo)' : '') + '.');
     } catch (err) {
       toast('Export failed — ' + (err && err.message ? err.message : 'try again') + '.', true);
     } finally {
