@@ -46,7 +46,7 @@
 
   <!-- bump ?v= on any asset change: GitHub Pages caches for 10 min -->
   <link rel="stylesheet" href="css/theme.css?v=53">
-  <link rel="stylesheet" href="css/app.css?v=223">
+  <link rel="stylesheet" href="css/app.css?v=224">
   <!-- apply the saved theme before first paint so night mode never flashes -->
   <script>try{if(localStorage.getItem('ice.theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}</script>
   <!-- desktop-first: phones get the "open on desktop" gate (markup below, styles in app.css).
@@ -152,6 +152,9 @@
   <!-- floating bottom-right cluster: about + program + tools + chat & broadcasts -->
   <div class="fab-stack">
     <a href="#/about" data-nav="about" id="navAbout" class="tools-fab" title="About the program"><i class="fa-regular fa-circle-question"></i><span>About</span></a>
+    <!-- Mentors/admins only (shown by renderChrome): packs every person's photo +
+         an LLM-persona JSON into a single zip and downloads it. -->
+    <button type="button" data-action="download-data" id="navData" class="tools-fab" title="Download people data (photos + personas)" hidden><i class="fa-solid fa-download"></i><span>Data</span></button>
     <a href="#/program" data-nav="program" id="navProgram" class="tools-fab" title="Program" hidden><i class="fa-regular fa-calendar-days"></i><span>Program</span></a>
     <a href="#/tools" data-nav="tools" id="navTools" class="tools-fab" title="Tools" hidden><i class="fa-solid fa-toolbox"></i><span>Tools</span></a>
     <button type="button" class="chat-fab" id="navChatBtn" data-action="toggle-chat" title="Chat &amp; broadcasts" hidden>
@@ -180,13 +183,13 @@
 
   <!-- subtle build number, visible to everyone (all views + auth states).
        Increment on EVERY deploy so we can eyeball whether a push went live. -->
-  <span class="build-tag" aria-hidden="true">v155</span>
+  <span class="build-tag" aria-hidden="true">v156</span>
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="js/config.js?v=54"></script>
   <script src="js/api.js?v=56"></script>
   <script src="js/chat.js?v=72"></script>
   <script src="js/vendor/qrcode.js?v=1"></script>
-  <script src="js/app.js?v=225"></script>
+  <script src="js/app.js?v=226"></script>
 </body>
 </html>
