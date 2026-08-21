@@ -3918,21 +3918,10 @@
 
   function viewProjects(slot) {
     projSel = null; projEdit = false; projEditColor = ''; // always render the grid state
-    // Projects are community-only. A signed-out visitor (e.g. opening a shared
-    // project link) sees a teaser for that project + an invite prompt instead.
-    if (!signedIn()) {
-      var pp = (slot !== undefined && slot !== '') ? projectBySlot(Number(slot)) : null;
-      return '<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>' +
-        '<div class="pub-gate">' +
-        (pp && pp.title
-          ? '<div class="pub-gate-card"><span class="pub-gate-kicker">' + esc(eventName()) + ' &middot; Project</span>' +
-              '<h1>' + esc(pp.title) + '</h1>' + (pp.description ? '<p>' + esc(pp.description) + '</p>' : '') + '</div>'
-          : '') +
-        '<div class="pub-gate-cta"><i class="fa-solid fa-lock"></i>' +
-          '<h2>Projects are for the ' + esc(eventName()) + ' community</h2>' +
-          '<p>Sign in to explore every team’s project and demo — or request an invite to join the community.</p>' +
-        '</div></div>';
-    }
+    // Projects are PUBLIC — every visitor (signed in or not) sees the full grid,
+    // each team's project, description and demo. Editing stays gated per-team
+    // (canEditProject) and the "Add to wallet" business card stays member-only,
+    // so a signed-out visitor gets a read-only tour with no members-only chrome.
     // Aurora is a direct, full-bleed child of the view (position:absolute inset:0,
     // like the skills wrap) so it paints the actual background under the sidebar —
     // not just the inner cards box.
