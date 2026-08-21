@@ -6870,7 +6870,7 @@
     function onOrient(e) {
       if (e.gamma == null) return;
       var rx = clamp(e.gamma / MAX_TILT_DEG, -1, 1);
-      tx = -rx * maxShift;   // tilt right → clip slides left, revealing its right side
+      tx = rx * maxShift;    // tilt right → clip slides right, revealing its left side
       if (!raf) { raf = true; requestAnimationFrame(apply); }
     }
     function attach() {
