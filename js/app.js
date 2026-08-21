@@ -6830,29 +6830,47 @@
   function teamById_(id) { var t = null; homeTeams().forEach(function (x) { if (x.id === id) t = x; }); return t; }
 
   // Landing hero: on a phone the video already COVERs the viewport (fills height,
-  // crops sides in portrait). Bind device tilt to a gentle parallax pan — gamma
-  // (roll) → x, beta (pitch) → y — low-pass filtered so it eases, not jitters.
-  // Adapted from ahlab-org hero-parallax. iOS asks permission on the first tap.
+  // crops sides in portrait). Bind device tilt to a horizontal parallax pan —
+  // gamma (left/right roll) slides the clip along X to reveal its cropped 16:9
+  // sides. Mirrors ahlab-org hero-parallax: ±MAX_TILT_DEG maps to the FULL
+  // measured overhang of the cover-sized video, so the pan stops exactly at the
+  // frame edge and never exposes empty space — the transform equivalent of that
+  // hero's self-clamping percentage background-position. A single rAF low-pass
+  // eases the raw sensor value (no CSS transition, which would double-smooth and
+  // lag). iOS asks permission on the first tap.
   function initLandingTilt() {
     var fv = $('.feature-video video'); if (!fv || fv.__tilt) return;
     fv.__tilt = true;
-    var tx = 0, ty = 0, cx = 0, cy = 0, raf = false;
+    var MAX_TILT_DEG = 25;   // gamma at which the pan reaches its limit (gentle)
+    var EDGE_MARGIN = 0.92;  // stop a sliver short of the true edge (hide outer px)
+    // How far the clip can slide each way before empty space would show: half the
+    // amount it overhangs the viewport. getBoundingClientRect().width already
+    // includes the CSS scale() but not the translate, so it's the real on-screen
+    // width — this stays correct across any viewport / orientation / scale value.
+    var maxShift = 0;
+    function measure() {
+      if (!fv.isConnected) return; // stale listener after navigating away — ignore
+      var w = fv.getBoundingClientRect().width;
+      maxShift = Math.max(0, (w - window.innerWidth) / 2) * EDGE_MARGIN;
+    }
+    measure();
+    window.addEventListener('resize', measure, { passive: true });
+    window.addEventListener('orientationchange', function () { setTimeout(measure, 300); }, { passive: true });
+    var tx = 0, cx = 0, raf = false;
     function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
     function apply() {
       raf = false;
-      cx += (tx - cx) * 0.16; cy += (ty - cy) * 0.16;
+      // Low-pass: close ~22% of the gap per frame so the pan eases rather than
+      // rigidly tracking every micro-tremor of the hand.
+      cx += (tx - cx) * 0.22;
       fv.style.setProperty('--tx', cx.toFixed(1) + 'px');
-      fv.style.setProperty('--ty', cy.toFixed(1) + 'px');
-      if (Math.abs(tx - cx) > 0.3 || Math.abs(ty - cy) > 0.3) { raf = true; requestAnimationFrame(apply); }
+      if (Math.abs(tx - cx) > 0.3) { raf = true; requestAnimationFrame(apply); }
+      else cx = tx;
     }
     function onOrient(e) {
-      if (e.gamma == null && e.beta == null) return;
-      var rx = clamp((e.gamma || 0) / 18, -1, 1);
-      var ry = clamp(((e.beta == null ? 90 : e.beta) - 90) / 18, -1, 1);
-      // the portrait video is much wider than the screen, so a big horizontal
-      // pan reveals its cropped sides; vertical room comes from scale(1.14)
-      tx = -rx * (window.innerWidth * 0.22);   // tilt → content pans the opposite way
-      ty = -ry * (window.innerHeight * 0.06);
+      if (e.gamma == null) return;
+      var rx = clamp(e.gamma / MAX_TILT_DEG, -1, 1);
+      tx = -rx * maxShift;   // tilt right → clip slides left, revealing its right side
       if (!raf) { raf = true; requestAnimationFrame(apply); }
     }
     function attach() {

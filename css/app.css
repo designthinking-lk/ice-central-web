@@ -3459,11 +3459,13 @@ html.is-mobile.m-on .page-head { flex-wrap: wrap; }
 html.is-mobile.m-on .ann-head { flex-wrap: wrap; }
 
 /* ---- landing hero: portrait video COVERs the screen (crops sides), with a
-   gentle tilt-parallax pan driven by initLandingTilt (--tx/--ty) ---- */
+   gentle tilt-parallax pan driven by initLandingTilt (--tx). The pan is eased
+   entirely in JS (rAF low-pass) — NO CSS transition here, which would stack a
+   second smoothing pass on top and make the motion lag the tilt. ---- */
 html.is-mobile.m-on .feature-video { -webkit-mask-image: none; mask-image: none; }
 html.is-mobile.m-on .feature-video video {
-  transform: translate(calc(-50% + var(--tx, 0px)), calc(-50% + var(--ty, 0px))) scale(1.14);
-  transition: transform 0.08s linear;
+  transform: translate(calc(-50% + var(--tx, 0px)), -50%) scale(1.14);
+  will-change: transform;
 }
 html.is-mobile.m-on .feature-video.show { opacity: 0.9; }
 
