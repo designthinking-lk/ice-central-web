@@ -3946,19 +3946,46 @@
     for (var i = 0; i < TEAM_CAP.participant; i++) chips += circle(parts[i], 'participant');
     chips += '<span class="pms-sep" aria-hidden="true"></span>';
     for (var j = 0; j < TEAM_CAP.mentor; j++) chips += circle(ments[j], 'mentor');
-    // aggregate every member's skills, with a per-skill count
-    var counts = {};
-    members.forEach(function (u) {
-      (u.skills || []).forEach(function (s) { s = String(s || '').trim(); if (s) counts[s] = (counts[s] || 0) + 1; });
-    });
-    var skills = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a] || a.localeCompare(b); });
-    var skillsHtml = skills.length
-      ? skills.map(function (s) { return '<span class="pms-skill' + (isMySkill(s) ? ' is-mine' : '') + '">' + esc(s) + '<b>' + counts[s] + '</b></span>'; }).join('')
-      : '<span class="pms-none">No skills listed yet.</span>';
+    // The strip shows only the top few skills; the full aggregated list lives in
+    // the detail panel's Skills tab, reachable via the "See more" chip-button.
+    var skills = projectSkillCounts(slot);
+    var TOP = 3;
+    var skillsHtml;
+    if (!skills.length) {
+      skillsHtml = '<span class="pms-none">No skills listed yet.</span>';
+    } else {
+      skillsHtml = skills.slice(0, TOP).map(function (o) { return projSkillChipHtml_(o.skill, o.count); }).join('');
+      if (skills.length > TOP) {
+        skillsHtml += '<button type="button" class="pms-skill pms-skill-more" data-action="proj-see-skills">' +
+          'See more<b>+' + (skills.length - TOP) + '</b></button>';
+      }
+    }
     return '<div class="pms-head">People</div>' +
       '<div class="pms-chips">' + chips + '</div>' +
       '<div class="pms-head pms-head-2">Skills</div>' +
       '<div class="pms-skills">' + skillsHtml + '</div>';
+  }
+  // Team skills aggregated across every project member, highest count first.
+  function projectSkillCounts(slot) {
+    var counts = {};
+    projectMembers(slot).forEach(function (u) {
+      (u.skills || []).forEach(function (s) { s = String(s || '').trim(); if (s) counts[s] = (counts[s] || 0) + 1; });
+    });
+    return Object.keys(counts)
+      .sort(function (a, b) { return counts[b] - counts[a] || a.localeCompare(b); })
+      .map(function (s) { return { skill: s, count: counts[s] }; });
+  }
+  function projSkillChipHtml_(s, count) {
+    return '<span class="pms-skill' + (isMySkill(s) ? ' is-mine' : '') + '">' + esc(s) + '<b>' + count + '</b></span>';
+  }
+  // Full team-skills list — rendered inside the detail panel's Skills tab.
+  function projSkillsTabHtml(slot) {
+    var arr = projectSkillCounts(slot);
+    if (!arr.length) return '<h2 class="proj-d-title">Team skills</h2><span class="pms-none">No skills listed yet.</span>';
+    return '<h2 class="proj-d-title">Team skills</h2>' +
+      '<div class="pms-skills proj-skills-grid">' +
+      arr.map(function (o) { return projSkillChipHtml_(o.skill, o.count); }).join('') +
+      '</div>';
   }
   function renderMembersStrip() {
     var s = $('#projMembersStrip');
@@ -4076,16 +4103,20 @@
         footer = swatches + footActions;
       }
     } else {
-      // ---- view mode: Details / Demo tabs (Demo only when a clip exists) ----
+      // ---- view mode: Details / Skills / Demo tabs (Demo only when a clip exists) ----
       var hasVid = !!p.video;
-      var vtab = (hasVid && projViewTab === 'demo') ? 'demo' : 'details';
-      var vtabs = hasVid
-        ? '<div class="proj-tabs proj-view-tabs">' +
-            '<button type="button" class="proj-tab' + (vtab === 'details' ? ' on' : '') + '" data-action="proj-view-tab" data-tab="details">Details</button>' +
-            '<button type="button" class="proj-tab' + (vtab === 'demo' ? ' on' : '') + '" data-action="proj-view-tab" data-tab="demo"><i class="fa-solid fa-clapperboard"></i>Demo</button>' +
-          '</div>'
-        : '';
-      if (vtab === 'demo') {
+      var vtab = projViewTab;
+      if (vtab === 'demo' && !hasVid) vtab = 'details';
+      if (vtab !== 'demo' && vtab !== 'skills') vtab = 'details';
+      var vtabs = '<div class="proj-tabs proj-view-tabs">' +
+          '<button type="button" class="proj-tab' + (vtab === 'details' ? ' on' : '') + '" data-action="proj-view-tab" data-tab="details">Details</button>' +
+          '<button type="button" class="proj-tab' + (vtab === 'skills' ? ' on' : '') + '" data-action="proj-view-tab" data-tab="skills"><i class="fa-solid fa-wand-magic-sparkles"></i>Skills</button>' +
+          (hasVid ? '<button type="button" class="proj-tab' + (vtab === 'demo' ? ' on' : '') + '" data-action="proj-view-tab" data-tab="demo"><i class="fa-solid fa-clapperboard"></i>Demo</button>' : '') +
+        '</div>';
+      if (vtab === 'skills') {
+        inner = vtabs + projSkillsTabHtml(slot);
+        footer = '';
+      } else if (vtab === 'demo') {
         // Manual playback: native controls (play + scrubber + fullscreen) plus an
         // explicit full-screen button. No autoplay — the member presses play.
         inner = vtabs +
@@ -7121,6 +7152,12 @@
       }
       case 'proj-view-tab': {
         projViewTab = t.getAttribute('data-tab') || 'details';
+        renderProjectDetail();
+        break;
+      }
+      case 'proj-see-skills': {
+        // "See more" chip in the members strip → open the detail Skills tab.
+        projViewTab = 'skills';
         renderProjectDetail();
         break;
       }
